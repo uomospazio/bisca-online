@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#57816f">
+<title>BISCA</title>
+<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#57816f;color:#fde4b9;font:20px system-ui;touch-action:none}
+canvas{display:block;outline:none}#loading,#rotate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#57816f;z-index:4;text-align:center;padding:24px;box-sizing:border-box}
+h1{font-size:clamp(48px,10vw,100px);margin:0 0 20px}progress{width:min(70vw,400px);accent-color:#fde4b9}#rotate{display:none}
+@media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="0">Il browser non supporta Canvas.</canvas>
+<div id="loading"><h1>BISCA</h1><p id="message">Caricamento...</p><progress id="progress"></progress></div>
+<div id="rotate"><h1>BISCA</h1><p>Ruota il telefono in orizzontale per giocare.</p></div>
+<noscript>Attiva JavaScript per giocare.</noscript>
+<script src="index.js"></script>
+<script>
+const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":2820856,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const missing=Engine.getMissingFeatures({threads:false});
+const message=document.getElementById('message');
+if(missing.length){message.textContent='Browser non compatibile: '+missing.join(', ');}
+else {
+  const engine=new Engine(config);
+  engine.startGame({onProgress:(current,total)=>{
+    const bar=document.getElementById('progress');
+    if(total){bar.max=total;bar.value=current;}
+  }}).then(()=>document.getElementById('loading').remove()).catch(error=>{
+    message.textContent='Caricamento non riuscito. Ricarica la pagina. '+error.message;
+  });
+}
+</script>
+</body>
+</html>
+

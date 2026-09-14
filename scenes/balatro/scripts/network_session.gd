@@ -20,6 +20,7 @@ var tick := 0.0
 var retry := 0.0
 var connection_deadline := 0
 var connection_generation := 0
+var voice_rate: Dictionary = {}
 
 func default_endpoint() -> String:
 	return str(ProjectSettings.get_setting("bisca/network/server_url", "")) if OS.has_feature("web") else "127.0.0.1"
@@ -63,6 +64,9 @@ func _ready() -> void:
 			endpoint = default_endpoint()
 
 func connect_room(address: String, command: Dictionary) -> void:
+	var voice := get_node_or_null("/root/VoiceChat")
+	if voice:
+		voice.leave()
 	connection_generation += 1
 	var generation := connection_generation
 
@@ -134,6 +138,9 @@ func send(command: Dictionary) -> void:
 		request.rpc_id(1, command)
 
 func leave() -> void:
+	var voice := get_node_or_null("/root/VoiceChat")
+	if voice:
+		voice.leave()
 	connection_generation += 1
 	send({"op": "leave"})
 	room_code = ""
@@ -161,6 +168,7 @@ func _lost() -> void:
 		retry = 2.0
 
 func _disconnected(peer_id: int) -> void:
+	voice_rate.erase(peer_id)
 	if not dedicated or not members.has(peer_id):
 		return
 	var ref: Dictionary = members[peer_id]
@@ -363,13 +371,17 @@ func request(command: Dictionary) -> void:
 
 func _broadcast(room: Dictionary) -> void:
 	room.rev += 1
+	for p in room.people:
+		if not p.has("voice_id"):
+			# Public stable identity: never expose the private rejoin token.
+			p["voice_id"] = Crypto.new().generate_random_bytes(8).hex_encode()
 	for id in range(room.people.size()):
 		var person: Dictionary = room.people[id]
 		if not _peer_connected(person.peer):
 			continue
 		var state := {"code": room.code, "you": id, "rev": room.rev, "stage": room.stage, "capacity": room.capacity, "bots": room.bots, "people": []}
 		for p in room.people:
-			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot})
+			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id})
 		if room.rules != null:
 			state.merge(room.rules.view_for(id))
 			state["completed_tricks"] = room.rules.completed_tricks
@@ -420,11 +432,26 @@ func voice_signal(target_slot: int, data: Dictionary) -> void:
 		return
 
 	var room: Dictionary = rooms[room_code_for_sender]
+	if data.get("room", "") != room.code or not _valid_voice_payload(data):
+		return
+	if target_slot == int(sender_member.slot):
+		return
+	var second := int(Time.get_ticks_msec() / 1000)
+	var rate: Dictionary = voice_rate.get(sender_peer, {"second": second, "count": 0})
+	if rate.second != second:
+		rate = {"second": second, "count": 0}
+	rate.count += 1
+	voice_rate[sender_peer] = rate
+	if rate.count > 100:
+		return
 
 	if target_slot < 0 or target_slot >= room.people.size():
 		return
 
 	var target: Dictionary = room.people[target_slot]
+	var sender: Dictionary = room.people[int(sender_member.slot)]
+	if data.get("to_id", "") != target.get("voice_id", "") or data.get("from_id", "") != sender.get("voice_id", ""):
+		return
 
 	if target.bot:
 		return
@@ -439,6 +466,22 @@ func voice_signal(target_slot: int, data: Dictionary) -> void:
 		int(sender_member.slot),
 		data
 	)
+
+func _valid_voice_payload(data: Dictionary) -> bool:
+	if not data.get("epoch") is String or data.epoch.length() > 64 or data.epoch.is_empty():
+		return false
+	if JSON.stringify(data).length() > 70000:
+		return false
+	match data.get("type", ""):
+		"ready", "off", "retry":
+			return true
+		"description":
+			var description = data.get("description")
+			return description is Dictionary and description.get("type") in ["offer", "answer"] and description.get("sdp") is String and description.sdp.length() <= 65536
+		"candidate":
+			var candidate = data.get("candidate")
+			return candidate is Dictionary and candidate.get("candidate") is String and candidate.candidate.length() <= 4096
+	return false
 
 
 @rpc("authority", "call_remote", "reliable")

@@ -29,7 +29,7 @@ driver/enable_input=true
 
 GameSettings="*res://scenes/balatro/scripts/game_settings.gd"
 NetworkSession="*res://scenes/balatro/scripts/network_session.gd"
-VoiceChat="*uid://b0qmk7kvek28b"
+VoiceChat="*res://scenes/balatro/scripts/voice_chat.gd"
 
 [bisca]
 

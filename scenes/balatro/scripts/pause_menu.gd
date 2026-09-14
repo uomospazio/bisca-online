@@ -91,7 +91,7 @@ func _show_settings() -> void:
 	if not is_instance_valid(settings_page):
 		settings_page = preload("res://scenes/balatro/scripts/settings_page.gd").new()
 		screen.add_child(settings_page)
-		settings_page.setup(host.menu, _show_actions)
+		settings_page.setup(host.menu, _show_actions, host.online)
 	preload("res://scenes/balatro/scripts/page_transition.gd").slide(screen, actions, settings_page)
 
 func _show_actions() -> void:

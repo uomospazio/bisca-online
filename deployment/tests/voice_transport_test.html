@@ -1,0 +1,63 @@
+<!doctype html><meta charset="utf-8"><title>BISCA voice transport test</title>
+<button id="run">Test WebRTC con audio sintetico (nessun microfono)</button>
+<pre id="result">Pronto.</pre>
+<script src="../../scenes/balatro/scripts/voice_transport.js"></script>
+<script>
+const result=document.getElementById('result');
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const assert=(ok,message)=>{if(!ok)throw Error(message);};
+document.getElementById('run').onclick=async()=>{
+  let a,b,pump,source;
+  const original=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  let captures=0;
+  try {
+    result.textContent='Test in corso…';
+    const Voice=window.BiscaVoice.constructor;
+    a=new Voice();b=new Voice();a.iceServers=[];b.iceServers=[];
+    source=new AudioContext();await source.resume();
+    const tracks=[];
+    navigator.mediaDevices.getUserMedia=async()=>{
+      captures++;
+      const oscillator=source.createOscillator();
+      const quiet=source.createGain();quiet.gain.value=0.001;
+      const destination=source.createMediaStreamDestination();
+      oscillator.connect(quiet).connect(destination);oscillator.start();
+      tracks.push(...destination.stream.getTracks());return destination.stream;
+    };
+    const roster=[{id:'a',slot:0,bot:false,connected:true},{id:'b',slot:1,bot:false,connected:true}];
+    a.update('TEST','a',roster);b.update('TEST','b',roster);
+    assert(captures===0,'Microfono attivato senza consenso');
+    pump=setInterval(()=>{
+      for(const event of JSON.parse(a.drain()))if(event.op==='signal')b.receive(event.data);
+      for(const event of JSON.parse(b.drain()))if(event.op==='signal')a.receive(event.data);
+    },10);
+    await a.start();await b.start();
+    for(let i=0;i<100;i++){
+      if(a.peers.get('b')?.gain && b.peers.get('a')?.gain && a.peers.get('b').pc.connectionState==='connected')break;
+      await delay(100);
+    }
+    assert(a.peers.get('b')?.gain && b.peers.get('a')?.gain,'Traccia audio non ricevuta');
+    await delay(300);
+    const stats=await a.peers.get('b').pc.getStats();
+    let bytes=0;stats.forEach(r=>{if(r.type==='inbound-rtp' && r.kind==='audio')bytes+=r.bytesReceived;});
+    assert(bytes>0,'Nessun pacchetto audio ricevuto');
+    a.setMaster(0.5);a.setVolume('b',0.4);await delay(200);
+    assert(Math.abs(a.peers.get('b').gain.gain.value-0.2)<0.001,'Volume individuale/Main errato');
+    a.setVolume('b',0);await delay(200);
+    assert(a.peers.get('b').gain.gain.value<0.001,'Mute individuale errato');
+    a.setMuted(true);assert(!a.stream.getAudioTracks()[0].enabled,'Microfono non silenziato');
+    a.setMuted(false);assert(a.stream.getAudioTracks()[0].enabled,'Microfono non riattivato');
+    const peer=a.peers.get('b');
+    a.receive({type:'off',room:'ALTRA',to_id:'a',from_id:'b',epoch:b.epoch});
+    assert(a.peers.get('b')===peer,'Segnale di altra stanza accettato');
+    a.stop();await delay(100);
+    assert(a.peers.size===0 && b.peers.size===0,'Peer rimasto aperto dopo stop');
+    await a.start();await delay(600);
+    assert(a.peers.has('b') && b.peers.has('a'),'Riattivazione fallita');
+    a.update('NEW','a',roster);b.stop();
+    assert(!a.enabled && tracks.every(t=>t.readyState==='ended'),'Microfono rimasto attivo dopo uscita');
+    result.textContent='PASS: WebRTC bidirezionale ('+bytes+' byte), volumi individuali/Main, mute, isolamento stanza, riattivazione e chiusura microfoni.';
+  }catch(error){result.textContent='FAIL: '+error.stack;}
+  finally{clearInterval(pump);a?.stop();b?.stop();source?.close();navigator.mediaDevices.getUserMedia=original;}
+};
+</script>

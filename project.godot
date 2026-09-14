@@ -1,0 +1,57 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="TRICK"
+config/tags=PackedStringArray("experiment")
+run/main_scene="res://scenes/balatro/balatro.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.png"
+
+[autoload]
+
+GameSettings="*res://scenes/balatro/scripts/game_settings.gd"
+NetworkSession="*res://scenes/balatro/scripts/network_session.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=0
+
+[editor]
+
+movie_writer/movie_file="result.avi"
+
+[gui]
+
+theme/custom="res://scenes/balatro/fonts/lexispell_theme.tres"
+
+[rendering]
+
+renderer/rendering_method.web="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+textures/default_filters/anisotropic_filtering_level=4
+anti_aliasing/quality/msaa_2d=3
+anti_aliasing/quality/screen_space_aa=1
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true

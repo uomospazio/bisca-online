@@ -1,0 +1,77 @@
+extends Node
+
+signal changed
+const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "tooltips": true, "fullscreen": false}
+var values: Dictionary = DEFAULTS.duplicate()
+var save_path := "user://bisca_settings.cfg"
+var save_timer: Timer
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	if "--server" in OS.get_cmdline_user_args():
+		return
+	if AudioServer.get_bus_index("SFX") < 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, "SFX")
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+	load_preferences()
+	apply()
+	save_timer = Timer.new()
+	save_timer.one_shot = true
+	save_timer.wait_time = 0.25
+	add_child(save_timer)
+	save_timer.timeout.connect(save_preferences)
+
+func load_preferences() -> void:
+	values = DEFAULTS.duplicate()
+	var config := ConfigFile.new()
+	if config.load(save_path) != OK:
+		return
+	for key in DEFAULTS:
+		var value: Variant = config.get_value("settings", key, DEFAULTS[key])
+		if key in ["main", "effects"]:
+			if value is float or value is int:
+				values[key] = clampf(float(value), 0.0, 100.0)
+		elif value is bool:
+			values[key] = value
+
+func set_value(key: String, value: Variant) -> void:
+	if not DEFAULTS.has(key):
+		return
+	values[key] = clampf(float(value), 0.0, 100.0) if key in ["main", "effects"] else bool(value)
+	apply()
+	changed.emit()
+	if save_timer:
+		save_timer.start()
+
+func reset_defaults() -> void:
+	if save_timer:
+		save_timer.stop()
+	values = DEFAULTS.duplicate()
+	apply()
+	changed.emit()
+	save_preferences()
+
+func apply() -> void:
+	for key in ["main", "effects"]:
+		var bus := AudioServer.get_bus_index("Master" if key == "main" else "SFX")
+		if bus >= 0:
+			var volume := float(values[key]) / 100.0
+			AudioServer.set_bus_mute(bus, volume <= 0.0)
+			AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(volume, 0.0001)))
+	if DisplayServer.get_name() != "headless" and OS.get_name() not in ["Android", "iOS", "Web"]:
+		var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if values.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+		if DisplayServer.window_get_mode() != mode:
+			DisplayServer.window_set_mode(mode)
+
+func save_preferences() -> void:
+	var config := ConfigFile.new()
+	for key in values:
+		config.set_value("settings", key, values[key])
+	var result := config.save(save_path)
+	if result != OK:
+		push_warning("Impossibile salvare le impostazioni BISCA: %s" % error_string(result))
+
+func _exit_tree() -> void:
+	if save_timer and not save_timer.is_stopped():
+		save_preferences()

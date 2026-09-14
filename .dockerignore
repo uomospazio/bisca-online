@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!deployment/
+!deployment/**
+!scenes/
+!scenes/balatro/
+!scenes/balatro/scripts/
+!scenes/balatro/scripts/network_session.gd
+!scenes/balatro/scripts/match_rules.gd
+!scenes/balatro/scripts/bot_policy.gd

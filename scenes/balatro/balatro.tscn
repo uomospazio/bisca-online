@@ -1,0 +1,208 @@
+[gd_scene format=3 uid="uid://dst0og0kjqo74"]
+
+[ext_resource type="PackedScene" uid="uid://ccpeukrdsfbkm" path="res://scenes/balatro/card.tscn" id="1_0kik2"]
+[ext_resource type="Shader" uid="uid://ls83b85iltwa" path="res://scenes/balatro/shaders/noise_move.gdshader" id="1_lux0i"]
+[ext_resource type="Script" uid="uid://dxqpj63l51thv" path="res://scenes/balatro/scripts/match_controller.gd" id="1_sd3ku"]
+[ext_resource type="Shader" uid="uid://cut6taggy1syj" path="res://scenes/balatro/shaders/vhs.gdshader" id="6_xsyrq"]
+[ext_resource type="Script" uid="uid://djbheq3ndj8fi" path="res://scenes/balatro/scripts/hand.gd" id="10_hand"]
+[ext_resource type="Script" uid="uid://cnaykygj3bkns" path="res://scenes/balatro/scripts/play_area.gd" id="11_play_area"]
+[ext_resource type="Script" uid="uid://be6nki3yjm3o2" path="res://scenes/balatro/scripts/deck_pile.gd" id="12_deck_pile"]
+[ext_resource type="Script" uid="uid://cobinrc51oow8" path="res://scenes/balatro/scripts/color_effects.gd" id="13_color_effects"]
+[ext_resource type="Script" uid="uid://cin7yrgwrb73d" path="res://scenes/balatro/scripts/lexispell_background.gd" id="14_lexispell_background"]
+
+[sub_resource type="Gradient" id="Gradient_tndhy"]
+colors = PackedColorArray(0, 0.45303297, 0.0589856, 1, 2.4065375e-07, 0.31568372, 0.21152392, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_qcf7v"]
+frequency = 0.0027
+fractal_octaves = 1
+fractal_gain = 0.075
+domain_warp_enabled = true
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_b60hj"]
+width = 1920
+height = 1080
+noise = SubResource("FastNoiseLite_qcf7v")
+color_ramp = SubResource("Gradient_tndhy")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pin51"]
+shader = ExtResource("1_lux0i")
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_b60hj")
+shader_parameter/dir = Vector2(0.5, 0.5)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1d8k0"]
+shader = ExtResource("6_xsyrq")
+shader_parameter/overlay = true
+shader_parameter/scanlines_opacity = 0.15
+shader_parameter/scanlines_width = 0.382
+shader_parameter/grille_opacity = 0.085
+shader_parameter/resolution = Vector2(640, 480)
+shader_parameter/pixelate = true
+shader_parameter/roll = false
+shader_parameter/roll_speed = 8.0
+shader_parameter/roll_size = 0.0
+shader_parameter/roll_variation = 0.1
+shader_parameter/distort_intensity = 0.05
+shader_parameter/noise_opacity = 0.0
+shader_parameter/noise_speed = 5.0
+shader_parameter/static_noise_intensity = 0.0
+shader_parameter/aberration = 4.75e-08
+shader_parameter/brightness = 1.4
+shader_parameter/discolor = false
+shader_parameter/warp_amount = 0.882
+shader_parameter/clip_warp = false
+shader_parameter/vignette_intensity = 0.0
+shader_parameter/vignette_opacity = 0.5
+
+[sub_resource type="Environment" id="Environment_46hvu"]
+background_mode = 3
+tonemap_mode = 3
+tonemap_exposure = 0.7
+glow_enabled = true
+glow_hdr_threshold = 1.3
+adjustment_enabled = true
+adjustment_contrast = 1.2
+adjustment_saturation = 1.45
+
+[node name="Balatro" type="Control" unique_id=841536017]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_sd3ku")
+
+[node name="BG" type="ColorRect" parent="." unique_id=285077148]
+visible = false
+material = SubResource("ShaderMaterial_pin51")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -316.0
+offset_top = -178.0
+offset_right = 317.0
+offset_bottom = 178.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GameBackground" type="ColorRect" parent="." unique_id=384927501]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.341176, 0.509804, 0.423529, 1)
+script = ExtResource("14_lexispell_background")
+
+[node name="Parallax" type="Control" parent="." unique_id=279740905]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlayArea" type="Control" parent="Parallax" unique_id=1724782220]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -573.0
+offset_top = -229.0
+offset_right = 573.0
+offset_bottom = 237.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("11_play_area")
+
+[node name="Hand" type="Control" parent="Parallax" unique_id=1482499415]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -523.0
+offset_top = -20.0
+offset_right = 523.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HBoxContainer" type="Control" parent="Parallax/Hand" unique_id=198662462]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 313.0
+offset_bottom = 483.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_hand")
+
+[node name="Card" parent="Parallax/Hand/HBoxContainer" unique_id=1598320127 instance=ExtResource("1_0kik2")]
+layout_mode = 0
+
+[node name="Card2" parent="Parallax/Hand/HBoxContainer" unique_id=2008925936 instance=ExtResource("1_0kik2")]
+layout_mode = 0
+
+[node name="Card3" parent="Parallax/Hand/HBoxContainer" unique_id=1181242681 instance=ExtResource("1_0kik2")]
+layout_mode = 0
+
+[node name="Card4" parent="Parallax/Hand/HBoxContainer" unique_id=1467559285 instance=ExtResource("1_0kik2")]
+layout_mode = 0
+
+[node name="Card5" parent="Parallax/Hand/HBoxContainer" unique_id=544867952 instance=ExtResource("1_0kik2")]
+layout_mode = 0
+offset_left = -11.0
+offset_top = 99.0
+offset_right = 104.0
+offset_bottom = 273.0
+
+[node name="DeckPile" type="Control" parent="Parallax" unique_id=115314677]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -1509.0
+offset_top = -177.0
+offset_right = -1394.0
+offset_bottom = -3.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 1
+script = ExtResource("12_deck_pile")
+
+[node name="PostProcessing" type="CanvasLayer" parent="." unique_id=966546296]
+visible = false
+
+[node name="ScanLines" type="ColorRect" parent="PostProcessing" unique_id=1198775636]
+material = SubResource("ShaderMaterial_1d8k0")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -352.0
+offset_top = -198.0
+offset_right = 352.0
+offset_bottom = 198.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="BackBufferCopy" type="BackBufferCopy" parent="PostProcessing" unique_id=716339042]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1484353874]
+script = ExtResource("13_color_effects")
+saved_environment = SubResource("Environment_46hvu")

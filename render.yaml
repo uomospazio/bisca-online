@@ -1,0 +1,12 @@
+# Only one FREE service. No paid databases, disks, workers or previews.
+services:
+  - type: web
+    name: bisca-server
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: PORT
+        value: "10000"

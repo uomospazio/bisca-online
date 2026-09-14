@@ -1,0 +1,12 @@
+config_version=5
+
+[application]
+config/name="BISCA Server"
+run/main_scene="res://server.tscn"
+run/max_fps=30
+
+[autoload]
+NetworkSession="*res://scenes/balatro/scripts/network_session.gd"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

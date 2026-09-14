@@ -89,7 +89,6 @@ func _ready() -> void:
 	name_input.custom_minimum_size.y = 58
 	name_input.add_theme_font_size_override("font_size", 26)
 	_style_input(name_input, 26)
-	name_input.text_changed.connect(_uppercase_name)
 	# Shared name field is displayed in the multiplayer page when created.
 	add_child(name_input)
 	name_input.hide()
@@ -99,8 +98,8 @@ func _ready() -> void:
 	setup_page.position = SETUP_ELEMENTS_POSITION
 	setup_page.size = SETUP_ELEMENTS_SIZE
 	single_name_input = LineEdit.new()
-	name_input.virtual_keyboard_enabled = true
-	name_input.virtual_keyboard_show_on_focus = true
+	single_name_input.virtual_keyboard_enabled = true
+	single_name_input.virtual_keyboard_show_on_focus = true
 	single_name_input.placeholder_text = "COME TI CHIAMI?"
 	single_name_input.max_length = 16
 	single_name_input.custom_minimum_size.x = 520
@@ -110,11 +109,6 @@ func _ready() -> void:
 	setup_page.add_child(single_name_input)
 	single_name_input.text_changed.connect(func(value):
 		name_input.text = value
-		_uppercase_name(value)
-		if single_name_input.text != name_input.text:
-			var caret := single_name_input.caret_column
-			single_name_input.text = name_input.text
-			single_name_input.caret_column = caret
 	)
 	var row := HBoxContainer.new()
 	row.custom_minimum_size.y = 80
@@ -170,7 +164,7 @@ func _process(delta: float) -> void:
 	var mouse := get_global_mouse_position()
 	var offset := mouse / center - Vector2.ONE
 	var target_position := -offset * MENU_OFFSET_STRENGTH
-	if not get_node("/root/GameSettings").values.camera:
+	if not get_node("/root/GameSettings").values.camera or DisplayServer.is_touchscreen_available():
 		target_position = Vector2.ZERO
 	menu_content.position = menu_content.position.lerp(target_position, MENU_OFFSET_SMOOTHING * delta)
 
@@ -309,15 +303,10 @@ func _has_special(value: String) -> bool:
 			return true
 	return false
 
-func _uppercase_name(value: String) -> void:
-	var uppercase_value := value.to_upper()
-	if value != uppercase_value:
-		var caret := name_input.caret_column
-		name_input.text = uppercase_value
-		name_input.caret_column = caret
-
 func chosen_name() -> String:
-	var value := name_input.text.strip_edges()
+	# Do not rewrite a focused LineEdit on every mobile input event: it
+	# reopens the native keyboard and resets composition/caret positioning.
+	var value := name_input.text.strip_edges().to_upper()
 	return "Giocatore" if value.is_empty() else value
 
 func show_setup() -> void:

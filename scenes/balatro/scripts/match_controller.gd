@@ -2,7 +2,8 @@ extends Control
 
 const Rules = preload("res://scenes/balatro/scripts/match_rules.gd")
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
-var bot_policy = preload("res://scenes/balatro/scripts/bot_policy.gd").new()
+var bot_policy = preload("res://scenes/balatro/scripts/local_bot_policy.gd").new()
+var local_bot_generation := 0
 const Deck = preload("res://scenes/balatro/scripts/deck.gd")
 const CardScene = preload("res://scenes/balatro/card.tscn")
 const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png")
@@ -159,6 +160,7 @@ func _ready() -> void:
 		_menu_start.call_deferred(restart.name, restart.count)
 
 func _show_menu() -> void:
+	local_bot_generation += 1
 	presented_damage_round = -1
 	if online:
 		get_node("/root/NetworkSession").leave()
@@ -311,6 +313,7 @@ func _start(count: int) -> void:
 	presented_damage_round = -1
 	if busy:
 		return
+	local_bot_generation += 1
 	busy = true
 	await loading_screen.cover()
 	timed_turn = ""
@@ -975,6 +978,9 @@ func _animate_trick_capture() -> void:
 	table_visuals.clear()
 	displayed_taken[winner_id] = rules.players[winner_id].taken
 
+func _local_bot_is_current(generation: int) -> bool:
+	return is_inside_tree() and local_bot_generation == generation and not online and game_ui.visible
+
 func _drive() -> void:
 	if online:
 		return
@@ -1036,11 +1042,16 @@ func _drive() -> void:
 		await get_tree().create_timer(0.65, false).timeout
 		# Bots only consume their own redacted view, never another hand.
 		var view: Dictionary = rules.view_for(id)
+		var generation := local_bot_generation
+		var valid := _local_bot_is_current.bind(generation)
+		var decision: Dictionary = await bot_policy.decide(view, id, get_tree(), valid)
+		if decision.is_empty() or not valid.call():
+			busy = false
+			return
 		if rules.phase == "prediction":
-			rules.predict(id, bot_policy.choose_bid(view, id))
+			rules.predict(id, decision.bid)
 		else:
 			var own: Dictionary = view.players[id]
-			var decision: Dictionary = bot_policy.choose_play(view, id)
 			var index: int = decision.index
 			var played_id: int = own.hand[index]
 			var joker_high: bool = decision.high

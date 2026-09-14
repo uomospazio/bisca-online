@@ -13,16 +13,84 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#57816f;col
 canvas{display:block;outline:none}#loading,#rotate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#57816f;z-index:4;text-align:center;padding:24px;box-sizing:border-box}
 h1{font-size:clamp(48px,10vw,100px);margin:0 0 20px}progress{width:min(70vw,400px);accent-color:#fde4b9}#rotate{display:none}
 @media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
+/* Godot's native keyboard proxy otherwise covers the entire canvas. */
+.phone-input body > input,.phone-input body > textarea{
+position:fixed!important;left:12px!important;top:var(--keyboard-top,12px)!important;
+width:calc(100% - 112px)!important;height:44px!important;box-sizing:border-box!important;
+font:20px system-ui!important;line-height:26px!important;padding:8px 12px!important;
+background:#fde4b9!important;color:#484560!important;border:2px solid #74ab8e!important;
+border-radius:12px!important;z-index:20!important;touch-action:auto!important;
+}
+#keyboard-done{display:none;position:fixed;right:12px;top:var(--keyboard-top,12px);height:44px;width:80px;background:#484560;color:#fde4b9;border:2px solid #74ab8e;border-radius:12px;font:bold 16px system-ui;z-index:21;touch-action:manipulation}
+.phone-input.editing #keyboard-done{display:block}
+.phone-input.editing #rotate{display:none}
 </style>
 </head>
 <body>
 <canvas id="canvas" tabindex="0">Il browser non supporta Canvas.</canvas>
 <div id="loading"><h1>BISCA</h1><p id="message">Caricamento...</p><progress id="progress"></progress></div>
 <div id="rotate"><h1>BISCA</h1><p>Ruota il telefono in orizzontale per giocare.</p></div>
+<button id="keyboard-done" type="button">FATTO</button>
 <noscript>Attiva JavaScript per giocare.</noscript>
 <script src="index.js"></script>
 <script>
-const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":2828100,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":2861488,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+// Own canvas sizing on phones only; keyboard resize/scroll events must not
+// feed back into Godot's layout and move the field on every keystroke.
+if (matchMedia('(pointer:coarse)').matches && Math.min(screen.width,screen.height)<600) {
+  document.documentElement.classList.add('phone-input');
+  config.canvasResizePolicy=0;
+  const canvas=document.getElementById('canvas');
+  const root=document.documentElement;
+  let editing=false, settle;
+  const isEditor=element=>element && element.parentElement===document.body &&
+    (element.tagName==='INPUT' || element.tagName==='TEXTAREA');
+  function fitCanvas(){
+    if(editing) return;
+    const width=window.innerWidth, height=window.innerHeight, ratio=window.devicePixelRatio||1;
+    canvas.style.width=width+'px'; canvas.style.height=height+'px';
+    const pixelsX=Math.floor(width*ratio), pixelsY=Math.floor(height*ratio);
+    if(canvas.width!==pixelsX) canvas.width=pixelsX;
+    if(canvas.height!==pixelsY) canvas.height=pixelsY;
+  }
+  function keyboardPosition(){
+    root.style.setProperty('--keyboard-top',((window.visualViewport?.offsetTop||0)+12)+'px');
+  }
+  function settleLayout(){
+    clearTimeout(settle);
+    settle=setTimeout(()=>{
+      if(isEditor(document.activeElement)) return;
+      editing=false;
+      root.classList.remove('editing');
+      window.scrollTo(0,0);
+      fitCanvas();
+    },350);
+  }
+  document.addEventListener('focusin',event=>{
+    if(!isEditor(event.target)) return;
+    clearTimeout(settle);
+    editing=true;
+    root.classList.add('editing');
+    event.target.setAttribute('aria-label','Testo da inserire nel gioco');
+    event.target.setAttribute('autocorrect','off');
+    event.target.setAttribute('autocomplete','off');
+    event.target.spellcheck=false;
+    keyboardPosition();
+  });
+  document.addEventListener('focusout',event=>{
+    if(isEditor(event.target)) settleLayout();
+  });
+  document.getElementById('keyboard-done').addEventListener('pointerdown',event=>event.preventDefault());
+  document.getElementById('keyboard-done').addEventListener('click',()=>{
+    if(isEditor(document.activeElement)) document.activeElement.blur();
+    canvas.focus({preventScroll:true});
+    settleLayout();
+  });
+  window.addEventListener('resize',()=>{if(editing) keyboardPosition(); else fitCanvas();});
+  window.visualViewport?.addEventListener('resize',keyboardPosition);
+  window.visualViewport?.addEventListener('scroll',keyboardPosition);
+  fitCanvas();
+}
 const missing=Engine.getMissingFeatures({threads:false});
 const message=document.getElementById('message');
 if(missing.length){message.textContent='Browser non compatibile: '+missing.join(', ');}

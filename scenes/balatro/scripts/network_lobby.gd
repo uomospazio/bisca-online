@@ -40,8 +40,8 @@ func setup(owner_menu: Control) -> void:
 	join.add_theme_font_size_override("font_size", 22)
 	controls = VBoxContainer.new()
 	add_child(controls)
-	controls.position = Vector2(600, 530)
-	controls.size = Vector2(720, 360)
+	controls.position = Vector2(700, 530)
+	controls.size = Vector2(400, 360)
 	controls.add_theme_constant_override("separation", 16)
 	address = LineEdit.new()
 	address.virtual_keyboard_enabled = true
@@ -49,12 +49,14 @@ func setup(owner_menu: Control) -> void:
 	address.text = net.endpoint
 	address.placeholder_text = "Indirizzo server"
 	menu._style_input(address, 24)
-	controls.add_child(address)
+	# controls.add_child(address)
 	code = LineEdit.new()
 	code.virtual_keyboard_enabled = true
 	code.virtual_keyboard_show_on_focus = true
 	code.placeholder_text = "Codice stanza"
 	code.max_length = 6
+	code.custom_minimum_size = Vector2(500, 80)
+	code.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	menu._style_input(code, 24)
 	controls.add_child(code)
 	capacity_row = HBoxContainer.new()

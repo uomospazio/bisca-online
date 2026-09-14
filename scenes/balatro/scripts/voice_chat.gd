@@ -14,22 +14,64 @@ var current_room := ""
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	if OS.get_cmdline_user_args().has("--server"):
 		set_process(false)
 		return
+
 	network_session = get_node("/root/NetworkSession")
 	network_session.updated.connect(_on_network_updated)
 	network_session.connection_lost.connect(stop)
+
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval(FileAccess.get_file_as_string("res://scenes/balatro/scripts/voice_transport.js"), true)
+		print("VOICE: inizializzazione Web")
+
+		var path := "res://scenes/balatro/scripts/voice_transport.js"
+
+		if not FileAccess.file_exists(path):
+			print("VOICE ERROR: voice_transport.js NON trovato")
+			status = "Errore: modulo chat vocale non trovato."
+			changed.emit()
+			return
+
+		var js_code := FileAccess.get_file_as_string(path)
+
+		print("VOICE: JS trovato, lunghezza = ", js_code.length())
+
+		if js_code.is_empty():
+			print("VOICE ERROR: voice_transport.js è vuoto")
+			status = "Errore: modulo chat vocale vuoto."
+			changed.emit()
+			return
+
+		JavaScriptBridge.eval(js_code, true)
+
 		bridge = JavaScriptBridge.get_interface("BiscaVoice")
-		var servers = ProjectSettings.get_setting("bisca/voice/ice_servers", [])
+
+		if bridge == null:
+			print("VOICE ERROR: window.BiscaVoice non esiste")
+			status = "Errore inizializzazione chat vocale."
+			changed.emit()
+			return
+
+		print("VOICE OK: BiscaVoice inizializzato")
+		status = "Chat vocale pronta."
+
+		var servers = ProjectSettings.get_setting(
+			"bisca/voice/ice_servers",
+			[]
+		)
+
 		if servers is Array and not servers.is_empty():
 			_call("configure", [servers])
+
 		get_node("/root/GameSettings").changed.connect(_sync_master)
 		_sync_master()
+
 	else:
 		status = "Chat vocale disponibile nella versione browser HTTPS (PC e mobile)."
+
+	changed.emit()
 
 func available() -> bool:
 	return bridge != null

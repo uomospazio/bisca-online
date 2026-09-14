@@ -11,7 +11,7 @@ const RoundedSquareButton = preload("res://scenes/balatro/scripts/rounded_square
 # dover intervenire sulla gerarchia dei contenitori.
 const TITLE_POSITION := Vector2(0, 120)
 const TITLE_SIZE := Vector2(1920, 280)
-const HOME_BUTTONS_POSITION := Vector2(700, 470)
+const HOME_BUTTONS_POSITION := Vector2(730, 470)
 const HOME_BUTTONS_SIZE := Vector2(460, 456)
 const SETUP_ELEMENTS_POSITION := Vector2(640, 530)
 const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
@@ -197,7 +197,7 @@ func _show_menu_title(with_friends: bool = false) -> void:
 	friends_subtitle.add_theme_font_size_override("font_size", 32)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
 	friends_subtitle.position = Vector2(0, 400)
-	friends_subtitle.add_theme_font_size_override("font_size", 38)
+	friends_subtitle.add_theme_font_size_override("font_size", 56)
 	title.scale = Vector2.ONE
 	title.position = TITLE_POSITION
 	friends_subtitle.visible = with_friends
@@ -236,10 +236,10 @@ func _build_title(parent: Control) -> void:
 		outer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		outer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		outer.add_theme_font_override("font", title_font)
-		outer.add_theme_font_size_override("font_size", 196)
+		outer.add_theme_font_size_override("font_size", 296)
 		outer.add_theme_color_override("font_color", Color("474660"))
 		outer.add_theme_color_override("font_outline_color", Color("fde4b9"))
-		outer.add_theme_constant_override("outline_size", 64)
+		outer.add_theme_constant_override("outline_size", 20)
 		letter.add_child(outer)
 		var inner := Label.new()
 		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -247,10 +247,10 @@ func _build_title(parent: Control) -> void:
 		inner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		inner.add_theme_font_override("font", title_font)
-		inner.add_theme_font_size_override("font_size", 196)
+		inner.add_theme_font_size_override("font_size", 296)
 		inner.add_theme_color_override("font_color", Color("474660"))
-		inner.add_theme_color_override("font_outline_color", Color("313145"))
-		inner.add_theme_constant_override("outline_size", 7)
+		inner.add_theme_color_override("font_outline_color", Color("fde4b9"))
+		inner.add_theme_constant_override("outline_size", 30)
 		letter.add_child(inner)
 		title_letters.append(letter)
 
@@ -323,7 +323,7 @@ func chosen_name() -> String:
 func show_setup() -> void:
 	_show_menu_title()
 	friends_subtitle.text = "SOLITARIA"
-	friends_subtitle.add_theme_font_size_override("font_size", 38)
+	friends_subtitle.add_theme_font_size_override("font_size", 56)
 	friends_subtitle.position = Vector2(0, 400)
 	friends_subtitle.show()
 	single_name_input.text = name_input.text

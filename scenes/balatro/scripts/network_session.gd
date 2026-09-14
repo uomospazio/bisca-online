@@ -65,61 +65,53 @@ func _ready() -> void:
 func connect_room(address: String, command: Dictionary) -> void:
 	connection_generation += 1
 	var generation := connection_generation
+
 	endpoint = address.strip_edges()
+
 	if endpoint.is_empty():
 		endpoint = default_endpoint()
+
 	retry = 0.0
 	connection_deadline = 0
+
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+
 	if command.get("op", "") in ["create", "join"]:
 		room_code = ""
 		token = ""
 		latest.clear()
-	if OS.has_feature("web") and not endpoint.begins_with("wss://") and not endpoint.begins_with("ws://"):
+
+	if OS.has_feature("web") \
+	and not endpoint.begins_with("wss://") \
+	and not endpoint.begins_with("ws://"):
 		problem.emit("Server online non configurato: serve un indirizzo wss://")
 		return
+
 	pending = command
+
 	if endpoint.begins_with("ws://") or endpoint.begins_with("wss://"):
-		# Wake the free service before its WebSocket handshake (cold start ~1 min).
+
 		if endpoint.begins_with("wss://"):
-			problem.emit("Avvio server gratuito... il primo accesso puo' richiedere un minuto.")
-			var wake := HTTPRequest.new()
-			wake.timeout = 120.0
-			add_child(wake)
-			var error := wake.request(endpoint.replace("wss://", "https://").trim_suffix("/") + "/healthz")
-			if error == OK:
-				var result: Array = await wake.request_completed
-				wake.queue_free()
-				if generation != connection_generation:
-					return
-				if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 200:
-					problem.emit("Server non disponibile. Attendi un minuto e riprova.")
-					return
-			else:
-				wake.queue_free()
-				problem.emit("Impossibile avviare la connessione al server")
-				return
+			problem.emit(
+				"Connessione al server... il primo accesso può richiedere circa un minuto."
+			)
+
 		var socket := WebSocketMultiplayerPeer.new()
-		socket.handshake_timeout = 20.0
-		if socket.create_client(endpoint) != OK:
+
+		socket.handshake_timeout = 90.0
+
+		var err := socket.create_client(endpoint)
+
+		if err != OK:
 			problem.emit("Impossibile connettersi al server")
 			return
+
 		multiplayer.multiplayer_peer = socket
-		connection_deadline = Time.get_ticks_msec() + 25000
+
+		connection_deadline = Time.get_ticks_msec() + 95000
+
 		problem.emit("Connessione al server in corso...")
 		return
-	if command.get("op", "") == "create" and endpoint.to_lower() in ["127.0.0.1", "localhost"]:
-		if not _ensure_local_server():
-			return
-	pending = command
-	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_client(endpoint, PORT)
-	if err != OK:
-		problem.emit("Impossibile connettersi al server")
-		return
-	multiplayer.multiplayer_peer = peer
-	connection_deadline = Time.get_ticks_msec() + 8000
-	problem.emit("Connessione al server in corso...")
 
 func _ensure_local_server() -> bool:
 	# A running server already owns this UDP port. Otherwise start the same

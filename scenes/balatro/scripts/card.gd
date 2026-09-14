@@ -2,7 +2,7 @@ extends Button
 
 const CardData = preload("res://scenes/balatro/scripts/card_data.gd")
 const ButtonAudio = preload("res://scenes/balatro/scripts/button_audio.gd")
-const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/back3.png")
+const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png")
 var data: CardData
 var face_down: bool = false
 var is_dealing: bool = false

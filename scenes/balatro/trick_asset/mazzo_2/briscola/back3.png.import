@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dbnvumruuabc0"
-path="res://.godot/imported/back3.png-18b5c1df459fd081d33772f86d5638f8.ctex"
+uid="uid://c4bad7nphiekg"
+path="res://.godot/imported/Back3.png-0e0990d4f144b614a137c66d25bf0bcf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/balatro/trick_asset/mazzo_2/briscola/back3.png"
-dest_files=["res://.godot/imported/back3.png-18b5c1df459fd081d33772f86d5638f8.ctex"]
+source_file="res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png"
+dest_files=["res://.godot/imported/Back3.png-0e0990d4f144b614a137c66d25bf0bcf.ctex"]
 
 [params]
 

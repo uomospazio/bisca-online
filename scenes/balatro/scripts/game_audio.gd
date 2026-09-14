@@ -21,9 +21,7 @@ static func play(owner: Node, sound: AudioStream, volume := -10.0) -> void:
 	if owner.get_tree().paused and owner.can_process():
 		player.process_mode = Node.PROCESS_MODE_ALWAYS
 	player.stream = sound
-	player.volume_db = volume
-	if AudioServer.get_bus_index("SFX") >= 0:
-		player.bus = "SFX"
+	owner.get_node("/root/GameSettings").configure_sfx(player, volume)
 	root.add_child(player)
 	player.finished.connect(player.queue_free)
 	player.play()

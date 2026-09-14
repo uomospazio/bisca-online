@@ -1,7 +1,7 @@
 @tool
 extends Control
 
-const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/back3.png")
+const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png")
 const LAYER_OFFSET := Vector2(0.4, -0.4)
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 var bend: float = 0.0:

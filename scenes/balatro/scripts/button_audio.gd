@@ -9,9 +9,7 @@ static func play(button: BaseButton, stream: AudioStream, volume_db := 0.0) -> v
 	var player := AudioStreamPlayer.new()
 	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	player.stream = stream
-	player.volume_db = volume_db
-	if AudioServer.get_bus_index("SFX") >= 0:
-		player.bus = "SFX"
+	button.get_node("/root/GameSettings").configure_sfx(player, volume_db)
 	# Keep clicks audible when the button's page is removed immediately.
 	button.get_tree().root.add_child(player)
 	player.finished.connect(player.queue_free)

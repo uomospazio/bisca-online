@@ -102,11 +102,11 @@ func _ready() -> void:
 	hint_label.modulate.a = 0.0
 	
 	long_press_sfx = AudioStreamPlayer.new()
-	long_press_sfx.bus = "SFX"
+	get_node("/root/GameSettings").configure_sfx(long_press_sfx)
 	long_press_sfx.stream = HOLD_SOUND
 	add_child(long_press_sfx)
 	confirm_sfx = AudioStreamPlayer.new()
-	confirm_sfx.bus = "SFX"
+	get_node("/root/GameSettings").configure_sfx(confirm_sfx)
 	confirm_sfx.stream = CONFIRM_SOUND
 	add_child(confirm_sfx)
 	button_down.connect(_start_hold)

@@ -80,6 +80,8 @@ func _ready() -> void:
 	quit_button.add_theme_stylebox_override("hover", _menu_button_style(BUTTON_CYAN, BUTTON_TEXT, 6))
 	quit_button.add_theme_stylebox_override("pressed", _menu_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2))
 	name_input = LineEdit.new()
+	name_input.virtual_keyboard_enabled = true
+	name_input.virtual_keyboard_show_on_focus = true
 	name_input.placeholder_text = "COME TI CHIAMI?"
 	name_input.max_length = 16
 	name_input.custom_minimum_size.x = 520
@@ -97,6 +99,8 @@ func _ready() -> void:
 	setup_page.position = SETUP_ELEMENTS_POSITION
 	setup_page.size = SETUP_ELEMENTS_SIZE
 	single_name_input = LineEdit.new()
+	name_input.virtual_keyboard_enabled = true
+	name_input.virtual_keyboard_show_on_focus = true
 	single_name_input.placeholder_text = "COME TI CHIAMI?"
 	single_name_input.max_length = 16
 	single_name_input.custom_minimum_size.x = 520

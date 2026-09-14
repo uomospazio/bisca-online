@@ -44,11 +44,15 @@ func setup(owner_menu: Control) -> void:
 	controls.size = Vector2(720, 360)
 	controls.add_theme_constant_override("separation", 16)
 	address = LineEdit.new()
+	address.virtual_keyboard_enabled = true
+	address.virtual_keyboard_show_on_focus = true
 	address.text = net.endpoint
 	address.placeholder_text = "Indirizzo server"
 	menu._style_input(address, 24)
 	controls.add_child(address)
 	code = LineEdit.new()
+	code.virtual_keyboard_enabled = true
+	code.virtual_keyboard_show_on_focus = true
 	code.placeholder_text = "Codice stanza"
 	code.max_length = 6
 	menu._style_input(code, 24)

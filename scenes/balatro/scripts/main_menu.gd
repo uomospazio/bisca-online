@@ -49,6 +49,28 @@ func _switch_page(next: Control, backwards := false) -> void:
 const MENU_OFFSET_STRENGTH := 10.0
 const MENU_OFFSET_SMOOTHING := 2.5
 
+func _lock_landscape_web() -> void:
+	if not OS.has_feature("web"):
+		return
+
+	JavaScriptBridge.eval("""
+		(async () => {
+			try {
+				const elem = document.documentElement;
+
+				if (!document.fullscreenElement && elem.requestFullscreen) {
+					await elem.requestFullscreen();
+				}
+
+				if (screen.orientation && screen.orientation.lock) {
+					await screen.orientation.lock("landscape");
+				}
+			} catch (e) {
+				console.log("Landscape lock non disponibile:", e);
+			}
+		})();
+	""", true)
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The shared animated background stays visible behind every menu page.
@@ -169,6 +191,7 @@ func _process(delta: float) -> void:
 	menu_content.position = menu_content.position.lerp(target_position, MENU_OFFSET_SMOOTHING * delta)
 
 func _show_network() -> void:
+	_lock_landscape_web()
 	_show_menu_title(true)
 	if not is_instance_valid(network_page):
 		network_page = preload("res://scenes/balatro/scripts/network_lobby.gd").new()
@@ -323,4 +346,5 @@ func show_home() -> void:
 	_switch_page(home_page, true)
 
 func _start() -> void:
+	_lock_landscape_web()
 	start_requested.emit(chosen_name(), int(bot_slider.value) + 1)

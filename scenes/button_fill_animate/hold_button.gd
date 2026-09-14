@@ -34,6 +34,8 @@ var locked := false
 var reset_tween: Tween
 var hold_scale_tween: Tween
 var confirm_tween: Tween
+var hint_label: Label
+var hint_tween: Tween
 
 func _ready() -> void:
 	click_sound_enabled = false # The completed hold already plays its confirmation sound.
@@ -74,6 +76,31 @@ func _ready() -> void:
 		label.add_theme_font_override("font", font)
 	add_child(label)
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	
+	# "Tieni premuto" hint
+	hint_label = Label.new()
+	hint_label.name = "HoldHint"
+	hint_label.text = "TIENI PREMUTO"
+	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint_label.add_theme_font_size_override("font_size", 18)
+	hint_label.add_theme_color_override("font_color", LexispellStyle.TEXT)
+	if font:
+		hint_label.add_theme_font_override("font", font)
+
+	add_child(hint_label)
+
+	hint_label.anchor_left = 0.0
+	hint_label.anchor_right = 1.0
+	hint_label.anchor_top = 1.0
+	hint_label.anchor_bottom = 1.0
+
+	hint_label.offset_top = 8.0
+	hint_label.offset_bottom = 40.0
+
+	hint_label.modulate.a = 0.0
+	
 	long_press_sfx = AudioStreamPlayer.new()
 	long_press_sfx.bus = "SFX"
 	long_press_sfx.stream = HOLD_SOUND
@@ -144,6 +171,7 @@ func _process(delta: float) -> void:
 func _cancel_hold() -> void:
 	if confirming or not holding:
 		return
+	var was_short_press := hold_time < 0.25
 	holding = false
 	set_process(false)
 	long_press_sfx.stop()
@@ -159,6 +187,26 @@ func _cancel_hold() -> void:
 	reset_tween.parallel().tween_property(self, "rotation", 0.0, 0.1)
 	reset_tween.tween_callback(progress.hide)
 	hold_progress = 0.0
+	if was_short_press:
+		_show_hold_hint()
+
+
+func _show_hold_hint() -> void:
+	if hint_tween and hint_tween.is_running():
+		hint_tween.kill()
+
+	hint_label.modulate.a = 1.0
+
+	hint_tween = create_tween()
+
+	hint_tween.tween_interval(2.0)
+
+	hint_tween.tween_property(
+		hint_label,
+		"modulate:a",
+		0.0,
+		0.25
+	)
 
 func _confirm_progress() -> void:
 	confirming = true

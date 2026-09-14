@@ -2,7 +2,7 @@ extends Control
 
 signal card_played(card: Control)
 
-@export var played_scale: float = 0.9
+@export var played_scale: float = 1.0
 @export var card_spacing: float = 24.0
 
 var cards: Array[Control] = []
@@ -12,7 +12,7 @@ var layout_tween: Tween
 var throws: Array[Tween] = []
 var winning_card: Control
 const LANDINGS := [
-	Vector2(0, 100), # local: centered horizontally, closer to the hand
+	Vector2(0, 150), # local: centered horizontally, closer to the hand
 	Vector2(-600, 30), # left side
 	Vector2(-470, -100), # upper-left curve
 	Vector2(-260, -150),

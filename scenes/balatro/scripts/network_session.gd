@@ -406,3 +406,52 @@ func rejected(message: String) -> void:
 @rpc("authority", "call_remote", "unreliable_ordered")
 func clock(seconds: float) -> void:
 	clock_updated.emit(seconds)
+
+# =========================================================
+# VOICE CHAT - WebRTC signaling
+# =========================================================
+
+@rpc("any_peer", "call_remote", "reliable")
+func voice_signal(target_slot: int, data: Dictionary) -> void:
+	if not dedicated:
+		return
+
+	var sender_peer := multiplayer.get_remote_sender_id()
+
+	if not members.has(sender_peer):
+		return
+
+	var sender_member: Dictionary = members[sender_peer]
+	var room_code_for_sender: String = sender_member.code
+
+	if not rooms.has(room_code_for_sender):
+		return
+
+	var room: Dictionary = rooms[room_code_for_sender]
+
+	if target_slot < 0 or target_slot >= room.people.size():
+		return
+
+	var target: Dictionary = room.people[target_slot]
+
+	if target.bot:
+		return
+
+	var target_peer: int = target.peer
+
+	if target_peer <= 0:
+		return
+
+	receive_voice_signal.rpc_id(
+		target_peer,
+		int(sender_member.slot),
+		data
+	)
+
+
+@rpc("authority", "call_remote", "reliable")
+func receive_voice_signal(sender_slot: int, data: Dictionary) -> void:
+	var voice_chat := get_node_or_null("/root/VoiceChat")
+
+	if voice_chat:
+		voice_chat.handle_signal(sender_slot, data)

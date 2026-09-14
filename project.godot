@@ -20,10 +20,16 @@ run/main_scene="res://scenes/balatro/balatro.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="uid://cjkt2olulqgac"
 
+[audio]
+
+buses/default_bus_layout="uid://c1sejvvj2noo0"
+driver/enable_input=true
+
 [autoload]
 
 GameSettings="*res://scenes/balatro/scripts/game_settings.gd"
 NetworkSession="*res://scenes/balatro/scripts/network_session.gd"
+VoiceChat="*uid://b0qmk7kvek28b"
 
 [bisca]
 

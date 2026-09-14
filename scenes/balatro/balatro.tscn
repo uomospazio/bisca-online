@@ -3,12 +3,15 @@
 [ext_resource type="PackedScene" uid="uid://ccpeukrdsfbkm" path="res://scenes/balatro/card.tscn" id="1_0kik2"]
 [ext_resource type="Shader" uid="uid://ls83b85iltwa" path="res://scenes/balatro/shaders/noise_move.gdshader" id="1_lux0i"]
 [ext_resource type="Script" uid="uid://dxqpj63l51thv" path="res://scenes/balatro/scripts/match_controller.gd" id="1_sd3ku"]
+[ext_resource type="Script" uid="uid://dkqnltp647i5g" path="res://scenes/balatro/microphone_test.gd" id="2_mo6kv"]
 [ext_resource type="Shader" uid="uid://cut6taggy1syj" path="res://scenes/balatro/shaders/vhs.gdshader" id="6_xsyrq"]
 [ext_resource type="Script" uid="uid://djbheq3ndj8fi" path="res://scenes/balatro/scripts/hand.gd" id="10_hand"]
 [ext_resource type="Script" uid="uid://cnaykygj3bkns" path="res://scenes/balatro/scripts/play_area.gd" id="11_play_area"]
 [ext_resource type="Script" uid="uid://be6nki3yjm3o2" path="res://scenes/balatro/scripts/deck_pile.gd" id="12_deck_pile"]
 [ext_resource type="Script" uid="uid://cobinrc51oow8" path="res://scenes/balatro/scripts/color_effects.gd" id="13_color_effects"]
 [ext_resource type="Script" uid="uid://cin7yrgwrb73d" path="res://scenes/balatro/scripts/lexispell_background.gd" id="14_lexispell_background"]
+
+[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_7otso"]
 
 [sub_resource type="Gradient" id="Gradient_tndhy"]
 colors = PackedColorArray(0, 0.45303297, 0.0589856, 1, 2.4065375e-07, 0.31568372, 0.21152392, 1)
@@ -65,6 +68,8 @@ adjustment_enabled = true
 adjustment_contrast = 1.2
 adjustment_saturation = 1.45
 
+[sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_nih62"]
+
 [node name="Balatro" type="Control" unique_id=841536017]
 layout_mode = 3
 anchors_preset = 15
@@ -73,6 +78,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_sd3ku")
+
+[node name="MicrophoneInput" type="AudioStreamPlayer" parent="." unique_id=1558881219]
+stream = SubResource("AudioStreamMicrophone_7otso")
+autoplay = true
+bus = &"VoiceCapture"
+script = ExtResource("2_mo6kv")
 
 [node name="BG" type="ColorRect" parent="." unique_id=285077148]
 visible = false
@@ -206,3 +217,7 @@ metadata/_edit_lock_ = true
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1484353874]
 script = ExtResource("13_color_effects")
 saved_environment = SubResource("Environment_46hvu")
+
+[node name="VoicePlayback" type="AudioStreamPlayer" parent="." unique_id=1121757527]
+stream = SubResource("AudioStreamGenerator_nih62")
+autoplay = true

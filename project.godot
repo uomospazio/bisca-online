@@ -18,11 +18,7 @@ config/name="TRICK"
 config/tags=PackedStringArray("experiment")
 run/main_scene="res://scenes/balatro/balatro.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.png"
-
-[audio]
-
-general/default_playback_type.web=1
+config/icon="uid://cjkt2olulqgac"
 
 [autoload]
 

@@ -15,10 +15,20 @@ var entry: VBoxContainer
 var create_button: Button
 var join_button: Button
 var rejoin_button: Button
+var profile_picker: Node
+var profile_room := ""
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
 	net = get_node("/root/NetworkSession")
+	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
+	add_child(profile_picker)
+	profile_picker.selected.connect(func(avatar):
+		if net.room_code == profile_room and not profile_room.is_empty():
+			net.send({"op": "profile", "avatar": avatar})
+	)
+	net.avatars_changed.connect(_update_lobby_photos)
+	net.connection_lost.connect(profile_picker.close)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	entry = VBoxContainer.new()
 	add_child(entry)
@@ -117,6 +127,7 @@ func _show_form(creating: bool) -> void:
 	preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, entry, controls)
 
 func _back() -> void:
+	profile_picker.close()
 	if controls.visible or session_controls.visible:
 		var previous: Control = session_controls if session_controls.visible else controls
 		if session_controls.visible:
@@ -129,8 +140,12 @@ func _back() -> void:
 
 func _update(state: Dictionary) -> void:
 	if state.stage != "lobby":
+		profile_picker.close()
 		hide()
 		return
+	if profile_room != str(state.code):
+		profile_room = str(state.code)
+		profile_picker.open.call_deferred(str(state.people[state.you].name))
 	if not session_controls.visible:
 		menu.title.hide()
 		menu.friends_subtitle.hide()
@@ -149,6 +164,15 @@ func _update(state: Dictionary) -> void:
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 8)
 		row.add_child(line)
+		var avatar := TextureRect.new()
+		avatar.name = "Avatar"
+		avatar.custom_minimum_size = Vector2(42, 42)
+		avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		avatar.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		avatar.texture = net.avatar_for_slot(index)
+		line.add_child(avatar)
+		row.set_meta("avatar_view", avatar)
+		row.set_meta("slot", index)
 		var name_button := Button.new()
 		name_button.text = str(p.name) + ("  · OFFLINE" if not p.connected else "")
 		name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -174,3 +198,10 @@ func _update(state: Dictionary) -> void:
 		line.add_child(remove)
 		players_box.add_child(row)
 	info.text = "In attesa dei giocatori…"
+
+func _update_lobby_photos() -> void:
+	if players_box == null:
+		return
+	for row in players_box.get_children():
+		if row.has_meta("avatar_view"):
+			row.get_meta("avatar_view").texture = net.avatar_for_slot(int(row.get_meta("slot")))

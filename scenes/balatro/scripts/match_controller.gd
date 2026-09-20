@@ -139,6 +139,7 @@ func _ready() -> void:
 	)
 	_show_menu()
 	var net = get_node("/root/NetworkSession")
+	net.avatars_changed.connect(_refresh_profile_photos)
 	online_match.setup(self, net)
 	net.updated.connect(func(state):
 		if state.stage != "lobby":
@@ -201,6 +202,13 @@ func _name_of(id: int) -> String:
 	if online and id >= 0 and id < online_match.names.size():
 		return online_match.names[id]
 	return local_name if id == 0 else BOT_NAMES[id]
+
+func _refresh_profile_photos() -> void:
+	var net = get_node("/root/NetworkSession")
+	for id in range(scores.get_child_count()):
+		var badge = scores.get_child(id)
+		badge.profile_texture = net.avatar_for_slot((id + online_match.local_id) % player_count) if online else null
+		badge.queue_redraw()
 
 func _label(parent: Node, text: String, font_size: int = 24) -> MixedLabel:
 	var label := MixedLabel.new()
@@ -531,6 +539,7 @@ func _refresh() -> void:
 					visible_lives = result.previous_lives
 					visible_out = visible_lives <= 0
 		badge.configure(_name_of(p.id), visible_lives, p.bid, displayed_taken.get(p.id, p.taken), rules.current == p.id, visible_out, rules.phase in ["play", "trick_complete"])
+		badge.profile_texture = get_node("/root/NetworkSession").avatar_for_slot((p.id + online_match.local_id) % player_count) if online else null
 		# configure() resets opacity for normal/eliminated seats. During this
 		# sequence opacity belongs to the exit/reveal tween, including its delays.
 		if prediction_focus and p.id != 0:

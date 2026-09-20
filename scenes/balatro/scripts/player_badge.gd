@@ -162,7 +162,8 @@ func _draw() -> void:
 	var avatar := Vector2(80, 128)
 	draw_circle(avatar, 59, Color.BLACK, true, -1, true)
 	draw_circle(avatar, 56, Color("d9d9d9"), true, -1, true)
-	# Avatar intentionally blank until profile images are provided.
+	if profile_texture:
+		draw_texture_rect(profile_texture, Rect2(avatar - Vector2(56, 56), Vector2(112, 112)), false)
 	var heart_transform := Transform2D(heart_rotation, heart_scale * HEART_SIZE, 0.0, HEART_POSITION)
 	draw_set_transform_matrix(heart_transform)
 	# Keep the image proportions; its bottom-right padding contains the shadow.

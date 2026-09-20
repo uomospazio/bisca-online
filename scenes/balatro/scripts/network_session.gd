@@ -4,6 +4,29 @@ signal updated(state: Dictionary)
 signal clock_updated(seconds: float)
 signal problem(message: String)
 signal connection_lost
+signal avatars_changed
+
+const AvatarData = preload("res://scenes/balatro/scripts/avatar_data.gd")
+var avatar_textures: Dictionary = {}
+
+func avatar_for_slot(slot: int) -> Texture2D:
+	var people: Array = latest.get("people", [])
+	if slot < 0 or slot >= people.size():
+		return null
+	return avatar_textures.get(str(people[slot].get("voice_id", "")))
+
+@rpc("authority", "call_remote", "reliable")
+func avatar_received(identity: String, encoded: String) -> void:
+	if dedicated:
+		return
+	if encoded.is_empty():
+		avatar_textures.erase(identity)
+	else:
+		var texture := AvatarData.circular_texture(encoded)
+		if texture == null:
+			return
+		avatar_textures[identity] = texture
+	avatars_changed.emit()
 
 const Rules = preload("res://scenes/balatro/scripts/match_rules.gd")
 var bot_policy = preload("res://scenes/balatro/scripts/bot_policy.gd").new()
@@ -86,6 +109,7 @@ func connect_room(address: String, command: Dictionary) -> void:
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 
 	if command.get("op", "") in ["create", "join"]:
+		avatar_textures.clear()
 		room_code = ""
 		token = ""
 		latest.clear()
@@ -154,6 +178,7 @@ func leave() -> void:
 	token = ""
 	latest.clear()
 	retry = 0
+	avatar_textures.clear()
 	connection_deadline = 0
 	_save()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -346,12 +371,36 @@ func request(command: Dictionary) -> void:
 		room.touched = Time.get_ticks_msec()
 		joined.rpc_id(peer, code, room.people[slot].token)
 		_broadcast(room)
+		# Images travel separately, once on entry/update, not in every snapshot.
+		for person in room.people:
+			if not str(person.get("avatar", "")).is_empty():
+				avatar_received.rpc_id(peer, person.voice_id, person.avatar)
 		return
 	if not members.has(peer):
 		return
 	var member: Dictionary = members[peer]
 	var room: Dictionary = rooms[member.code]
 	var slot: int = member.slot
+	if op == "profile":
+		var person: Dictionary = room.people[slot]
+		if not command.get("avatar", "") is String:
+			return
+		var encoded: String = command.get("avatar", "")
+		if encoded.length() > AvatarData.MAX_ENCODED:
+			_reject(peer, "Foto troppo grande")
+			return
+		var now := Time.get_ticks_msec()
+		if now - int(person.get("avatar_updated_at", -2000)) < 1500:
+			return
+		person["avatar_updated_at"] = now
+		if not encoded.is_empty() and AvatarData.decode(encoded) == null:
+			_reject(peer, "Immagine non valida")
+			return
+		person["avatar"] = encoded
+		for recipient in room.people:
+			if _peer_connected(recipient.peer):
+				avatar_received.rpc_id(recipient.peer, person.voice_id, encoded)
+		return
 	if op == "leave":
 		_disconnected(peer)
 		return

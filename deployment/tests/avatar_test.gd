@@ -1,0 +1,21 @@
+extends SceneTree
+
+func _initialize() -> void:
+	var Avatar = load("res://scenes/balatro/scripts/avatar_data.gd")
+	var image := Image.create(192, 192, false, Image.FORMAT_RGB8)
+	image.fill(Color.RED)
+	var encoded := Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.8))
+	assert(Avatar.decode(encoded) != null)
+	var texture: Texture2D = Avatar.circular_texture(encoded)
+	assert(texture.get_image().get_pixel(0, 0).a == 0)
+	assert(texture.get_image().get_pixel(96, 96).a == 1)
+	assert(Avatar.decode("") == null)
+	assert(Avatar.decode("not an image") == null)
+	assert(Avatar.decode("A".repeat(32769)) == null)
+	var large := Image.create(512, 512, false, Image.FORMAT_RGB8)
+	assert(Avatar.decode(Marshalls.raw_to_base64(large.save_jpg_to_buffer())) == null)
+	assert(Avatar.decode(Marshalls.raw_to_base64(image.save_png_to_buffer())) == null)
+	var picker = load("res://scenes/balatro/scripts/profile_picker.gd").new()
+	picker.free()
+	print("PASS: JPEG validation, dimension/size limits, round alpha mask, picker parsing")
+	quit()

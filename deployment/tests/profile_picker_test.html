@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BISCA profile test</title>
+<script src="../../scenes/balatro/scripts/profile_picker.js"></script>
+<button onclick="BiscaProfile.open('TEST PLAYER')">Apri profilo</button>
+<p id="result">Nessuna foto inviata: questa pagina verifica solo il popup locale.</p>
+<script>
+setInterval(()=>{const result=BiscaProfile.drain();if(result){const data=JSON.parse(result);document.getElementById('result').textContent=data.avatar?'PASS: foto pronta ('+data.avatar.length+' caratteri)':'PASS: salta, nessuna foto';}},50);
+</script>

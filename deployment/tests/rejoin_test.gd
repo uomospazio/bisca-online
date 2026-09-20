@@ -18,6 +18,14 @@ func _initialize() -> void:
 	room.people[slot].peer = 99
 	assert(rules.players[0].hand == hand and rules.players[0].lives == 3)
 	assert(not room.people[slot].bot)
+	rules.current = 0
+	rules.phase = "prediction"
+	room.people[0].peer = 0
+	net._set_turn(room)
+	assert(room.deadline - Time.get_ticks_msec() <= 900)
+	room.people[0].peer = 99
+	net._set_turn(room)
+	assert(room.deadline - Time.get_ticks_msec() > 29000)
 	net.free()
 	print("PASS: stale/offline seat recovery, invalid token rejection, human identity and state preserved")
 	quit()

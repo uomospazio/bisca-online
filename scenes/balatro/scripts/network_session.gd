@@ -188,6 +188,9 @@ func _disconnected(peer_id: int) -> void:
 		return
 	room.people[ref.slot].peer = 0
 	room.touched = Time.get_ticks_msec()
+	# Switch an already-running human turn to the normal bot timing too.
+	if room.rules != null and room.stage == "turn" and room.rules.current == ref.slot and room.rules.phase in ["prediction", "play"]:
+		room.deadline = mini(int(room.deadline), Time.get_ticks_msec() + 900)
 	_broadcast(room)
 
 func _rejoin_slot(room: Dictionary, credential: String) -> int:
@@ -273,7 +276,7 @@ func _set_turn(room: Dictionary) -> void:
 	room.stage = "turn"
 	var actor: int = room.rules.current
 	var delay := 30000
-	if actor >= 0 and room.people[actor].bot:
+	if actor >= 0 and (room.people[actor].bot or room.people[actor].peer == 0):
 		delay = 900
 	if room.rules.hand_size == 1 and room.rules.phase == "play":
 		delay = 600
@@ -335,6 +338,10 @@ func request(command: Dictionary) -> void:
 			var display_name := str(command.get("name", "Giocatore")).strip_edges().substr(0, 16)
 			room.people.append({"name": display_name if not display_name.is_empty() else "Giocatore", "peer": 0, "bot": false, "token": Crypto.new().generate_random_bytes(32).hex_encode()})
 		room.people[slot].peer = peer
+		# If control returns during this player's turn, restore the human
+		# timer rather than leaving the bot's sub-second deadline active.
+		if op == "rejoin" and room.rules != null and room.stage == "turn" and room.rules.current == slot and room.rules.phase in ["prediction", "play"]:
+			_set_turn(room)
 		members[peer] = {"code": code, "slot": slot}
 		room.touched = Time.get_ticks_msec()
 		joined.rpc_id(peer, code, room.people[slot].token)

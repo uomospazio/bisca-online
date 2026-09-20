@@ -4,9 +4,7 @@ var menu: Control
 var net: Node
 var address: LineEdit
 var code: LineEdit
-var capacity: HSlider
-var capacity_row: HBoxContainer
-var bots: CheckButton
+var match_options: VBoxContainer
 var info: Label
 var start_button: Button
 var controls: VBoxContainer
@@ -40,8 +38,8 @@ func setup(owner_menu: Control) -> void:
 	join.add_theme_font_size_override("font_size", 22)
 	controls = VBoxContainer.new()
 	add_child(controls)
-	controls.position = Vector2(700, 530)
-	controls.size = Vector2(400, 360)
+	controls.position = Vector2(640, 500)
+	controls.size = Vector2(640, 400)
 	controls.add_theme_constant_override("separation", 16)
 	address = LineEdit.new()
 	address.virtual_keyboard_enabled = true
@@ -59,48 +57,14 @@ func setup(owner_menu: Control) -> void:
 	code.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	menu._style_input(code, 24)
 	controls.add_child(code)
-	capacity_row = HBoxContainer.new()
-	capacity_row.custom_minimum_size.y = 72
-	capacity_row.add_theme_constant_override("separation", 24)
-	controls.add_child(capacity_row)
-	var caption := Label.new()
-	caption.text = "GIOCATORI"
-	caption.add_theme_font_override("font", menu.KIDS_FONT)
-	caption.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	capacity_row.add_child(caption)
-	capacity = HSlider.new()
-	capacity.min_value = 2
-	capacity.max_value = 8
-	capacity.step = 1
-	capacity.value = 3
-	capacity.tick_count = 7
-	capacity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for state in ["slider", "grabber_area", "grabber_area_highlight"]:
-		var track := StyleBoxFlat.new()
-		track.bg_color = menu.BUTTON_PURPLE if state == "slider" else menu.BUTTON_TEXT
-		track.set_corner_radius_all(5)
-		track.content_margin_top = 4
-		track.content_margin_bottom = 4
-		capacity.add_theme_stylebox_override(state, track)
-	capacity.add_theme_icon_override("grabber", preload("res://scenes/balatro/visuals/settings_knob.svg"))
-	capacity.add_theme_icon_override("grabber_highlight", preload("res://scenes/balatro/visuals/settings_knob_hover.svg"))
-	capacity_row.add_child(capacity)
-	var value_label := Label.new()
-	value_label.text = "3"
-	value_label.custom_minimum_size.x = 42
-	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	value_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	capacity_row.add_child(value_label)
-	capacity.value_changed.connect(func(value): value_label.text = str(int(value)))
-	capacity.drag_ended.connect(func(_changed):
-		preload("res://scenes/balatro/scripts/game_audio.gd").play(self, RoundedSquareButton.ButtonAudio.HOVER, -4.0)
+	match_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
+	controls.add_child(match_options)
+	match_options.setup(menu, true)
+	create_button = menu._button(controls, "Crea lobby", func():
+		var command: Dictionary = match_options.values()
+		command.merge({"op": "create", "name": menu.chosen_name(), "capacity": 8})
+		net.connect_room(address.text, command)
 	)
-	bots = CheckButton.new()
-	RoundedSquareButton.ButtonAudio.attach(bots)
-	bots.text = "Completa i posti con bot"
-	bots.add_theme_font_size_override("font_size", 24)
-	controls.add_child(bots)
-	create_button = menu._button(controls, "Crea lobby", func(): net.connect_room(address.text, {"op": "create", "name": menu.chosen_name(), "capacity": int(capacity.value), "bots": bots.button_pressed}))
 	join_button = menu._button(controls, "Entra", func(): net.connect_room(address.text, {"op": "join", "name": menu.chosen_name(), "code": code.text}))
 	rejoin_button = menu._button(controls, "Rientra nella partita", func(): net.connect_room(address.text, {"op": "rejoin", "code": net.room_code, "token": net.token}))
 	controls.hide()
@@ -145,8 +109,7 @@ func open() -> void:
 
 func _show_form(creating: bool) -> void:
 	code.visible = not creating
-	capacity_row.visible = creating
-	bots.visible = creating
+	match_options.visible = creating
 	create_button.visible = creating
 	join_button.visible = not creating
 	rejoin_button.visible = not creating and not net.token.is_empty()
@@ -156,12 +119,12 @@ func _show_form(creating: bool) -> void:
 func _back() -> void:
 	if controls.visible or session_controls.visible:
 		var previous: Control = session_controls if session_controls.visible else controls
-		net.leave()
+		if session_controls.visible:
+			net.leave()
 		info.text = ""
 		menu._show_menu_title(true)
 		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, previous, entry, true)
 	else:
-		net.leave()
 		menu.show_home()
 
 func _update(state: Dictionary) -> void:

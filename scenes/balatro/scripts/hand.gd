@@ -124,18 +124,10 @@ func _ready() -> void:
 func _slot_position(index: int) -> Vector2:
 	var card_size := cards[index].size
 	var total_width := card_size.x * cards.size() + card_spacing * (cards.size() - 1)
-	var variation: Vector2 = card_variations[cards[index]]
-	var fan_position := _fan_position(index)
-	return Vector2((size.x - total_width) / 2.0 + index * (card_size.x + card_spacing), variation.x + fan_curve * fan_position * fan_position)
+	return Vector2((size.x - total_width) / 2.0 + index * (card_size.x + card_spacing), 0.0)
 
-func _fan_position(index: int) -> float:
-	if cards.size() <= 1:
-		return 0.0
-	return float(index) / float(cards.size() - 1) * 2.0 - 1.0
-
-func _slot_rotation(index: int) -> float:
-	var variation: Vector2 = card_variations[cards[index]]
-	return deg_to_rad(_fan_position(index) * fan_angle + variation.y)
+func _slot_rotation(_index: int) -> float:
+	return 0.0
 
 func _arrange(animated: bool = true) -> void:
 	if is_dealing:

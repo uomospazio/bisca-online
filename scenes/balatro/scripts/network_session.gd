@@ -64,6 +64,11 @@ func _ready() -> void:
 			endpoint = default_endpoint()
 
 func connect_room(address: String, command: Dictionary) -> void:
+	command = command.duplicate(true)
+	# Entering the same code after a reload must reclaim our seat, not try
+	# to add a new player to a match that is already running.
+	if command.get("op", "") == "join" and not token.is_empty() and str(command.get("code", "")).strip_edges().to_upper() == room_code and address.strip_edges() == endpoint:
+		command = {"op": "rejoin", "code": room_code, "token": token}
 	var voice := get_node_or_null("/root/VoiceChat")
 	if voice:
 		voice.leave()
@@ -108,6 +113,8 @@ func connect_room(address: String, command: Dictionary) -> void:
 
 		if err != OK:
 			problem.emit("Impossibile connettersi al server")
+			if command.get("op", "") == "rejoin" and not token.is_empty():
+				retry = 2.0
 			return
 
 		multiplayer.multiplayer_peer = socket
@@ -162,6 +169,7 @@ func _save() -> void:
 
 func _lost() -> void:
 	connection_deadline = 0
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	connection_lost.emit()
 	problem.emit("Connessione persa. Tentativo di riconnessione…" if not token.is_empty() else "Server non raggiungibile: controlla l'indirizzo e che il server sia acceso.")
 	if not token.is_empty():
@@ -174,9 +182,22 @@ func _disconnected(peer_id: int) -> void:
 	var ref: Dictionary = members[peer_id]
 	members.erase(peer_id)
 	var room: Dictionary = rooms[ref.code]
+	# A late disconnect from the replaced connection must not evict the
+	# player who has already reclaimed this seat.
+	if room.people[ref.slot].peer != peer_id:
+		return
 	room.people[ref.slot].peer = 0
 	room.touched = Time.get_ticks_msec()
 	_broadcast(room)
+
+func _rejoin_slot(room: Dictionary, credential: String) -> int:
+	if credential.is_empty():
+		return -1
+	for i in range(room.people.size()):
+		var person: Dictionary = room.people[i]
+		if not person.bot and person.token == credential:
+			return i
+	return -1
 
 func _peer_connected(peer_id: int) -> bool:
 	if peer_id <= 0 or not multiplayer.get_peers().has(peer_id):
@@ -287,19 +308,25 @@ func request(command: Dictionary) -> void:
 			code = Crypto.new().generate_random_bytes(3).hex_encode().to_upper()
 			while rooms.has(code):
 				code = Crypto.new().generate_random_bytes(3).hex_encode().to_upper()
-			rooms[code] = {"code": code, "people": [], "rules": null, "capacity": clampi(int(command.get("capacity", 3)), 2, 8), "bots": bool(command.get("bots", false)), "stage": "lobby", "deadline": 0, "rev": 0, "touched": Time.get_ticks_msec()}
+			rooms[code] = {"code": code, "people": [], "rules": null, "capacity": 8, "bots": bool(command.get("bots", false)), "bot_count": clampi(int(command.get("bot_count", 2)), 1, 7), "options": {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5)}, "stage": "lobby", "deadline": 0, "rev": 0, "touched": Time.get_ticks_msec()}
 		if not rooms.has(code):
 			_reject(peer, "Stanza non trovata")
 			return
 		var room: Dictionary = rooms[code]
 		var slot := -1
 		if op == "rejoin":
-			for i in range(room.people.size()):
-				if room.people[i].token == str(command.get("token", "")) and not room.people[i].bot:
-					slot = i
-			if slot < 0 or room.people[slot].peer != 0:
+			slot = _rejoin_slot(room, str(command.get("token", "")))
+			if slot < 0:
 				_reject(peer, "Posto non disponibile per il rientro")
 				return
+			# Mobile networks can leave the old socket apparently connected.
+			# Possession of the private seat token authorizes replacing it.
+			var old_peer: int = room.people[slot].peer
+			if old_peer > 0 and old_peer != peer:
+				members.erase(old_peer)
+				voice_rate.erase(old_peer)
+				if multiplayer.get_peers().has(old_peer):
+					multiplayer.disconnect_peer(old_peer)
 		else:
 			if room.rules != null or room.people.size() >= room.capacity:
 				_reject(peer, "Stanza piena o partita già iniziata")
@@ -343,12 +370,14 @@ func request(command: Dictionary) -> void:
 			_reject(peer, "Solo il creatore può avviare la stanza")
 			return
 		if op == "start" and room.bots:
-			while room.people.size() < room.capacity:
+			var bots_to_add := mini(int(room.get("bot_count", 2)), int(room.capacity) - room.people.size())
+			for _i in range(bots_to_add):
 				room.people.append({"name": "Bot %d" % room.people.size(), "peer": 0, "bot": true, "token": ""})
 		if room.people.size() < 2:
 			_reject(peer, "Servono almeno due giocatori o i bot")
 			return
 		room.rules = Rules.new()
+		room.rules.configure(room.get("options", {}))
 		room.rules.start(room.people.size())
 		room.stage = "deal"
 		room.deadline = Time.get_ticks_msec() + 4500
@@ -401,6 +430,7 @@ func joined(code: String, credential: String) -> void:
 	room_code = code
 	token = credential
 	retry = 0
+	connection_deadline = 0
 	_save()
 
 @rpc("authority", "call_remote", "reliable")

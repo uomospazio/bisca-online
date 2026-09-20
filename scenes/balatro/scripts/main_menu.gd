@@ -29,6 +29,7 @@ signal start_requested(player_name: String, count: int)
 var name_input: LineEdit
 var home_page: VBoxContainer
 var setup_page: VBoxContainer
+var match_options: VBoxContainer
 var bot_slider: HSlider
 var single_name_input: LineEdit
 var title: Control
@@ -132,41 +133,10 @@ func _ready() -> void:
 	single_name_input.text_changed.connect(func(value):
 		name_input.text = value
 	)
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 80
-	row.add_theme_constant_override("separation", 24)
-	setup_page.add_child(row)
-	var caption := Label.new()
-	caption.text = "BOT"
-	caption.add_theme_color_override("font_color", BUTTON_TEXT)
-	row.add_child(caption)
-	bot_slider = HSlider.new()
-	bot_slider.min_value = 1
-	bot_slider.max_value = 7
-	bot_slider.step = 1
-	bot_slider.value = 2
-	bot_slider.tick_count = 7
-	bot_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for state in ["slider", "grabber_area", "grabber_area_highlight"]:
-		var track := StyleBoxFlat.new()
-		track.bg_color = BUTTON_PURPLE if state == "slider" else BUTTON_TEXT
-		track.set_corner_radius_all(5)
-		track.content_margin_top = 4
-		track.content_margin_bottom = 4
-		bot_slider.add_theme_stylebox_override(state, track)
-	bot_slider.add_theme_icon_override("grabber", preload("res://scenes/balatro/visuals/settings_knob.svg"))
-	bot_slider.add_theme_icon_override("grabber_highlight", preload("res://scenes/balatro/visuals/settings_knob_hover.svg"))
-	row.add_child(bot_slider)
-	var value_label := Label.new()
-	value_label.text = "2"
-	value_label.custom_minimum_size.x = 42
-	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	value_label.add_theme_color_override("font_color", BUTTON_TEXT)
-	row.add_child(value_label)
-	bot_slider.value_changed.connect(func(value): value_label.text = str(int(value)))
-	bot_slider.drag_ended.connect(func(_changed):
-		preload("res://scenes/balatro/scripts/game_audio.gd").play(self, RoundedSquareButton.ButtonAudio.HOVER, -4.0)
-	)
+	match_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
+	setup_page.add_child(match_options)
+	match_options.setup(self, false)
+	bot_slider = match_options.bot_count
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 24)
 	setup_page.add_child(buttons)

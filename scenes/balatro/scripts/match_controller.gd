@@ -105,6 +105,17 @@ func _ready() -> void:
 	pause_button.custom_minimum_size = Vector2(80, 64)
 	pause_button.size = Vector2(80, 64)
 	pause_button.z_index = 200
+	var card_info = preload("res://scenes/balatro/scripts/card_info.gd").new()
+	add_child(card_info)
+	card_info.setup(self)
+	var info_button: Button = menu._button(game_ui, "INFO", card_info.open)
+	info_button.custom_minimum_size = Vector2(150, 64)
+	info_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	info_button.offset_left = -178
+	info_button.offset_right = -28
+	info_button.offset_top = 24
+	info_button.offset_bottom = 88
+	info_button.z_index = 200
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
 	overlay.replay_requested.connect(func():
@@ -182,6 +193,7 @@ func _show_menu() -> void:
 
 func _menu_start(display_name: String, count: int) -> void:
 	local_name = display_name
+	rules.configure(menu.match_options.values())
 	rules.force_local_joker = false
 	_start(count)
 
@@ -656,163 +668,21 @@ func _hide_prediction_buttons(bid: int) -> void:
 	if not text_elements.is_empty():
 		await get_tree().create_timer(0.12, false).timeout
 
+# Profiles stay at their table seats throughout the prediction presentation.
 func _hide_predicted_players() -> void:
-	if not prediction_focus:
-		return
-	var animations: Array[Tween] = []
-	for p in rules.players:
-		# All opponent profiles are part of the prediction row now, including
-		# those still waiting for their declaration. The local profile stays in
-		# place and visible.
-		if p.id == 0 or p.id >= scores.get_child_count():
-			continue
-		var badge: Control = scores.get_child(p.id)
-		var animation := badge.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-		animation.set_parallel(true)
-		animation.tween_property(badge, "scale:x", 0.72, 0.18)
-		animation.tween_property(badge, "scale:y", 0.72, 0.18)
-		animation.tween_property(badge, "rotation_degrees", 5.0 * [-1.0, 1.0].pick_random(), 0.1)
-		animation.tween_property(badge, "modulate:a", 0.0, 0.16)
-		animations.append(animation)
-	if not animations.is_empty():
-		await animations.back().finished
+	pass
 
 func _set_prediction_layers(active: bool) -> void:
-	if active:
-		if not prediction_focus:
-			prediction_focus = true
-			prediction_badge_positions.clear()
-			prediction_badge_scales.clear()
-			prediction_badge_pivots.clear()
-			prediction_players_revealed = false
-			for p in rules.players:
-				if p.id == 0 or p.id >= scores.get_child_count():
-					continue
-				var predicted_badge: Control = scores.get_child(p.id)
-				prediction_badge_positions[p.id] = predicted_badge.position
-				prediction_badge_scales[p.id] = predicted_badge.scale
-				prediction_badge_pivots[p.id] = predicted_badge.pivot_offset
-			if scores.get_child_count() > 0 and rules.players[0].active:
-				scores.get_child(0).modulate.a = 1.0
-		scores.z_index = 30
-		actions.z_index = 31
-		if prediction_players_revealed:
-			var visible_index := 0
-			for p in rules.players:
-				if p.id == 0 or not p.active or p.id >= scores.get_child_count() or int(p.bid) < 0:
-					continue
-				var visible_badge: Control = scores.get_child(p.id)
-				visible_badge.position = Vector2(35.0 + visible_index * 180.0, 28.0)
-				visible_badge.scale = Vector2.ONE * 0.9
-				visible_index += 1
-			for p in rules.players:
-				if p.id == 0 or not p.active or p.id >= scores.get_child_count() or int(p.bid) >= 0:
-					continue
-				var waiting_badge: Control = scores.get_child(p.id)
-				waiting_badge.position = Vector2(35.0 + visible_index * 180.0, 28.0)
-				waiting_badge.scale = Vector2.ONE * 0.9
-				waiting_badge.modulate.a = 0.28
-				visible_index += 1
-		# Preserve the exit tween's alpha for eliminated players: they do not
-		# join the row and only reappear once restoration has finished.
-	else:
-		scores.z_index = 21
-		actions.z_index = 11
-		for badge in scores.get_children():
-			badge._update_elimination_tint()
+	prediction_focus = false
+	scores.z_index = 30 if active else 21
+	actions.z_index = 31 if active else 11
+	for badge in scores.get_children():
+		badge._update_elimination_tint()
 
 func _exit_prediction_focus() -> void:
-	if prediction_focus:
-		if not prediction_badge_positions.is_empty():
-			var restore := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			for id in prediction_badge_positions:
-				if id < scores.get_child_count():
-					var badge: Control = scores.get_child(id)
-					badge.pivot_offset = prediction_badge_pivots[id]
-					restore.tween_property(badge, "position", prediction_badge_positions[id], 0.3)
-					restore.tween_property(badge, "scale", prediction_badge_scales[id], 0.3)
-					restore.tween_property(badge, "rotation_degrees", 0.0, 0.2)
-			await restore.finished
-		prediction_focus = false
-		# Tornati tutti ai posti iniziali, i profili eliminati ricompaiono
-		# attenuati come stato spento.
-		for p in rules.players:
-			if p.active or p.id >= scores.get_child_count():
-				continue
-			scores.get_child(p.id).modulate = Color(0.45, 0.45, 0.45, 0.65)
-		prediction_badge_positions.clear()
-		prediction_badge_scales.clear()
-		prediction_badge_pivots.clear()
-		prediction_players_revealed = false
+	_set_prediction_layers(false)
 
 func _reveal_prediction_players() -> void:
-	if not prediction_focus:
-		return
-	# Position the entire row while hidden, before starting any reveal delay.
-	# An interface refresh must never expose a waiting profile at its old seat.
-	var row_index := 0
-	for declared in [true, false]:
-		for p in rules.players:
-			if p.id == 0 or not p.active or p.id >= scores.get_child_count() or (int(p.bid) >= 0) != declared:
-				continue
-			var row_badge: Control = scores.get_child(p.id)
-			row_badge.modulate.a = 0.0
-			row_badge.pivot_offset = row_badge.size / 2.0
-			row_badge.position = Vector2(35.0 + row_index * 180.0, 28.0)
-			row_badge.scale = Vector2.ONE * 0.72
-			row_index += 1
-	var predicted_index := 0
-	for p in rules.players:
-		if p.id == 0 or not p.active or int(p.bid) < 0 or p.id >= scores.get_child_count():
-			continue
-		var badge: Control = scores.get_child(p.id)
-		badge.pivot_offset = badge.size / 2.0
-		badge.position = Vector2(35.0 + predicted_index * 180.0, 28.0)
-		badge.scale = Vector2.ONE * 0.9
-		badge.modulate.a = 0.0
-		await get_tree().create_timer(0.5 if predicted_index == 0 else 0.2, false).timeout
-		if not prediction_focus:
-			return
-		# Same pop/overshoot used by the interface buttons: no vertical slide.
-		GameAudio.play(self, GameAudio.NOTICE, -18.0)
-		badge.scale = Vector2.ONE * 0.72
-		badge.rotation_degrees = 5.0 * [-1.0, 1.0].pick_random()
-		var reveal := badge.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		reveal.set_parallel(true)
-		reveal.tween_property(badge, "scale:x", 0.9, 0.2)
-		reveal.tween_property(badge, "scale:y", 0.9, 0.35)
-		reveal.tween_property(badge, "rotation_degrees", 0.0, 0.1).set_delay(0.1)
-		reveal.tween_property(badge, "modulate:a", 1.0, 0.2)
-		predicted_index += 1
-	# Players who have not declared are visible after the declared players,
-	# but dimmed to make clear that their prediction is still pending.
-	for p in rules.players:
-		if p.id == 0 or not p.active or int(p.bid) >= 0 or p.id >= scores.get_child_count():
-			continue
-		var waiting_badge: Control = scores.get_child(p.id)
-		waiting_badge.pivot_offset = waiting_badge.size / 2.0
-		waiting_badge.position = Vector2(35.0 + predicted_index * 180.0, 28.0)
-		# Keep it fully hidden during the delay before its turn in the sequence.
-		waiting_badge.scale = Vector2.ONE * 0.72
-		waiting_badge.rotation_degrees = 5.0 * [-1.0, 1.0].pick_random()
-		waiting_badge.modulate.a = 0.0
-		await get_tree().create_timer(0.5 if predicted_index == 0 else 0.2, false).timeout
-		if not prediction_focus:
-			return
-		# Continue the exact same pop animation used for declared players,
-		# ending at a dimmed alpha because this player is still pending.
-		GameAudio.play(self, GameAudio.NOTICE, -18.0)
-		var waiting_reveal := waiting_badge.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		waiting_reveal.set_parallel(true)
-		waiting_reveal.tween_property(waiting_badge, "scale:x", 0.9, 0.2)
-		waiting_reveal.tween_property(waiting_badge, "scale:y", 0.9, 0.35)
-		waiting_reveal.tween_property(waiting_badge, "rotation_degrees", 0.0, 0.1).set_delay(0.1)
-		waiting_reveal.tween_property(waiting_badge, "modulate:a", 0.28, 0.2)
-		predicted_index += 1
-	# Mark the row as revealed only after every profile, including pending
-	# profiles, has completed its appearance tween. This prevents a refresh
-	# during the sequence from showing them prematurely.
-	prediction_players_revealed = true
 	_reveal_prediction_buttons()
 
 func _reveal_prediction_buttons() -> void:

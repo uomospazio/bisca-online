@@ -20,6 +20,12 @@ var remaining_deck: Array[int] = []
 var round_result: Array[Dictionary] = []
 var seat_order: Array[int] = []
 var force_local_joker := false
+var initial_lives := 3
+var starting_cards := 5
+
+func configure(options: Dictionary) -> void:
+	initial_lives = clampi(int(options.get("lives", 3)), 1, 10)
+	starting_cards = clampi(int(options.get("starting_cards", 5)), 1, 5)
 
 func start(count: int, seed_value: int = -1, seating: Array = []) -> bool:
 	if count < 2 or count > 8:
@@ -37,7 +43,7 @@ func start(count: int, seed_value: int = -1, seating: Array = []) -> bool:
 		rng.seed = seed_value
 	players.clear()
 	for id in range(count):
-		players.append({"id": id, "lives": 3, "active": true, "hand": [], "bid": -1, "taken": 0})
+		players.append({"id": id, "lives": initial_lives, "active": true, "hand": [], "bid": -1, "taken": 0})
 	round_number = 0
 	starter = rng.randi_range(0, count - 1)
 	winner = -1
@@ -65,7 +71,7 @@ func begin_round() -> bool:
 	if round_number > 0:
 		starter = _next_active(starter)
 	round_number += 1
-	hand_size = 5 - ((round_number - 1) % 5)
+	hand_size = starting_cards - ((round_number - 1) % starting_cards)
 	order.clear()
 	var id := starter
 	for _i in range(active_ids().size()):

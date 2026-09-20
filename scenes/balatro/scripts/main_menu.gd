@@ -29,7 +29,7 @@ signal start_requested(player_name: String, count: int)
 var name_input: LineEdit
 var home_page: VBoxContainer
 var setup_page: VBoxContainer
-var match_options: VBoxContainer
+var match_options: PanelContainer
 var bot_slider: HSlider
 var single_name_input: LineEdit
 var title: Control

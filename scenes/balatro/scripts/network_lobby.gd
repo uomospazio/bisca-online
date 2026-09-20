@@ -4,7 +4,7 @@ var menu: Control
 var net: Node
 var address: LineEdit
 var code: LineEdit
-var match_options: VBoxContainer
+var match_options: PanelContainer
 var info: Label
 var start_button: Button
 var controls: VBoxContainer
@@ -87,8 +87,8 @@ func setup(owner_menu: Control) -> void:
 	session_controls.hide()
 	info = Label.new()
 	add_child(info)
-	info.position = Vector2(500, 880)
-	info.size = Vector2(920, 60)
+	info.position = Vector2(500, 1020)
+	info.size = Vector2(920, 40)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_size_override("font_size", 24)
 	var back_row := VBoxContainer.new()

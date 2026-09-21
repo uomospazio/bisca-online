@@ -116,6 +116,24 @@ func _ready() -> void:
 	info_button.offset_top = 24
 	info_button.offset_bottom = 88
 	info_button.z_index = 200
+	var voice = get_node("/root/VoiceChat")
+	var voice_button: Button = menu._button(game_ui, "VOCE", voice.open_panel)
+	voice_button.custom_minimum_size = Vector2(150, 64)
+	voice_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	voice_button.offset_left = -178
+	voice_button.offset_right = -28
+	voice_button.offset_top = 104
+	voice_button.offset_bottom = 168
+	voice_button.z_index = 200
+	voice_button.tooltip_text = "Attiva la chat vocale e regola i volumi dei giocatori"
+	voice.changed.connect(func():
+		voice_button.text = "VOCE OFF" if not voice.enabled else ("MUTO" if voice.muted else "VOCE ON")
+	)
+	game_ui.visibility_changed.connect(func():
+		voice_button.visible = online
+		if not game_ui.visible:
+			voice._call("closePanel")
+	)
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
 	overlay.replay_requested.connect(func():

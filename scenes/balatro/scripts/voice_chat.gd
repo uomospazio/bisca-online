@@ -109,7 +109,19 @@ func activate() -> void:
 		status = "Chat vocale non disponibile: aggiorna anche il server della partita."
 		changed.emit()
 		return
-	_call("start")
+	open_panel()
+
+func open_panel() -> void:
+	if bridge != null:
+		_call("openPanel")
+	else:
+		var dialog := AcceptDialog.new()
+		dialog.title = "CHAT VOCALE"
+		dialog.dialog_text = status
+		add_child(dialog)
+		dialog.confirmed.connect(dialog.queue_free)
+		dialog.canceled.connect(dialog.queue_free)
+		dialog.popup_centered(Vector2i(520, 180))
 
 func stop() -> void:
 	_call("stop")
@@ -120,6 +132,7 @@ func stop() -> void:
 	changed.emit()
 
 func leave() -> void:
+	_call("closePanel")
 	stop()
 	current_room = ""
 	people.clear()
@@ -150,7 +163,10 @@ func _process(_delta: float) -> void:
 	if not events is Array:
 		return
 	for event in events:
-		if event.op == "signal":
+		if event.op == "volume":
+			volumes[str(event.id)] = float(event.value)
+			changed.emit()
+		elif event.op == "signal":
 			if network_session.multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 				network_session.voice_signal.rpc_id(1, int(event.slot), event.data)
 		elif event.op == "status":

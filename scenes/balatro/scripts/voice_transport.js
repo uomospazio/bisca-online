@@ -17,7 +17,44 @@
     }
     event(value) { if (this.events.length < 256) this.events.push(value); }
     drain() { return JSON.stringify(this.events.splice(0)); }
-    status(text) { this.event({op:'status',text,enabled:this.enabled,muted:this.muted,pending:!!this.starting}); }
+    status(text) { this.message=text; this.refreshPanel(); this.event({op:'status',text,enabled:this.enabled,muted:this.muted,pending:!!this.starting}); }
+    openPanel() {
+      this.closePanel();
+      const root=document.createElement('div');this.panel=root;
+      root.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#14213daa;display:grid;place-items:center;padding:12px;box-sizing:border-box';
+      root.innerHTML=`<section role="dialog" aria-modal="true" aria-label="Chat vocale" style="box-sizing:border-box;width:min(480px,100%);max-height:90dvh;overflow:auto;background:#48465f;color:#fde4b9;border:3px solid #74ab8e;border-radius:22px;padding:22px;font:600 16px system-ui"><h2 style="margin-top:0">CHAT VOCALE</h2><p>Premi ATTIVA MICROFONO e consenti l'accesso nel browser. Anche i tuoi amici devono attivarla.</p><p data-status role="status"></p><div data-actions style="display:flex;gap:10px;flex-wrap:wrap"></div><div data-people></div><p style="font-size:13px">La partita continua mentre questo pannello e' aperto. Chiudere il pannello non spegne il microfono.</p></section>`;
+      const actions=root.querySelector('[data-actions]');
+      const button=(text,action)=>{const b=document.createElement('button');b.textContent=text;b.style.cssText='border:2px solid #fde4b9;border-radius:14px;padding:12px;background:#74ab8e;color:#14213d;font:bold 15px system-ui;cursor:pointer';b.onclick=action;actions.appendChild(b);return b;};
+      // A real DOM click keeps microphone permission and AudioContext activation
+      // in the browser's user gesture, rather than a later Godot frame.
+      this.startButton=button('ATTIVA MICROFONO',()=>this.start());
+      this.muteButton=button('SILENZIA MICROFONO',()=>this.setMuted(!this.muted));
+      this.stopButton=button('DISATTIVA CHAT',()=>this.stop());
+      button('CHIUDI',()=>this.closePanel());
+      root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')this.closePanel();if(e.key==='Tab'){const items=[...root.querySelectorAll('button:not(:disabled),input')];const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+      for(const type of ['pointerdown','pointerup','click'])root.addEventListener(type,e=>e.stopPropagation());
+      document.body.appendChild(root);this.refreshPanel();this.startButton.focus();
+    }
+    closePanel() {this.panel?.remove();this.panel=null;document.querySelector('canvas')?.focus();}
+    refreshPanel() {
+      if(!this.panel)return;
+      this.panel.querySelector('[data-status]').textContent=!this.me ? 'Chat disponibile in una lobby multiplayer. Se sei gia\' in partita, aggiorna anche il server.' : (this.message || 'Chat vocale disattivata.');
+      this.startButton.disabled=!!this.starting || !this.me;
+      this.startButton.textContent=this.starting ? 'ATTENDO IL PERMESSO…' : this.enabled ? 'RICONNETTI AUDIO' : 'ATTIVA MICROFONO';
+      this.muteButton.disabled=!this.enabled;this.muteButton.textContent=this.muted?'RIATTIVA MICROFONO':'SILENZIA MICROFONO';
+      this.stopButton.disabled=!this.enabled&&!this.starting;
+      const list=this.panel.querySelector('[data-people]');
+      const signature=JSON.stringify([...this.people].map(([id,p])=>[id,p.name,this.peers.get(id)?.pc.connectionState||'off']));
+      if(list.dataset.signature===signature)return;
+      list.dataset.signature=signature;list.replaceChildren();
+      for(const [id,person] of this.people){
+        const row=document.createElement('label');row.style.cssText='display:block;margin:16px 0';
+        const state=this.peers.get(id)?.pc.connectionState;
+        row.append(document.createTextNode(`${person.name || 'Giocatore'} — ${state==='connected'?'connesso':state==='failed'?'connessione fallita':state?'connessione…':'chat non attiva'}`));
+        const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='100';slider.value=String((this.volumes.get(id)??1)*100);slider.style.cssText='display:block;width:100%;accent-color:#74ab8e';slider.setAttribute('aria-label',`Volume ${person.name || 'giocatore'}`);
+        slider.oninput=()=>{this.setVolume(id,Number(slider.value)/100);this.event({op:'volume',id,value:Number(slider.value)});};row.appendChild(slider);list.appendChild(row);
+      }
+    }
     configure(servers) { if (Array.isArray(servers) && servers.length) this.iceServers = servers; }
     send(id, data) {
       const person = this.people.get(id);
@@ -29,6 +66,7 @@
       this.people = new Map(list.filter(p=>p.id !== me && !p.bot && p.connected).map(p=>[p.id,p]));
       for (const id of this.peers.keys()) if (!this.people.has(id)) this.closePeer(id);
       if (this.enabled) for (const id of this.people.keys()) if (!this.peers.has(id)) this.send(id,{type:'ready'});
+      this.refreshPanel();
     }
     async start() {
       if (this.enabled) {
@@ -43,7 +81,7 @@
       if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
         this.status('Chat vocale: apri il gioco in un browser aggiornato tramite HTTPS.'); return;
       }
-      if (!this.room) { this.status('Entra prima in una lobby multiplayer.'); return; }
+      if (!this.room || !this.me) { this.status('Entra prima in una lobby multiplayer con un server aggiornato.'); return; }
       const generation = ++this.generation;
       this.starting = true;
       this.status('Consenti l’accesso al microfono nel browser.');
@@ -57,11 +95,12 @@
         stream.getAudioTracks()[0].onended = () => { if (this.enabled) { this.stop(); this.status('Microfono scollegato. Premi ATTIVA AUDIO per riprovare.'); } };
         for (const id of this.people.keys()) this.send(id,{type:'ready'});
         this.starting=false;
+        this.heartbeat=setInterval(()=>{for(const id of this.people.keys())if(!this.peers.has(id))this.send(id,{type:'ready'});},3000);
         this.status('Chat attiva. Anche gli altri giocatori devono attivarla.');
       } catch (error) {
         if (generation !== this.generation) return;
         this.stop();
-        this.status(error.name === 'NotAllowedError' ? 'Microfono negato: abilitalo nei permessi del sito e riprova.' : 'Microfono non disponibile: controlla il dispositivo e riprova.');
+        this.status(error.name === 'NotAllowedError' ? 'Microfono negato: abilitalo nei permessi del sito e riprova.' : error.name === 'NotFoundError' ? 'Nessun microfono trovato: collega un microfono e riprova.' : error.name === 'NotReadableError' ? 'Microfono occupato o bloccato dal sistema: chiudi le altre app audio e riprova.' : 'Microfono non disponibile: controlla il dispositivo e riprova.');
       } finally { if (generation === this.generation) this.starting = false; }
     }
     setMuted(muted) {
@@ -78,14 +117,15 @@
     }
     closePeer(id) {
       const p=this.peers.get(id); if(!p) return;
-      this.peers.delete(id); clearTimeout(p.retry);
+      this.peers.delete(id); clearTimeout(p.retry);clearTimeout(p.watchdog);
       p.pc.onconnectionstatechange=null; p.pc.onicecandidate=null; p.pc.ontrack=null;
       p.pc.close(); p.source?.disconnect(); p.gain?.disconnect();
       if(p.audio) {p.audio.pause();p.audio.srcObject=null;p.audio.remove();}
+      this.refreshPanel();
     }
     stop() {
       for(const id of this.peers.keys()) this.send(id,{type:'off'});
-      ++this.generation; this.starting=false; this.enabled=false;
+      ++this.generation; this.starting=false; this.enabled=false;this.muted=false;clearInterval(this.heartbeat);
       for(const id of [...this.peers.keys()]) this.closePeer(id);
       this.stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});this.stream=null;
       this.context?.close().catch(()=>{});this.context=null;
@@ -95,6 +135,10 @@
       const pc=new RTCPeerConnection({iceServers:this.iceServers});
       const p={pc,epoch,queue:Promise.resolve(),candidates:[],restarts:0};
       this.peers.set(id,p);
+      p.watchdog=setTimeout(()=>{
+        if(this.peers.get(id)===p && pc.connectionState!=='connected')
+          this.status('Connessione audio non completata. Premi RICONNETTI AUDIO. Se persiste su reti diverse, potrebbe servire un server TURN.');
+      },15000);
       this.stream.getAudioTracks().forEach(track=>pc.addTrack(track,this.stream));
       pc.onicecandidate=e=>{if(e.candidate && this.peers.get(id)===p) this.send(id,{type:'candidate',candidate:e.candidate.toJSON()});};
       pc.ontrack=e=>{
@@ -110,7 +154,8 @@
       };
       pc.onconnectionstatechange=()=>{
         if(this.peers.get(id)!==p) return;
-        if(pc.connectionState==='connected') {clearTimeout(p.retry);p.restarts=0;this.status('Chat vocale connessa.');}
+        this.refreshPanel();
+        if(pc.connectionState==='connected') {clearTimeout(p.retry);clearTimeout(p.watchdog);p.restarts=0;this.status('Chat vocale connessa.');}
         if(['disconnected','failed'].includes(pc.connectionState)) {
           clearTimeout(p.retry);
           p.retry=setTimeout(()=>{

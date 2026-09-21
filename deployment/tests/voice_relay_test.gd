@@ -3,11 +3,15 @@ extends SceneTree
 # Three real MultiplayerAPI instances exercise the production RPC relay.
 class Session extends "res://scenes/balatro/scripts/network_session.gd":
 	var received: Array = []
+	var credentials: Array = []
 	func _ready() -> void:
 		set_process(false)
 	@rpc("authority", "call_remote", "reliable")
 	func receive_voice_signal(sender_slot: int, data: Dictionary) -> void:
 		received.append({"slot": sender_slot, "data": data})
+	@rpc("authority", "call_remote", "reliable")
+	func receive_voice_token(request_id: int, data: Dictionary) -> void:
+		credentials.append({"id": request_id, "data": data})
 
 var branches: Array[Node] = []
 var apis: Array[MultiplayerAPI] = []
@@ -68,7 +72,22 @@ func _run() -> void:
 	b.voice_signal.rpc_id(1, 0, {"type": "ready", "room": "TEST", "from_id": "b", "to_id": "a", "epoch": "b-epoch"})
 	await create_timer(0.25).timeout
 	assert(a.received.size() == 1)
+	OS.set_environment("LIVEKIT_URL", "wss://test.invalid")
+	OS.set_environment("LIVEKIT_API_KEY", "test-key")
+	OS.set_environment("LIVEKIT_API_SECRET", "test-secret-not-a-real-livekit-key")
+	a.request_voice_token.rpc_id(1, 71)
+	await create_timer(0.25).timeout
+	assert(a.credentials.size() == 1 and a.credentials[0].id == 71)
+	assert(a.credentials[0].data.has("token"))
+	assert(b.credentials.is_empty(), "Tokens must never be broadcast")
+	a.request_voice_token.rpc_id(1, 72)
+	await create_timer(0.25).timeout
+	assert(a.credentials[1].data.has("error"), "Token issuance must be rate limited")
+	server.members.erase(peer_b.get_unique_id())
+	b.request_voice_token.rpc_id(1, 73)
+	await create_timer(0.25).timeout
+	assert(b.credentials.is_empty(), "Non-members cannot obtain a token")
 	for api in apis:
 		api.multiplayer_peer.close()
-	print("PASS: production WebSocket voice relay, bidirectional RPC, SDP line endings and ICE candidate JSON")
+	print("PASS: production WebSocket RPC, private LiveKit token delivery, rate limit, non-member rejection, legacy relay")
 	quit()

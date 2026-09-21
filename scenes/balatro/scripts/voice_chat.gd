@@ -44,6 +44,7 @@ func _ready() -> void:
 			changed.emit()
 			return
 
+		JavaScriptBridge.eval(FileAccess.get_file_as_string("res://scenes/balatro/scripts/livekit-client.umd.js"), true)
 		JavaScriptBridge.eval(js_code, true)
 
 		bridge = JavaScriptBridge.get_interface("BiscaVoice")
@@ -56,14 +57,6 @@ func _ready() -> void:
 
 		print("VOICE OK: BiscaVoice inizializzato")
 		status = "Chat vocale pronta."
-
-		var servers = ProjectSettings.get_setting(
-			"bisca/voice/ice_servers",
-			[]
-		)
-
-		if servers is Array and not servers.is_empty():
-			_call("configure", [servers])
 
 		get_node("/root/GameSettings").changed.connect(_sync_master)
 		_sync_master()
@@ -163,7 +156,12 @@ func _process(_delta: float) -> void:
 	if not events is Array:
 		return
 	for event in events:
-		if event.op == "volume":
+		if event.op == "token":
+			if network_session.multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+				network_session.request_voice_token.rpc_id(1, int(event.id))
+			else:
+				_call("credentials", [event.id, {"error": "Connessione alla partita assente."}])
+		elif event.op == "volume":
 			volumes[str(event.id)] = float(event.value)
 			changed.emit()
 		elif event.op == "signal":

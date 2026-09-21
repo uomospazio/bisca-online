@@ -44,6 +44,8 @@ var retry := 0.0
 var connection_deadline := 0
 var connection_generation := 0
 var voice_rate: Dictionary = {}
+var voice_token_rate: Dictionary = {}
+const LiveKitAuth = preload("res://scenes/balatro/scripts/livekit_auth.gd")
 
 func default_endpoint() -> String:
 	return str(ProjectSettings.get_setting("bisca/network/server_url", "")) if OS.has_feature("web") else "127.0.0.1"
@@ -202,6 +204,7 @@ func _lost() -> void:
 
 func _disconnected(peer_id: int) -> void:
 	voice_rate.erase(peer_id)
+	voice_token_rate.erase(peer_id)
 	if not dedicated or not members.has(peer_id):
 		return
 	var ref: Dictionary = members[peer_id]
@@ -211,6 +214,7 @@ func _disconnected(peer_id: int) -> void:
 	# player who has already reclaimed this seat.
 	if room.people[ref.slot].peer != peer_id:
 		return
+	_revoke_voice(room, room.people[ref.slot])
 	room.people[ref.slot].peer = 0
 	room.touched = Time.get_ticks_msec()
 	# Switch an already-running human turn to the normal bot timing too.
@@ -351,6 +355,7 @@ func request(command: Dictionary) -> void:
 			# Possession of the private seat token authorizes replacing it.
 			var old_peer: int = room.people[slot].peer
 			if old_peer > 0 and old_peer != peer:
+				_revoke_voice(room, room.people[slot])
 				members.erase(old_peer)
 				voice_rate.erase(old_peer)
 				if multiplayer.get_peers().has(old_peer):
@@ -412,6 +417,7 @@ func request(command: Dictionary) -> void:
 		if kicked_slot <= 0 or kicked_slot >= room.people.size() or room.people[kicked_slot].bot:
 			return
 		var kicked_peer: int = room.people[kicked_slot].peer
+		_revoke_voice(room, room.people[kicked_slot])
 		room.people.remove_at(kicked_slot)
 		if kicked_peer > 0:
 			members.erase(kicked_peer)
@@ -500,6 +506,52 @@ func clock(seconds: float) -> void:
 # =========================================================
 # VOICE CHAT - WebRTC signaling
 # =========================================================
+
+func _revoke_voice(room: Dictionary, person: Dictionary) -> void:
+	LiveKitAuth.remove_participant(self, str(room.get("livekit_room", "")), str(person.get("livekit_identity", "")))
+	# A new transport identity prevents a late removal from kicking a rejoin.
+	person.erase("livekit_identity")
+
+func _livekit_credentials(peer: int) -> Dictionary:
+	if not dedicated or not members.has(peer):
+		return {"error": "Entra prima nella lobby."}
+	var member: Dictionary = members[peer]
+	if not rooms.has(member.code):
+		return {"error": "Lobby non disponibile."}
+	var room: Dictionary = rooms[member.code]
+	var slot := int(member.slot)
+	if slot < 0 or slot >= room.people.size():
+		return {"error": "Giocatore non disponibile."}
+	var person: Dictionary = room.people[slot]
+	if person.bot or person.peer != peer:
+		return {"error": "Accesso vocale non autorizzato."}
+	if not LiveKitAuth.configured():
+		return {"error": "LiveKit non configurato: imposta URL e chiavi sul server Bisca."}
+	if not room.has("livekit_room"):
+		room.livekit_room = "bisca-" + Crypto.new().generate_random_bytes(16).hex_encode()
+	if not person.has("livekit_identity"):
+		person.livekit_identity = str(person.voice_id) + "." + Crypto.new().generate_random_bytes(8).hex_encode()
+	return {"url": OS.get_environment("LIVEKIT_URL"), "token": LiveKitAuth.token_for(room.livekit_room, person.livekit_identity)}
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_voice_token(request_id: int) -> void:
+	if not dedicated:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if not members.has(peer):
+		return
+	var now := Time.get_ticks_msec()
+	if now - int(voice_token_rate.get(peer, -3000)) < 2000:
+		receive_voice_token.rpc_id(peer, request_id, {"error": "Attendi un momento prima di riprovare."})
+		return
+	voice_token_rate[peer] = now
+	receive_voice_token.rpc_id(peer, request_id, _livekit_credentials(peer))
+
+@rpc("authority", "call_remote", "reliable")
+func receive_voice_token(request_id: int, data: Dictionary) -> void:
+	var voice := get_node_or_null("/root/VoiceChat")
+	if voice:
+		voice._call("credentials", [request_id, data])
 
 @rpc("any_peer", "call_remote", "reliable")
 func voice_signal(target_slot: int, data: Dictionary) -> void:

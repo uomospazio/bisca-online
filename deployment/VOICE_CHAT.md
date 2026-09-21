@@ -1,57 +1,73 @@
-# Chat vocale BISCA
+# Chat vocale BISCA — LiveKit
 
-## Utilizzo
+## Attivazione online (solo piano gratuito)
 
-Nella partita multiplayer: **VOCE**, sotto INFO → ATTIVA MICROFONO.
-Ogni partecipante attiva la chat e consente il microfono. Il toggle
-MICROFONO ACCESO interrompe la trasmissione senza interrompere l'ascolto.
-DISATTIVA ferma le tracce del microfono e chiude le connessioni.
-Ogni altro umano ha uno slider 0–100; 0 lo silenzia solo per te.
-MAIN regola anche la voce, EFFECTS no. I volumi individuali durano per la lobby;
-non sono salvati per nome (due persone possono avere lo stesso nome).
+1. Crea un progetto su https://cloud.livekit.io/ selezionando **Build ($0)**.
+   Non passare a Ship/Scale e non abilitare servizi a pagamento.
+2. Nelle impostazioni del progetto recupera WebSocket URL, API key e API secret.
+3. Nel servizio **Render bisca-server → Environment** aggiungi:
+   - `LIVEKIT_URL`: URL `wss://…livekit.cloud`
+   - `LIVEKIT_API_KEY`: API key del progetto
+   - `LIVEKIT_API_SECRET`: secret del progetto
+4. Ridistribuisci il server Render con il nuovo codice e pubblica l'export Web
+   aggiornato di `docs/` su GitHub Pages. Servono entrambi gli aggiornamenti.
+5. Due persone nella stessa lobby: VOCE → ATTIVA MICROFONO → consenti il microfono.
 
-## Pubblicazione
+**Non inserire API secret nel progetto Godot, in Git, in chat o nell'HTML.**
+Le variabili sono lette solo dal server. Il client riceve via WebSocket autenticato
+un JWT valido 60 secondi, limitato alla stanza e identità assegnate dal server,
+con pubblicazione solo microfono, nessun video/data/admin.
+Il JWT breve serve a entrare; non interrompe una chiamata dopo 60 secondi.
 
-Occorre aggiornare **sia il server Render sia l'export Web in docs/**:
-il server aggiunge identità vocali pubbliche ai partecipanti e valida/inoltra
-i messaggi WebRTC. Non invia mai i token privati di rientro ai giocatori.
-Pubblicare solo l'HTML non aggiorna il server. Nessun servizio è stato attivato
-e nessun deploy è stato eseguito da questa modifica.
+Il piano Build ha quote rigide: al superamento falliscono le nuove richieste,
+senza addebiti di eccedenza. Quote condivise tra progetti gratuiti dello stesso
+utente, rinnovo il primo giorno del mese. Verificare nel dashboard limiti attuali:
+https://docs.livekit.io/deploy/admin/quotas-and-limits/
+Il codice non può verificare quale piano hai scelto: mantenere **Build**.
+Non sono stati creati account, inserite chiavi, attivati piani o eseguiti deploy.
 
-## Compatibilità e limiti
+## Funzionamento
 
-Il trasporto implementato è quello della **versione browser HTTPS** su desktop,
-iOS/iPadOS e Android con WebRTC/getUserMedia/Web Audio disponibili. Non è un
-backend vocale per gli eseguibili nativi Godot: lì viene mostrato un messaggio
-esplicito. Telefoni/tablet fisici non sono stati verificati in questo ambiente.
-La ricezione usa GainNode, non audio.volume, per la regolazione su iOS.
-Tab in background, schermo bloccato e interruzioni telefoniche possono sospendere
-l'audio; tornare al gioco e premere RIPRENDI AUDIO. Se il microfono è terminato,
-va autorizzato/attivato nuovamente. Usare cuffie evita il feedback tra dispositivi.
+Il server del gioco autorizza l'accesso, l'audio passa dall'infrastruttura LiveKit.
+La logica delle partite e il loro WebSocket non cambiano.
+VOCE è sotto INFO; puoi silenziare il microfono e continuare ad ascoltare.
+DISATTIVA CHAT arresta il microfono e abbandona la stanza vocale.
+CHIUDI chiude solo il pannello; la chiamata e la partita continuano.
+Ogni umano ha uno slider 0–100, anche nelle impostazioni in partita.
+MAIN regola anche la voce; EFFECTS no. I volumi durano per la lobby.
+SDK locale e versionato: vedi LIVEKIT_DEPENDENCY.md.
 
-La configurazione predefinita usa STUN e audio diretto cifrato WebRTC, non un
-relay audio sul server del gioco. Alcune reti mobili/NAT/firewall richiedono
-**TURN**: senza un relay non è possibile garantire ogni combinazione di reti.
-Il campo ProjectSettings `bisca/voice/ice_servers` può contenere un array di
-configurazioni RTCIceServer. Non inserire segreti permanenti nell'export pubblico;
-per TURN pubblico usare credenziali temporanee ottenute da un backend e limiti
-di utilizzo. Non sono inclusi account o servizi a pagamento.
+La richiesta token è autenticata tramite appartenenza alla lobby e limitata
+nel tempo. Le stanze vocali hanno identificativi casuali separati dal codice lobby.
+Uscita/disconnessione/espulsione richiedono RemoveParticipant al servizio.
+Ogni rientro usa una nuova identità vocale di sessione, evitando conflitti con
+rimozioni tardive. La revoca remota dipende dalla raggiungibilità di LiveKit.
+La diagnostica non mostra token, segreti, SDP o nomi di stanze.
+Senza variabili Render appare un messaggio di configurazione mancante.
 
-## Test locali
+## Compatibilità
 
-In caso di errore aprire **DIAGNOSTICA** nel pannello VOCE. Il report v2
-mostra stato ICE/SDP, numero di candidati locali/remoti e fase dell'errore;
-non contiene IP, SDP, codice lobby o credenziali. Un errore SDP e un errore
-ICE non implicano la stessa causa: non attribuire automaticamente ogni errore
-all'assenza di TURN. RICONNETTI AUDIO ricrea i peer mantenendo il microfono.
+Versione browser HTTPS, desktop e mobile (Safari iOS incluso tramite SDK web).
+Il microfono viene richiesto solo su click esplicito del pulsante HTML.
+AudioContext ripreso nel gesto; volumi tramite Web Audio per iOS.
+Interruzioni telefoniche, scheda in background e blocco schermo possono
+sospendere l'audio: torna al gioco e tocca il pannello o riconnetti.
+La versione nativa Godot mantiene il messaggio di indisponibilità.
+Non è attivata la cifratura E2EE opzionale: è una chiamata gestita da LiveKit
+con trasporto WebRTC cifrato, non il vecchio collegamento P2P.
 
-- Godot: `--headless --path . --script deployment/tests/voice_settings_test.gd`
-- Relay WebSocket reale (solo loopback): `--headless --path . --script deployment/tests/voice_relay_test.gd`
-- HTTP locale dalla root del progetto, poi aprire
-  `/deployment/tests/voice_transport_test.html` e premere il pulsante di test.
-  Usa oscillatori sintetici e due peer WebRTC reali: non cattura microfoni.
-  Verifica tracce in entrambe le direzioni, pacchetti ricevuti, volumi, mute,
-  isolamento della stanza, riattivazione e rilascio delle tracce.
+## Verifiche
 
-Prima del rilascio generale verificare una partita tra Safari su iPhone,
-Safari su iPad, Chrome su Android e desktop, prima su Wi-Fi e poi su reti diverse.
+- `node deployment/tests/livekit_transport_test.cjs`: lifecycle con SDK/media simulati,
+  mute, gain, riconnessione, cambio lobby, cancellazione, token obsoleti e permessi.
+- Godot headless `--script deployment/tests/livekit_auth_test.gd`: autorizzazioni,
+  JWT, scadenza, bot, identità e separazione stanze. Solo credenziali fittizie.
+- Godot headless `--script deployment/tests/voice_relay_test.gd`: WebSocket/RPC reali
+  locali, token solo al richiedente, rate limit e accesso negato ai non membri.
+- Godot headless `--script deployment/tests/voice_settings_test.gd`: slider e impostazioni.
+- `deployment/tests/voice_transport_test.html`: smoke test SDK nel browser,
+  senza microfono e senza servizio cloud.
+
+Prima di dichiarare pronta la versione online: due dispositivi reali, prima sullo
+stesso Wi-Fi poi Wi-Fi/rete mobile; testare ascolto bidirezionale, mute, volume 0,
+uscita/rientro, espulsione e lobby separate. Richiede progetto LiveKit configurato.

@@ -1,23 +1,24 @@
-/* Browser audio transport. No microphone access until start() is requested. */
+/* LiveKit browser voice. Credentials are issued by the authenticated game server. */
 (() => {
   class BiscaVoiceTransport {
     constructor() {
-      this.peers = new Map(); this.people = new Map(); this.volumes = new Map();
-      this.events = []; this.enabled = false; this.muted = false; this.master = 1;
-      this.room = ''; this.me = ''; this.epoch = ''; this.generation = 0;
-      this.iceServers = [{urls:['stun:stun.l.google.com:19302','stun:stun.cloudflare.com:3478']}];
-      this.unlock = () => {
-        if (this.context?.state === 'suspended' || this.context?.state === 'interrupted')
-          this.context.resume().catch(() => this.status('Tocca ATTIVA AUDIO per riprendere l’ascolto.'));
-        for (const p of this.peers.values()) p.audio?.play().catch(() => {});
+      this.events=[];this.people=new Map();this.peers=new Map();this.volumes=new Map();
+      this.room='';this.me='';this.master=1;this.enabled=false;this.muted=false;
+      this.generation=0;this.requestId=0;
+      this.unlock=()=>{
+        this.context?.resume().catch(()=>{});
+        this.session?.startAudio().catch(()=>this.status("Tocca il pannello per riprendere l'ascolto."));
       };
-      document.addEventListener('pointerdown', this.unlock);
-      document.addEventListener('keydown', this.unlock);
-      window.addEventListener('pagehide', () => this.stop());
+      document.addEventListener('pointerdown',this.unlock);
+      document.addEventListener('keydown',this.unlock);
+      window.addEventListener('pagehide',()=>this.stop());
     }
-    event(value) { if (this.events.length < 256) this.events.push(value); }
-    drain() { return JSON.stringify(this.events.splice(0)); }
-    status(text) { this.message=text; this.refreshPanel(); this.event({op:'status',text,enabled:this.enabled,muted:this.muted,pending:!!this.starting}); }
+    event(value) {if(this.events.length<256)this.events.push(value);}
+    drain() {return JSON.stringify(this.events.splice(0));}
+    status(text) {
+      this.message=text;this.refreshPanel();
+      this.event({op:'status',text,enabled:this.enabled,muted:this.muted,pending:!!this.starting});
+    }
     openPanel() {
       this.closePanel();
       const root=document.createElement('div');this.panel=root;
@@ -37,6 +38,7 @@
       });
       button('CHIUDI',()=>this.closePanel());
       root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')this.closePanel();if(e.key==='Tab'){const items=[...root.querySelectorAll('button:not(:disabled),input')];const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+      root.addEventListener('pointerdown',()=>this.unlock());
       for(const type of ['pointerdown','pointerup','click'])root.addEventListener(type,e=>e.stopPropagation());
       document.body.appendChild(root);this.refreshPanel();this.startButton.focus();
     }
@@ -45,187 +47,142 @@
       if(!this.panel)return;
       this.panel.querySelector('[data-status]').textContent=!this.me ? 'Chat disponibile in una lobby multiplayer. Se sei gia\' in partita, aggiorna anche il server.' : (this.message || 'Chat vocale disattivata.');
       this.startButton.disabled=!!this.starting || !this.me;
-      this.startButton.textContent=this.starting ? 'ATTENDO IL PERMESSO…' : this.enabled ? 'RICONNETTI AUDIO' : 'ATTIVA MICROFONO';
+      this.startButton.textContent=this.starting ? 'CONNESSIONE…' : this.enabled ? 'RICONNETTI AUDIO' : 'ATTIVA MICROFONO';
       this.muteButton.disabled=!this.enabled;this.muteButton.textContent=this.muted?'RIATTIVA MICROFONO':'SILENZIA MICROFONO';
       this.stopButton.disabled=!this.enabled&&!this.starting;
       const list=this.panel.querySelector('[data-people]');
-      const signature=JSON.stringify([...this.people].map(([id,p])=>[id,p.name,this.peers.get(id)?.pc.connectionState||'off']));
+      const signature=JSON.stringify([...this.people].map(([id,p])=>[id,p.name,this.peers.get(id)?.state||'off']));
       if(list.dataset.signature===signature)return;
       list.dataset.signature=signature;list.replaceChildren();
       for(const [id,person] of this.people){
         const row=document.createElement('label');row.style.cssText='display:block;margin:16px 0';
-        const state=this.peers.get(id)?.pc.connectionState;
+        const state=this.peers.get(id)?.state;
         row.append(document.createTextNode(`${person.name || 'Giocatore'} — ${state==='connected'?'connesso':state==='failed'?'connessione fallita':state?'connessione…':'chat non attiva'}`));
         const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='100';slider.value=String((this.volumes.get(id)??1)*100);slider.style.cssText='display:block;width:100%;accent-color:#74ab8e';slider.setAttribute('aria-label',`Volume ${person.name || 'giocatore'}`);
         slider.oninput=()=>{this.setVolume(id,Number(slider.value)/100);this.event({op:'volume',id,value:Number(slider.value)});};row.appendChild(slider);list.appendChild(row);
       }
     }
-    configure(servers) { if (Array.isArray(servers) && servers.length) this.iceServers = servers; }
+
     diagnostics() {
-      // Deliberately omit SDP, IP addresses, room codes and credentials.
-      return ['Voce v2',`Microfono: ${this.enabled?'attivo':'spento'}; audio: ${this.context?.state||'spento'}`,
-        `TURN: ${this.iceServers.some(s=>[s.urls].flat().some(u=>/^turns?:/.test(u)))?'configurato':'non configurato'}`,
-        ...[...this.peers.values()].map((p,i)=>`Peer ${i+1}: ${p.pc.connectionState}; ICE ${p.pc.iceConnectionState}; SDP ${p.pc.signalingState}\nCandidati: locali ${p.localCandidates}, remoti ${p.remoteCandidates}; errore ${p.lastError||'nessuno'}`)].join('\n');
+      return ['Voce LiveKit 2.22.3','Connessione: '+(this.session?.state||'disconnessa'),
+        'Microfono: '+(this.stream?.active?'attivo':'spento'),
+        'Audio: '+(this.context?.state||'spento'),'Partecipanti vocali: '+this.peers.size].join('\n');
     }
-    failure(p, stage, error) {
-      p.lastError=`${stage}: ${error?.name||'Error'}`;
-      this.status(`Errore vocale (${p.lastError}). Apri DIAGNOSTICA per i dettagli della connessione.`);
-    }
-    send(id, data) {
-      const person = this.people.get(id);
-      if (person) this.event({op:'signal',slot:person.slot,data:{...data,room:this.room,from_id:this.me,to_id:id,epoch:this.epoch}});
-    }
-    update(room, me, list) {
-      if (room !== this.room || me !== this.me) { this.stop(); this.volumes.clear(); }
-      this.room = room; this.me = me;
-      this.people = new Map(list.filter(p=>p.id !== me && !p.bot && p.connected).map(p=>[p.id,p]));
-      for (const id of this.peers.keys()) if (!this.people.has(id)) this.closePeer(id);
-      if (this.enabled) for (const id of this.people.keys()) if (!this.peers.has(id)) this.send(id,{type:'ready'});
+    update(room,me,list) {
+      if(room!==this.room||me!==this.me){this.stop();this.volumes.clear();}
+      this.room=room;this.me=me;
+      this.people=new Map(list.filter(p=>p.id!==me&&!p.bot&&p.connected).map(p=>[p.id,p]));
+      for(const id of [...this.peers.keys()])if(!this.people.has(id))this.closePeer(id);
       this.refreshPanel();
+    }
+    credentials(id,data) {
+      if(this.waiting?.id!==id)return;
+      const pending=this.waiting;this.waiting=null;clearTimeout(pending.timer);
+      if(data.error)pending.reject(new Error(data.error));
+      else if(!/^wss:\/\//.test(data.url)||typeof data.token!=='string')pending.reject(new Error('Configurazione LiveKit non valida.'));
+      else pending.resolve(data);
+    }
+    requestCredentials() {
+      return new Promise((resolve,reject)=>{
+        const id=++this.requestId;
+        const timer=setTimeout(()=>{
+          if(this.waiting?.id===id){this.waiting=null;reject(new Error('Il server non risponde alla richiesta vocale. Aggiorna anche il server Bisca.'));}
+        },12000);
+        this.waiting={id,resolve,reject,timer};this.event({op:'token',id});
+      });
     }
     async start() {
-      if (this.enabled) {
-        this.unlock();
-        // Rebuild stale negotiations as well as failed ICE connections. Keeping
-        // a peer stuck in have-local-offer made the old reconnect button a no-op.
-        for(const id of this.peers.keys())this.send(id,{type:'off'});
-        for(const id of [...this.peers.keys()])this.closePeer(id);
-        this.epoch=crypto.randomUUID();
-        for (const id of this.people.keys()) this.send(id,{type:'ready'});
-        this.status('Riconnessione audio in corso…');
-        return;
-      }
-      if (this.starting) return;
-      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-        this.status('Chat vocale: apri il gioco in un browser aggiornato tramite HTTPS.'); return;
-      }
-      if (!this.room || !this.me) { this.status('Entra prima in una lobby multiplayer con un server aggiornato.'); return; }
-      const generation = ++this.generation;
-      this.starting = true;
-      this.status('Consenti l’accesso al microfono nel browser.');
+      if(this.starting)return;
+      if(!this.room||!this.me){this.status('Entra prima in una lobby multiplayer.');return;}
+      if(!window.LivekitClient){this.status('Modulo LiveKit mancante. Aggiorna il gioco.');return;}
+      if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){this.status('Apri il gioco tramite HTTPS in un browser aggiornato.');return;}
+      this.stop();
+      const generation=this.generation;
+      this.starting=true;this.status('Consenti il microfono: connessione a LiveKit…');
       try {
-        this.context = new (window.AudioContext || window.webkitAudioContext)({latencyHint:'interactive'});
+        // Capture/resume in the actual DOM gesture, before asynchronous authorization.
+        this.context=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
         this.context.resume().catch(()=>{});
-        const stream = await navigator.mediaDevices.getUserMedia({video:false,audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-        if (generation !== this.generation) { stream.getTracks().forEach(t=>t.stop()); return; }
-        this.stream = stream; this.enabled = true; this.muted = false;
-        this.epoch = crypto.randomUUID();
-        stream.getAudioTracks()[0].onended = () => { if (this.enabled) { this.stop(); this.status('Microfono scollegato. Premi ATTIVA AUDIO per riprovare.'); } };
-        for (const id of this.people.keys()) this.send(id,{type:'ready'});
-        this.starting=false;
-        this.heartbeat=setInterval(()=>{for(const id of this.people.keys())if(!this.peers.has(id))this.send(id,{type:'ready'});},3000);
-        this.status('Chat attiva. Anche gli altri giocatori devono attivarla.');
-      } catch (error) {
-        if (generation !== this.generation) return;
+        const stream=await navigator.mediaDevices.getUserMedia({video:false,audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+        if(generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return;}
+        this.stream=stream;
+        stream.getAudioTracks()[0].onended=()=>{
+          if(generation===this.generation){this.stop();this.status('Microfono scollegato. Premi ATTIVA MICROFONO.');}
+        };
+        const credentials=await this.requestCredentials();
+        if(generation!==this.generation)return;
+        const LK=window.LivekitClient;
+        const session=new LK.Room({webAudioMix:{audioContext:this.context}});
+        this.session=session;
+        const active=()=>this.session===session&&generation===this.generation;
+        const idOf=p=>p.identity.split('.')[0];
+        session.on(LK.RoomEvent.TrackSubscribed,(track,_publication,participant)=>{
+          if(!active()||track.kind!=='audio')return;
+          const id=idOf(participant);if(!this.people.has(id))return;
+          this.closePeer(id);
+          const audio=track.attach();audio.hidden=true;audio.setAttribute('playsinline','');document.body.appendChild(audio);
+          this.peers.set(id,{track,audio,state:'connected'});
+          this.applyVolume(id);this.unlock();this.refreshPanel();
+        });
+        session.on(LK.RoomEvent.TrackUnsubscribed,(track,_publication,participant)=>{
+          const id=idOf(participant);if(active()&&this.peers.get(id)?.track===track)this.closePeer(id);
+        });
+        session.on(LK.RoomEvent.ParticipantDisconnected,p=>{if(active())this.closePeer(idOf(p));});
+        session.on(LK.RoomEvent.Reconnecting,()=>{if(active())this.status('Riconnessione vocale in corso…');});
+        session.on(LK.RoomEvent.Reconnected,()=>{if(active()){this.unlock();this.status('Chat vocale connessa.');}});
+        session.on(LK.RoomEvent.AudioPlaybackStatusChanged,()=>{
+          if(active()&&!session.canPlaybackAudio)this.status("Tocca il pannello per attivare l'audio.");
+        });
+        session.on(LK.RoomEvent.Disconnected,()=>{
+          if(active()){this.stop();this.status('Chat vocale disconnessa. Premi ATTIVA MICROFONO per riprovare.');}
+        });
+        await session.connect(credentials.url,credentials.token,{autoSubscribe:true});
+        if(!active()){await session.disconnect();return;}
+        await session.localParticipant.publishTrack(stream.getAudioTracks()[0],{source:LK.Track.Source.Microphone});
+        if(!active()){await session.disconnect();return;}
+        this.enabled=true;this.starting=false;this.unlock();
+        this.status('Chat vocale connessa. Anche gli altri giocatori devono attivarla.');
+      } catch(error) {
+        if(generation!==this.generation)return;
         this.stop();
-        this.status(error.name === 'NotAllowedError' ? 'Microfono negato: abilitalo nei permessi del sito e riprova.' : error.name === 'NotFoundError' ? 'Nessun microfono trovato: collega un microfono e riprova.' : error.name === 'NotReadableError' ? 'Microfono occupato o bloccato dal sistema: chiudi le altre app audio e riprova.' : 'Microfono non disponibile: controlla il dispositivo e riprova.');
-      } finally { if (generation === this.generation) this.starting = false; }
+        const message=error.name==='NotAllowedError'?'Microfono negato: abilitalo nei permessi del sito.':
+          error.name==='NotFoundError'?'Nessun microfono trovato.':
+          error.name==='NotReadableError'?'Microfono occupato: chiudi le altre app audio e riprova.':
+          /^(LiveKit non configurato|Entra prima|Lobby non disponibile|Giocatore non disponibile|Accesso vocale|Attendi un momento|Il server non risponde|Configurazione LiveKit)/.test(error.message)?error.message:
+          'Connessione LiveKit fallita. Controlla configurazione e quota gratuita del progetto, poi riprova.';
+        this.status(message);
+      }
     }
-    setMuted(muted) {
-      this.muted = !!muted;
-      this.stream?.getAudioTracks().forEach(t=>{t.enabled=!this.muted;});
-      this.status(this.muted ? 'Microfono spento. Puoi ancora ascoltare gli altri.' : 'Chat vocale attiva.');
+    setMuted(value) {
+      this.muted=!!value;this.stream?.getAudioTracks().forEach(t=>{t.enabled=!this.muted;});
+      for(const publication of this.session?.localParticipant.audioTrackPublications.values()||[]){
+        const operation=this.muted?publication.track?.mute():publication.track?.unmute();operation?.catch(()=>{});
+      }
+      this.status(this.muted?'Microfono silenziato. Puoi ascoltare gli altri.':'Chat vocale attiva.');
     }
-    setVolume(id, value) { this.volumes.set(id,Math.max(0,Math.min(1,value))); this.applyVolume(id); }
-    setMaster(value) { this.master=Math.max(0,Math.min(1,value)); for(const id of this.peers.keys()) this.applyVolume(id); }
+    setVolume(id,value) {this.volumes.set(id,Math.max(0,Math.min(1,value)));this.applyVolume(id);}
+    setMaster(value) {this.master=Math.max(0,Math.min(1,value));for(const id of this.peers.keys())this.applyVolume(id);}
     applyVolume(id) {
-      const p=this.peers.get(id);
-      // GainNode is intentional: HTMLMediaElement.volume is restricted on iOS.
-      if(p?.gain) p.gain.gain.setTargetAtTime((this.volumes.get(id) ?? 1)*this.master,this.context.currentTime,0.015);
+      // webAudioMix uses GainNode, including on iOS where audio.volume is limited.
+      this.peers.get(id)?.track.setVolume((this.volumes.get(id)??1)*this.master);
     }
     closePeer(id) {
-      const p=this.peers.get(id); if(!p) return;
-      this.peers.delete(id); clearTimeout(p.retry);clearTimeout(p.watchdog);
-      p.pc.onconnectionstatechange=null; p.pc.onicecandidate=null; p.pc.ontrack=null;
-      p.pc.close(); p.source?.disconnect(); p.gain?.disconnect();
-      if(p.audio) {p.audio.pause();p.audio.srcObject=null;p.audio.remove();}
-      this.refreshPanel();
+      const peer=this.peers.get(id);if(!peer)return;
+      this.peers.delete(id);peer.track.detach().forEach(element=>element.remove());
+      peer.audio?.remove();this.refreshPanel();
     }
     stop() {
-      for(const id of this.peers.keys()) this.send(id,{type:'off'});
-      ++this.generation; this.starting=false; this.enabled=false;this.muted=false;clearInterval(this.heartbeat);
-      for(const id of [...this.peers.keys()]) this.closePeer(id);
+      ++this.generation;this.starting=false;this.enabled=false;this.muted=false;
+      if(this.waiting){clearTimeout(this.waiting.timer);this.waiting.reject(new Error('Annullato'));this.waiting=null;}
+      const session=this.session;this.session=null;
+      for(const id of [...this.peers.keys()])this.closePeer(id);
       this.stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});this.stream=null;
+      session?.disconnect().catch(()=>{});
       this.context?.close().catch(()=>{});this.context=null;
       this.status('Chat vocale disattivata.');
     }
-    makePeer(id, epoch) {
-      const pc=new RTCPeerConnection({iceServers:this.iceServers});
-      const p={pc,epoch,queue:Promise.resolve(),candidates:[],restarts:0,localCandidates:0,remoteCandidates:0,lastError:'',offering:false};
-      this.peers.set(id,p);
-      p.watchdog=setTimeout(()=>{
-        if(this.peers.get(id)===p && pc.connectionState!=='connected')
-          this.status('Connessione audio non completata. Premi RICONNETTI AUDIO. Se persiste su reti diverse, potrebbe servire un server TURN.');
-      },15000);
-      this.stream.getAudioTracks().forEach(track=>pc.addTrack(track,this.stream));
-      pc.onicecandidate=e=>{if(e.candidate && this.peers.get(id)===p) {p.localCandidates++;this.send(id,{type:'candidate',candidate:e.candidate.toJSON()});}};
-      pc.ontrack=e=>{
-        if(this.peers.get(id)!==p || !this.context || p.source) return;
-        const stream=e.streams[0] || new MediaStream([e.track]);
-        // Keep a muted playing element for Safari's remote MediaStream lifecycle.
-        p.audio=document.createElement('audio');p.audio.autoplay=true;p.audio.muted=true;
-        p.audio.setAttribute('playsinline','');p.audio.srcObject=stream;document.body.appendChild(p.audio);
-        p.audio.play().catch(()=>{});
-        p.source=this.context.createMediaStreamSource(stream);p.gain=this.context.createGain();
-        p.source.connect(p.gain).connect(this.context.destination);this.applyVolume(id);
-        this.unlock();
-      };
-      pc.onconnectionstatechange=()=>{
-        if(this.peers.get(id)!==p) return;
-        this.refreshPanel();
-        if(pc.connectionState==='connected') {clearTimeout(p.retry);clearTimeout(p.watchdog);p.restarts=0;this.status('Chat vocale connessa.');}
-        if(['disconnected','failed'].includes(pc.connectionState)) {
-          clearTimeout(p.retry);
-          p.retry=setTimeout(()=>{
-            if(this.peers.get(id)!==p || pc.connectionState==='connected') return;
-            if(p.restarts++ < 2 && this.me < id) this.offer(id,p,true);
-            else this.status('Voce non connessa: riprova ATTIVA AUDIO. Questa rete potrebbe richiedere un server TURN.');
-          },3000);
-        }
-      };
-      return p;
-    }
-    async offer(id,p,restart=false) {
-      if(p.offering || this.peers.get(id)!==p || p.pc.signalingState!=='stable')return;
-      p.offering=true;
-      try {
-        const description=await p.pc.createOffer({iceRestart:restart});
-        if(this.peers.get(id)!==p) return;
-        await p.pc.setLocalDescription(description);
-        if (this.peers.get(id)===p) this.send(id,{type:'description',description:{type:p.pc.localDescription.type,sdp:p.pc.localDescription.sdp}});
-      } catch (error) { if(this.peers.get(id)===p) this.failure(p,'offerta SDP',error); }
-      finally {p.offering=false;}
-    }
-    receive(data) {
-      if(!this.enabled || data.room!==this.room || data.to_id!==this.me || !this.people.has(data.from_id)) return;
-      const id=data.from_id;
-      let p=this.peers.get(id);
-      if(data.type==='off') {if(p?.epoch===data.epoch)this.closePeer(id);return;}
-      if(data.type==='ready') {
-        if(p?.epoch===data.epoch) return;
-        this.closePeer(id);p=this.makePeer(id,data.epoch);
-        this.send(id,{type:'ready'});
-        if(this.me<id) this.offer(id,p);
-        return;
-      }
-      if(!p || p.epoch!==data.epoch) return;
-      if(data.type==='retry') {if(this.me<id)this.offer(id,p,true);return;}
-      p.queue=p.queue.then(async()=>{
-        if(this.peers.get(id)!==p) return;
-        if(data.type==='description') {
-          await p.pc.setRemoteDescription(data.description);
-          for(const candidate of p.candidates.splice(0)) await p.pc.addIceCandidate(candidate);
-          if(data.description.type==='offer') {
-            await p.pc.setLocalDescription(await p.pc.createAnswer());
-            if(this.peers.get(id)===p) this.send(id,{type:'description',description:{type:p.pc.localDescription.type,sdp:p.pc.localDescription.sdp}});
-          }
-        } else if(data.type==='candidate') {
-          p.remoteCandidates++;
-          if(p.pc.remoteDescription) await p.pc.addIceCandidate(data.candidate);
-          else if(p.candidates.length<64) p.candidates.push(data.candidate);
-        }
-      }).catch(error=>{if(this.peers.get(id)===p)this.failure(p,data.type==='candidate'?'candidato ICE':'risposta SDP',error);});
-    }
+    receive() {} // Ignore old P2P signals during rolling deployments.
   }
-  window.BiscaVoice = new BiscaVoiceTransport();
+  window.BiscaVoiceTransport=BiscaVoiceTransport;
+  window.BiscaVoice=new BiscaVoiceTransport();
 })();

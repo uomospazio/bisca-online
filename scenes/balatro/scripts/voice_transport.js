@@ -23,19 +23,14 @@
       this.closePanel();
       const root=document.createElement('div');this.panel=root;
       root.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#14213daa;display:grid;place-items:center;padding:12px;box-sizing:border-box';
-      root.innerHTML=`<section role="dialog" aria-modal="true" aria-label="Chat vocale" style="box-sizing:border-box;width:min(480px,100%);max-height:90dvh;overflow:auto;background:#48465f;color:#fde4b9;border:3px solid #74ab8e;border-radius:22px;padding:22px;font:600 16px system-ui"><h2 style="margin-top:0">CHAT VOCALE</h2><p>Premi ATTIVA MICROFONO e consenti l'accesso nel browser. Anche i tuoi amici devono attivarla.</p><p data-status role="status"></p><div data-actions style="display:flex;gap:10px;flex-wrap:wrap"></div><div data-people></div><p style="font-size:13px">La partita continua mentre questo pannello e' aperto. Chiudere il pannello non spegne il microfono.</p></section>`;
+      root.innerHTML=`<section role="dialog" aria-modal="true" aria-label="Chat vocale" style="box-sizing:border-box;width:min(480px,100%);max-height:90dvh;overflow:auto;background:#48465f;color:#fde4b9;border:3px solid #74ab8e;border-radius:22px;padding:22px;font:600 16px system-ui"><h2 style="margin-top:0">CHAT VOCALE</h2><p>Premi ATTIVA AUDIO e consenti l'accesso nel browser. Anche i tuoi amici devono attivarla.</p><p data-status role="status"></p><div data-actions style="display:flex;gap:10px;flex-wrap:wrap"></div><div data-people></div><p style="font-size:13px">La partita continua mentre questo pannello e' aperto. Chiudere il pannello non spegne il microfono.</p></section>`;
       const actions=root.querySelector('[data-actions]');
       const button=(text,action)=>{const b=document.createElement('button');b.textContent=text;b.style.cssText='border:2px solid #fde4b9;border-radius:14px;padding:12px;background:#74ab8e;color:#14213d;font:bold 15px system-ui;cursor:pointer';b.onclick=action;actions.appendChild(b);return b;};
       // A real DOM click keeps microphone permission and AudioContext activation
       // in the browser's user gesture, rather than a later Godot frame.
-      this.startButton=button('ATTIVA MICROFONO',()=>this.start());
+      this.startButton=button('ATTIVA AUDIO',()=>this.enabled?this.stop():this.start());
       this.muteButton=button('SILENZIA MICROFONO',()=>this.setMuted(!this.muted));
-      this.stopButton=button('DISATTIVA CHAT',()=>this.stop());
-      button('DIAGNOSTICA',()=>{
-        let report=root.querySelector('[data-report]');
-        if(!report){report=document.createElement('pre');report.dataset.report='';report.style.cssText='white-space:pre-wrap;font:12px monospace;user-select:text';root.querySelector('section').appendChild(report);}
-        report.textContent=this.diagnostics();
-      });
+      button('RIPRISTINA USCITA AUDIO',()=>this.repairOutput());
       button('CHIUDI',()=>this.closePanel());
       root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')this.closePanel();if(e.key==='Tab'){const items=[...root.querySelectorAll('button:not(:disabled),input')];const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
       root.addEventListener('pointerdown',()=>this.unlock());
@@ -47,9 +42,8 @@
       if(!this.panel)return;
       this.panel.querySelector('[data-status]').textContent=!this.me ? 'Chat disponibile in una lobby multiplayer. Se sei gia\' in partita, aggiorna anche il server.' : (this.message || 'Chat vocale disattivata.');
       this.startButton.disabled=!!this.starting || !this.me;
-      this.startButton.textContent=this.starting ? 'CONNESSIONE…' : this.enabled ? 'RICONNETTI AUDIO' : 'ATTIVA MICROFONO';
+      this.startButton.textContent=this.starting ? 'CONNESSIONE…' : this.enabled ? 'DISATTIVA AUDIO' : 'ATTIVA AUDIO';
       this.muteButton.disabled=!this.enabled;this.muteButton.textContent=this.muted?'RIATTIVA MICROFONO':'SILENZIA MICROFONO';
-      this.stopButton.disabled=!this.enabled&&!this.starting;
       const list=this.panel.querySelector('[data-people]');
       const signature=JSON.stringify([...this.people].map(([id,p])=>[id,p.name,this.peers.get(id)?.state||'off']));
       if(list.dataset.signature===signature)return;
@@ -68,7 +62,43 @@
         'Microfono: '+(this.stream?.active?'attivo':'spento'),
         'Audio: '+(this.context?.state||'spento'),'Partecipanti vocali: '+this.peers.size,
         'Fase: '+(this.stage||'inattiva'),'Ultimo errore: '+(this.lastError||'nessuno'),
-        'Disconnessione: '+(this.disconnectReason??'nessuna')].join('\n');
+        'Disconnessione: '+(this.disconnectReason??'nessuna'),
+        'Sessione audio: '+(navigator.audioSession?.type||'gestita dal browser'),
+        'Uscita: '+(this.outputNote||'predefinita di sistema')].join('\n');
+    }
+    prepareAudioSession() {
+      // WebKit can retain an old handset route. Reset before capture, then
+      // explicitly request duplex audio afterwards. Never force playback while
+      // recording: that can prevent microphone capture on Safari.
+      try {
+        if(navigator.audioSession){
+          this.previousAudioSession=navigator.audioSession.type;
+          navigator.audioSession.type='auto';
+        }
+      } catch(_) {}
+    }
+    async repairOutput() {
+      if(!this.stream){this.status('Attiva prima il microfono.');return;}
+      const generation=this.generation;
+      try {
+        if(navigator.audioSession){
+          navigator.audioSession.type='auto';
+          navigator.audioSession.type='play-and-record';
+        }
+        // Where supported let the user choose explicitly, rather than guessing
+        // device labels and accidentally overriding Bluetooth/headphones.
+        if(navigator.mediaDevices.selectAudioOutput&&this.context?.setSinkId){
+          const device=await navigator.mediaDevices.selectAudioOutput();
+          if(generation!==this.generation)return;
+          await this.context.setSinkId(device.deviceId);
+          if(generation!==this.generation)return;
+          this.outputNote='uscita selezionata';
+        } else this.outputNote='ripristino richiesto; uscita fisica non verificabile';
+        this.unlock();
+        this.status('Uscita audio aggiornata: verifica da dove senti la voce.');
+      } catch(_) {
+        if(generation===this.generation)this.status('Uscita non cambiata: il browser non consente la selezione o e\' stata annullata.');
+      }
     }
     update(room,me,list) {
       if(room!==this.room||me!==this.me){this.stop();this.volumes.clear();}
@@ -102,6 +132,7 @@
       this.lastError='';this.disconnectReason=null;this.stage='microfono';
       const generation=this.generation;
       this.starting=true;this.status('Consenti il microfono: connessione a LiveKit…');
+      this.prepareAudioSession();
       try {
         // Capture/resume in the actual DOM gesture, before asynchronous authorization.
         this.context=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
@@ -109,8 +140,9 @@
         const stream=await navigator.mediaDevices.getUserMedia({video:false,audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
         if(generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return;}
         this.stream=stream;
+        try {if(navigator.audioSession)navigator.audioSession.type='play-and-record';} catch(_) {}
         stream.getAudioTracks()[0].onended=()=>{
-          if(generation===this.generation){this.stop();this.status('Microfono scollegato. Premi ATTIVA MICROFONO.');}
+          if(generation===this.generation){this.stop();this.status('Microfono scollegato. Premi ATTIVA AUDIO.');}
         };
         this.stage='autorizzazione server Bisca';
         const credentials=await this.requestCredentials();
@@ -143,7 +175,7 @@
           // connect/publish reject with the useful error. Do not invalidate their
           // generation here: that used to swallow authentication/network failures.
           if(this.starting)return;
-          this.stop();this.status('Chat vocale disconnessa ('+this.disconnectReason+'). Premi ATTIVA MICROFONO per riprovare.');
+          this.stop();this.status('Chat vocale disconnessa ('+this.disconnectReason+'). Premi ATTIVA AUDIO per riprovare.');
         });
         this.stage='connessione LiveKit';
         await session.connect(credentials.url,credentials.token,{autoSubscribe:true});
@@ -193,6 +225,10 @@
       this.stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});this.stream=null;
       session?.disconnect().catch(()=>{});
       this.context?.close().catch(()=>{});this.context=null;
+      try {
+        if(this.previousAudioSession!==undefined&&navigator.audioSession)navigator.audioSession.type=this.previousAudioSession;
+      } catch(_) {}
+      this.previousAudioSession=undefined;
       this.status('Chat vocale disattivata.');
     }
     receive() {} // Ignore old P2P signals during rolling deployments.

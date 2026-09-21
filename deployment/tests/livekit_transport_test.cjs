@@ -66,5 +66,17 @@ const authorize=async()=>{await turn();const e=JSON.parse(voice.drain()).find(e=
   starting=voice.start();await authorize();await starting;assert(voice.enabled);
   voice.session.emit(events.Disconnected,'PARTICIPANT_REMOVED');
   assert(!voice.enabled);assert.match(voice.message,/PARTICIPANT_REMOVED/);
+  navigator.audioSession={type:'ambient'};
+  media=stream();getMedia=async()=>media;
+  starting=voice.start();await authorize();await starting;
+  assert.equal(navigator.audioSession.type,'play-and-record');
+  await voice.repairOutput();assert(voice.enabled&&!media.track.stopped);
+  let sink;
+  navigator.mediaDevices.selectAudioOutput=async()=>({deviceId:'chosen-speaker'});
+  voice.context.setSinkId=async id=>{sink=id;};
+  await voice.repairOutput();assert.equal(sink,'chosen-speaker');
+  navigator.mediaDevices.selectAudioOutput=async()=>{throw new Error('denied');};
+  await voice.repairOutput();assert(voice.enabled&&!media.track.stopped);
+  voice.stop();assert.equal(navigator.audioSession.type,'ambient');
   console.log('PASS: LiveKit lifecycle, audio-only publish, gain, mute, reconnect, room isolation, stale tokens, cancellation, permission errors');
 })().catch(error=>{console.error(error);process.exitCode=1;});

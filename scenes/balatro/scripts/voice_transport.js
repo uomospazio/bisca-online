@@ -66,7 +66,9 @@
     diagnostics() {
       return ['Voce LiveKit 2.22.3','Connessione: '+(this.session?.state||'disconnessa'),
         'Microfono: '+(this.stream?.active?'attivo':'spento'),
-        'Audio: '+(this.context?.state||'spento'),'Partecipanti vocali: '+this.peers.size].join('\n');
+        'Audio: '+(this.context?.state||'spento'),'Partecipanti vocali: '+this.peers.size,
+        'Fase: '+(this.stage||'inattiva'),'Ultimo errore: '+(this.lastError||'nessuno'),
+        'Disconnessione: '+(this.disconnectReason??'nessuna')].join('\n');
     }
     update(room,me,list) {
       if(room!==this.room||me!==this.me){this.stop();this.volumes.clear();}
@@ -97,6 +99,7 @@
       if(!window.LivekitClient){this.status('Modulo LiveKit mancante. Aggiorna il gioco.');return;}
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){this.status('Apri il gioco tramite HTTPS in un browser aggiornato.');return;}
       this.stop();
+      this.lastError='';this.disconnectReason=null;this.stage='microfono';
       const generation=this.generation;
       this.starting=true;this.status('Consenti il microfono: connessione a LiveKit…');
       try {
@@ -109,6 +112,7 @@
         stream.getAudioTracks()[0].onended=()=>{
           if(generation===this.generation){this.stop();this.status('Microfono scollegato. Premi ATTIVA MICROFONO.');}
         };
+        this.stage='autorizzazione server Bisca';
         const credentials=await this.requestCredentials();
         if(generation!==this.generation)return;
         const LK=window.LivekitClient;
@@ -133,23 +137,33 @@
         session.on(LK.RoomEvent.AudioPlaybackStatusChanged,()=>{
           if(active()&&!session.canPlaybackAudio)this.status("Tocca il pannello per attivare l'audio.");
         });
-        session.on(LK.RoomEvent.Disconnected,()=>{
-          if(active()){this.stop();this.status('Chat vocale disconnessa. Premi ATTIVA MICROFONO per riprovare.');}
+        session.on(LK.RoomEvent.Disconnected,(reason)=>{
+          if(!active())return;
+          this.disconnectReason=LK.DisconnectReason?.[reason]??reason??'non specificata';
+          // connect/publish reject with the useful error. Do not invalidate their
+          // generation here: that used to swallow authentication/network failures.
+          if(this.starting)return;
+          this.stop();this.status('Chat vocale disconnessa ('+this.disconnectReason+'). Premi ATTIVA MICROFONO per riprovare.');
         });
+        this.stage='connessione LiveKit';
         await session.connect(credentials.url,credentials.token,{autoSubscribe:true});
         if(!active()){await session.disconnect();return;}
+        this.stage='pubblicazione microfono';
         await session.localParticipant.publishTrack(stream.getAudioTracks()[0],{source:LK.Track.Source.Microphone});
         if(!active()){await session.disconnect();return;}
+        this.stage='connessa';
         this.enabled=true;this.starting=false;this.unlock();
         this.status('Chat vocale connessa. Anche gli altri giocatori devono attivarla.');
       } catch(error) {
         if(generation!==this.generation)return;
+        // Never expose credentials or URLs that may carry access tokens.
+        this.lastError=String(error?.message||error).replace(/(?:https?|wss?):\/\/\S+/g,'[indirizzo]').replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,'[token]').slice(0,400);
         this.stop();
         const message=error.name==='NotAllowedError'?'Microfono negato: abilitalo nei permessi del sito.':
           error.name==='NotFoundError'?'Nessun microfono trovato.':
           error.name==='NotReadableError'?'Microfono occupato: chiudi le altre app audio e riprova.':
           /^(LiveKit non configurato|Entra prima|Lobby non disponibile|Giocatore non disponibile|Accesso vocale|Attendi un momento|Il server non risponde|Configurazione LiveKit)/.test(error.message)?error.message:
-          'Connessione LiveKit fallita. Controlla configurazione e quota gratuita del progetto, poi riprova.';
+          'Errore durante '+this.stage+': '+this.lastError;
         this.status(message);
       }
     }

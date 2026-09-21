@@ -4,13 +4,13 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const { EventEmitter } = require('node:events');
 const events = Object.fromEntries(['TrackSubscribed','TrackUnsubscribed','ParticipantDisconnected','Reconnecting','Reconnected','AudioPlaybackStatusChanged','Disconnected'].map(x=>[x,x]));
-let getMedia, connectGate;
+let getMedia, connectGate, connectError;
 class Room extends EventEmitter {
   constructor(options) {
     super(); this.options=options; this.state='disconnected';
     this.localParticipant={audioTrackPublications:new Map(),publishTrack:async track=>{this.published=track;}};
   }
-  async connect(url,token) {this.url=url;this.token=token;await connectGate;this.state='connected';}
+  async connect(url,token) {this.url=url;this.token=token;await connectGate;if(connectError){this.emit(events.Disconnected, 'JOIN_FAILURE');throw connectError;}this.state='connected';}
   async disconnect(){this.state='disconnected';this.emit(events.Disconnected);}
   async startAudio() {}
 }
@@ -58,5 +58,13 @@ const authorize=async()=>{await turn();const e=JSON.parse(voice.drain()).find(e=
   let finishConnect;connectGate=new Promise(resolve=>{finishConnect=resolve;});
   media=stream();getMedia=async()=>media;starting=voice.start();await authorize();await turn();
   voice.stop();finishConnect();await starting;assert(media.track.stopped&&!voice.enabled);
+  connectGate=undefined;connectError=new Error('invalid API key');
+  media=stream();getMedia=async()=>media;starting=voice.start();await authorize();await starting;
+  assert.match(voice.message,/invalid API key/);assert.match(voice.diagnostics(),/JOIN_FAILURE/);
+  assert(media.track.stopped&&!voice.enabled&&!voice.starting);
+  connectError=undefined;
+  starting=voice.start();await authorize();await starting;assert(voice.enabled);
+  voice.session.emit(events.Disconnected,'PARTICIPANT_REMOVED');
+  assert(!voice.enabled);assert.match(voice.message,/PARTICIPANT_REMOVED/);
   console.log('PASS: LiveKit lifecycle, audio-only publish, gain, mute, reconnect, room isolation, stale tokens, cancellation, permission errors');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -2,8 +2,8 @@
 
 ## Utilizzo
 
-Nella partita multiplayer: pausa → Settings → scorri fino a CHAT VOCALE.
-Ogni partecipante preme ATTIVA AUDIO e consente il microfono. Il toggle
+Nella partita multiplayer: **VOCE**, sotto INFO → ATTIVA MICROFONO.
+Ogni partecipante attiva la chat e consente il microfono. Il toggle
 MICROFONO ACCESO interrompe la trasmissione senza interrompere l'ascolto.
 DISATTIVA ferma le tracce del microfono e chiude le connessioni.
 Ogni altro umano ha uno slider 0–100; 0 lo silenzia solo per te.
@@ -39,7 +39,14 @@ di utilizzo. Non sono inclusi account o servizi a pagamento.
 
 ## Test locali
 
+In caso di errore aprire **DIAGNOSTICA** nel pannello VOCE. Il report v2
+mostra stato ICE/SDP, numero di candidati locali/remoti e fase dell'errore;
+non contiene IP, SDP, codice lobby o credenziali. Un errore SDP e un errore
+ICE non implicano la stessa causa: non attribuire automaticamente ogni errore
+all'assenza di TURN. RICONNETTI AUDIO ricrea i peer mantenendo il microfono.
+
 - Godot: `--headless --path . --script deployment/tests/voice_settings_test.gd`
+- Relay WebSocket reale (solo loopback): `--headless --path . --script deployment/tests/voice_relay_test.gd`
 - HTTP locale dalla root del progetto, poi aprire
   `/deployment/tests/voice_transport_test.html` e premere il pulsante di test.
   Usa oscillatori sintetici e due peer WebRTC reali: non cattura microfoni.

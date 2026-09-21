@@ -52,6 +52,16 @@ document.getElementById('run').onclick=async()=>{
     const stats=await a.peers.get('b').pc.getStats();
     let bytes=0;stats.forEach(r=>{if(r.type==='inbound-rtp' && r.kind==='audio')bytes+=r.bytesReceived;});
     assert(bytes>0,'Nessun pacchetto audio ricevuto');
+    const previous=a.peers.get('b');
+    const mic=a.stream;
+    await a.start();
+    for(let i=0;i<100;i++){
+      if(a.peers.get('b')?.pc.connectionState==='connected')break;
+      await delay(100);
+    }
+    assert(a.peers.get('b')!==previous && previous.pc.connectionState==='closed','Riconnetti non ricrea il peer');
+    assert(a.peers.get('b')?.pc.connectionState==='connected' && a.stream===mic,'Riconnessione senza nuova cattura fallita');
+    assert(a.diagnostics().includes('ICE connected') || a.diagnostics().includes('ICE completed'),'Diagnostica ICE assente');
     a.setMaster(0.5);a.setVolume('b',0.4);await delay(200);
     assert(Math.abs(a.peers.get('b').gain.gain.value-0.2)<0.001,'Volume individuale/Main errato');
     a.setVolume('b',0);await delay(200);

@@ -5,7 +5,7 @@
       this.peers = new Map(); this.people = new Map(); this.volumes = new Map();
       this.events = []; this.enabled = false; this.muted = false; this.master = 1;
       this.room = ''; this.me = ''; this.epoch = ''; this.generation = 0;
-      this.iceServers = [{urls:'stun:stun.l.google.com:19302'}];
+      this.iceServers = [{urls:['stun:stun.l.google.com:19302','stun:stun.cloudflare.com:3478']}];
       this.unlock = () => {
         if (this.context?.state === 'suspended' || this.context?.state === 'interrupted')
           this.context.resume().catch(() => this.status('Tocca ATTIVA AUDIO per riprendere l’ascolto.'));
@@ -30,6 +30,11 @@
       this.startButton=button('ATTIVA MICROFONO',()=>this.start());
       this.muteButton=button('SILENZIA MICROFONO',()=>this.setMuted(!this.muted));
       this.stopButton=button('DISATTIVA CHAT',()=>this.stop());
+      button('DIAGNOSTICA',()=>{
+        let report=root.querySelector('[data-report]');
+        if(!report){report=document.createElement('pre');report.dataset.report='';report.style.cssText='white-space:pre-wrap;font:12px monospace;user-select:text';root.querySelector('section').appendChild(report);}
+        report.textContent=this.diagnostics();
+      });
       button('CHIUDI',()=>this.closePanel());
       root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')this.closePanel();if(e.key==='Tab'){const items=[...root.querySelectorAll('button:not(:disabled),input')];const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
       for(const type of ['pointerdown','pointerup','click'])root.addEventListener(type,e=>e.stopPropagation());
@@ -56,6 +61,16 @@
       }
     }
     configure(servers) { if (Array.isArray(servers) && servers.length) this.iceServers = servers; }
+    diagnostics() {
+      // Deliberately omit SDP, IP addresses, room codes and credentials.
+      return ['Voce v2',`Microfono: ${this.enabled?'attivo':'spento'}; audio: ${this.context?.state||'spento'}`,
+        `TURN: ${this.iceServers.some(s=>[s.urls].flat().some(u=>/^turns?:/.test(u)))?'configurato':'non configurato'}`,
+        ...[...this.peers.values()].map((p,i)=>`Peer ${i+1}: ${p.pc.connectionState}; ICE ${p.pc.iceConnectionState}; SDP ${p.pc.signalingState}\nCandidati: locali ${p.localCandidates}, remoti ${p.remoteCandidates}; errore ${p.lastError||'nessuno'}`)].join('\n');
+    }
+    failure(p, stage, error) {
+      p.lastError=`${stage}: ${error?.name||'Error'}`;
+      this.status(`Errore vocale (${p.lastError}). Apri DIAGNOSTICA per i dettagli della connessione.`);
+    }
     send(id, data) {
       const person = this.people.get(id);
       if (person) this.event({op:'signal',slot:person.slot,data:{...data,room:this.room,from_id:this.me,to_id:id,epoch:this.epoch}});
@@ -71,10 +86,13 @@
     async start() {
       if (this.enabled) {
         this.unlock();
-        for (const [id,p] of this.peers) if (['failed','disconnected'].includes(p.pc.connectionState)) {
-          if (this.me < id) this.offer(id,p,true); else this.send(id,{type:'retry'});
-        }
-        for (const id of this.people.keys()) if (!this.peers.has(id)) this.send(id,{type:'ready'});
+        // Rebuild stale negotiations as well as failed ICE connections. Keeping
+        // a peer stuck in have-local-offer made the old reconnect button a no-op.
+        for(const id of this.peers.keys())this.send(id,{type:'off'});
+        for(const id of [...this.peers.keys()])this.closePeer(id);
+        this.epoch=crypto.randomUUID();
+        for (const id of this.people.keys()) this.send(id,{type:'ready'});
+        this.status('Riconnessione audio in corso…');
         return;
       }
       if (this.starting) return;
@@ -133,14 +151,14 @@
     }
     makePeer(id, epoch) {
       const pc=new RTCPeerConnection({iceServers:this.iceServers});
-      const p={pc,epoch,queue:Promise.resolve(),candidates:[],restarts:0};
+      const p={pc,epoch,queue:Promise.resolve(),candidates:[],restarts:0,localCandidates:0,remoteCandidates:0,lastError:'',offering:false};
       this.peers.set(id,p);
       p.watchdog=setTimeout(()=>{
         if(this.peers.get(id)===p && pc.connectionState!=='connected')
           this.status('Connessione audio non completata. Premi RICONNETTI AUDIO. Se persiste su reti diverse, potrebbe servire un server TURN.');
       },15000);
       this.stream.getAudioTracks().forEach(track=>pc.addTrack(track,this.stream));
-      pc.onicecandidate=e=>{if(e.candidate && this.peers.get(id)===p) this.send(id,{type:'candidate',candidate:e.candidate.toJSON()});};
+      pc.onicecandidate=e=>{if(e.candidate && this.peers.get(id)===p) {p.localCandidates++;this.send(id,{type:'candidate',candidate:e.candidate.toJSON()});}};
       pc.ontrack=e=>{
         if(this.peers.get(id)!==p || !this.context || p.source) return;
         const stream=e.streams[0] || new MediaStream([e.track]);
@@ -168,12 +186,15 @@
       return p;
     }
     async offer(id,p,restart=false) {
+      if(p.offering || this.peers.get(id)!==p || p.pc.signalingState!=='stable')return;
+      p.offering=true;
       try {
         const description=await p.pc.createOffer({iceRestart:restart});
         if(this.peers.get(id)!==p) return;
         await p.pc.setLocalDescription(description);
         if (this.peers.get(id)===p) this.send(id,{type:'description',description:{type:p.pc.localDescription.type,sdp:p.pc.localDescription.sdp}});
-      } catch (_) { if(this.peers.get(id)===p) this.status('Connessione vocale non riuscita. Disattiva e riattiva la chat.'); }
+      } catch (error) { if(this.peers.get(id)===p) this.failure(p,'offerta SDP',error); }
+      finally {p.offering=false;}
     }
     receive(data) {
       if(!this.enabled || data.room!==this.room || data.to_id!==this.me || !this.people.has(data.from_id)) return;
@@ -199,10 +220,11 @@
             if(this.peers.get(id)===p) this.send(id,{type:'description',description:{type:p.pc.localDescription.type,sdp:p.pc.localDescription.sdp}});
           }
         } else if(data.type==='candidate') {
+          p.remoteCandidates++;
           if(p.pc.remoteDescription) await p.pc.addIceCandidate(data.candidate);
           else if(p.candidates.length<64) p.candidates.push(data.candidate);
         }
-      }).catch(()=>{if(this.peers.get(id)===p)this.status('Errore di connessione vocale. Disattiva e riattiva la chat.');});
+      }).catch(error=>{if(this.peers.get(id)===p)this.failure(p,data.type==='candidate'?'candidato ICE':'risposta SDP',error);});
     }
   }
   window.BiscaVoice = new BiscaVoiceTransport();

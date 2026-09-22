@@ -1,6 +1,9 @@
 shader_type canvas_item;
 
 uniform sampler2D tile_texture;
+uniform sampler2D coppe;
+uniform sampler2D spade;
+uniform sampler2D bastoni;
 uniform float tile_factor: hint_range(0.0, 100.0) = 1.0;
 uniform vec2 tile_offset = vec2(0.0);
 uniform float tile_rotation: hint_range(-360.0, 360.0, 0.1) = 0.0;
@@ -59,6 +62,11 @@ void fragment() {
 
 	// Sample texture
 	vec4 pattern_tex = texture(tile_texture, local_uv);
+	float suit = mod(floor(tiled_uv.x) + floor(tiled_uv.y), 4.0);
+	if (suit > 2.5) { pattern_tex = texture(bastoni, local_uv); }
+	else if (suit > 1.5) { pattern_tex = texture(spade, local_uv); }
+	else if (suit > 0.5) { pattern_tex = texture(coppe, local_uv); }
+	if (any(lessThan(local_uv, vec2(0.0))) || any(greaterThan(local_uv, vec2(1.0)))) { pattern_tex.a = 0.0; }
 
 	COLOR.rgb = pattern_tex.rgb * modulate.rgb;
 	COLOR.a = pattern_tex.a * in_tex.a * modulate.a;

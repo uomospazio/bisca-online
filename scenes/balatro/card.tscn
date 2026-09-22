@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ccpeukrdsfbkm"]
 
-[ext_resource type="Texture2D" path="res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png" id="1_3sp1f"]
+[ext_resource type="Texture2D" path="res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back1.png" id="1_3sp1f"]
 [ext_resource type="Shader" uid="uid://cshgprywi4vp0" path="res://scenes/shared/shaders/fake_3D.gdshader" id="1_7h7yf"]
 [ext_resource type="Script" uid="uid://ebq8nj03463r" path="res://scenes/balatro/scripts/card.gd" id="1_borcn"]
 

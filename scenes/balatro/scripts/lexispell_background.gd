@@ -2,7 +2,7 @@
 extends ColorRect
 
 # Lexispell's UIBackground palette and animated star material.
-const STAR = preload("res://scenes/balatro/resources/minibisca.png")
+const STAR = preload("res://scenes/balatro/resources/denari.png")
 const PATTERN_SHADER = preload("res://scenes/balatro/shaders/lexispell_background.gdshader")
 
 func _ready() -> void:
@@ -15,6 +15,9 @@ func _ready() -> void:
 	var pattern := ShaderMaterial.new()
 	pattern.shader = PATTERN_SHADER
 	pattern.set_shader_parameter("tile_texture", STAR)
+	pattern.set_shader_parameter("coppe", preload("res://scenes/balatro/resources/coppe.png"))
+	pattern.set_shader_parameter("spade", preload("res://scenes/balatro/resources/spade.png"))
+	pattern.set_shader_parameter("bastoni", preload("res://scenes/balatro/resources/bastoni.png"))
 	pattern.set_shader_parameter("tile_factor", 1.0)
 	pattern.set_shader_parameter("tile_rotation_speed", 25.0)
 	pattern.set_shader_parameter("tile_spacing", -1.8)

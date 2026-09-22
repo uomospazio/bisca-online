@@ -1,7 +1,11 @@
 extends Node
 
 signal changed
-const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "tooltips": true, "fullscreen": false}
+const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "tooltips": true, "fullscreen": false, "deck_back": 1}
+
+func back_texture(index: int = -1) -> Texture2D:
+	var chosen := int(values.deck_back) if index < 0 else index
+	return load("res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back%d.png" % clampi(chosen, 1, 12))
 var values: Dictionary = DEFAULTS.duplicate()
 var save_path := "user://bisca_settings.cfg"
 var save_timer: Timer
@@ -29,7 +33,9 @@ func load_preferences() -> void:
 		return
 	for key in DEFAULTS:
 		var value: Variant = config.get_value("settings", key, DEFAULTS[key])
-		if key in ["main", "effects"]:
+		if key == "deck_back" and (value is int or value is float):
+			values[key] = clampi(int(value), 1, 12)
+		elif key in ["main", "effects"]:
 			if value is float or value is int:
 				values[key] = clampf(float(value), 0.0, 100.0)
 		elif value is bool:
@@ -39,6 +45,8 @@ func set_value(key: String, value: Variant) -> void:
 	if not DEFAULTS.has(key):
 		return
 	values[key] = clampf(float(value), 0.0, 100.0) if key in ["main", "effects"] else bool(value)
+	if key == "deck_back":
+		values[key] = clampi(int(value), 1, 12)
 	apply()
 	changed.emit()
 	if save_timer:

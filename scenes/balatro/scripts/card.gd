@@ -2,7 +2,10 @@ extends Button
 
 const CardData = preload("res://scenes/balatro/scripts/card_data.gd")
 const ButtonAudio = preload("res://scenes/balatro/scripts/button_audio.gd")
-const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png")
+var BACK: Texture2D:
+	get:
+		var settings = get_node_or_null("/root/GameSettings")
+		return settings.back_texture() if settings else preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back1.png")
 var data: CardData
 var face_down: bool = false
 var is_dealing: bool = false

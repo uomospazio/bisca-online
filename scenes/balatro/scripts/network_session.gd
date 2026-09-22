@@ -409,6 +409,15 @@ func request(command: Dictionary) -> void:
 	if op == "leave":
 		_disconnected(peer)
 		return
+	if op == "settings":
+		if slot != 0 or room.stage != "lobby" or room.rules != null:
+			_reject(peer, "Solo il creatore puo' modificare la lobby")
+			return
+		room.options = {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5)}
+		room.bots = bool(command.get("bots", false))
+		room.bot_count = clampi(int(command.get("bot_count", 2)), 1, 7)
+		_broadcast(room)
+		return
 	if op == "kick":
 		if slot != 0 or room.rules != null:
 			_reject(peer, "Solo il creatore può rimuovere giocatori")
@@ -471,6 +480,8 @@ func _broadcast(room: Dictionary) -> void:
 		if not _peer_connected(person.peer):
 			continue
 		var state := {"code": room.code, "you": id, "rev": room.rev, "stage": room.stage, "capacity": room.capacity, "bots": room.bots, "people": []}
+		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
+		state["bot_count"] = room.get("bot_count", 2)
 		for p in room.people:
 			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id})
 		if room.rules != null:

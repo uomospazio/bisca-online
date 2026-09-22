@@ -8,7 +8,11 @@ var match_options: PanelContainer
 var info: Label
 var start_button: Button
 var controls: VBoxContainer
-var session_controls: VBoxContainer
+var session_controls: Control
+var lobby_options: PanelContainer
+var copied_code := ""
+var syncing_options := false
+var is_host := false
 var players_box: VBoxContainer
 var code_button: Button
 var entry: VBoxContainer
@@ -21,8 +25,7 @@ var profile_room := ""
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
 	net = get_node("/root/NetworkSession")
-	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
-	add_child(profile_picker)
+	profile_picker = menu.profile_picker
 	profile_picker.selected.connect(func(avatar):
 		if net.room_code == profile_room and not profile_room.is_empty():
 			net.send({"op": "profile", "avatar": avatar})
@@ -35,13 +38,10 @@ func setup(owner_menu: Control) -> void:
 	entry.position = Vector2(640, 530)
 	entry.size = Vector2(640, 200)
 	entry.add_theme_constant_override("separation", 24)
-	menu.name_input.reparent(entry)
-	menu.name_input.custom_minimum_size.y = 72
-	menu.name_input.show()
 	var choices := HBoxContainer.new()
 	entry.add_child(choices)
 	choices.add_theme_constant_override("separation", 24)
-	var create: Button = menu._button(choices, "CREA LOBBY", func(): _show_form(true))
+	var create: Button = menu._button(choices, "CREA LOBBY", func(): net.connect_room(net.endpoint, {"op": "create", "name": menu.chosen_name(), "capacity": 8}))
 	create.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var join: Button = menu._button(choices, "ENTRA CON CODICE", func(): _show_form(false))
 	join.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -78,22 +78,45 @@ func setup(owner_menu: Control) -> void:
 	join_button = menu._button(controls, "Entra", func(): net.connect_room(address.text, {"op": "join", "name": menu.chosen_name(), "code": code.text}))
 	rejoin_button = menu._button(controls, "Rientra nella partita", func(): net.connect_room(address.text, {"op": "rejoin", "code": net.room_code, "token": net.token}))
 	controls.hide()
-	session_controls = VBoxContainer.new()
+	session_controls = Control.new()
 	add_child(session_controls)
-	session_controls.position = Vector2(600, 240)
-	session_controls.size = Vector2(720, 630)
-	session_controls.add_theme_constant_override("separation", 18)
+	session_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	code_button = menu._button(session_controls, "CODICE PARTITA", func():
 		DisplayServer.clipboard_set(code_button.get_meta("room_code", ""))
+		copied_code = str(code_button.get_meta("room_code", ""))
+		code_button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/copy-success.svg")
 		info.text = "Codice copiato negli appunti"
 	)
-	code_button.custom_minimum_size = Vector2(720, 64)
+	code_button.position = Vector2(70, 130)
+	code_button.custom_minimum_size = Vector2(580, 80)
+	code_button.size = Vector2(580, 80)
+	_set_icon(code_button, "copy")
+	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
+	session_controls.add_child(lobby_options)
+	lobby_options.position = Vector2(70, 250)
+	lobby_options.size = Vector2(580, 560)
+	lobby_options.setup(menu, true)
+	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
+		slider.value_changed.connect(func(_value): _send_options())
+	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
+	var participant_panel := PanelContainer.new()
+	session_controls.add_child(participant_panel)
+	participant_panel.position = Vector2(700, 130)
+	participant_panel.size = Vector2(1150, 770)
+	var panel_style = menu._menu_button_style(menu.BUTTON_PURPLE, menu.BUTTON_CYAN, 4)
+	panel_style.content_margin_left = 24
+	panel_style.content_margin_right = 24
+	panel_style.content_margin_top = 24
+	panel_style.content_margin_bottom = 120
+	participant_panel.add_theme_stylebox_override("panel", panel_style)
 	players_box = VBoxContainer.new()
 	players_box.add_theme_constant_override("separation", 8)
-	players_box.custom_minimum_size = Vector2(720, 456)
-	session_controls.add_child(players_box)
-	start_button = menu._button(session_controls, "Avvia partita", func(): net.send({"op": "start"}))
-	start_button.custom_minimum_size = Vector2(720, 72)
+	participant_panel.add_child(players_box)
+	start_button = menu._button(session_controls, "PLAY", func(): net.send({"op": "start"}))
+	start_button.position = Vector2(1510, 790)
+	start_button.size = Vector2(300, 80)
+	start_button.custom_minimum_size.y = 80
+	_set_icon(start_button, "play")
 	session_controls.hide()
 	info = Label.new()
 	add_child(info)
@@ -103,7 +126,7 @@ func setup(owner_menu: Control) -> void:
 	info.add_theme_font_size_override("font_size", 24)
 	var back_row := VBoxContainer.new()
 	add_child(back_row)
-	back_row.position = Vector2(45, 950)
+	back_row.position = Vector2(70, 920)
 	back_row.size.x = 300
 	menu._button(back_row, "Indietro", _back)
 	net.updated.connect(_update)
@@ -145,20 +168,24 @@ func _update(state: Dictionary) -> void:
 		return
 	if profile_room != str(state.code):
 		profile_room = str(state.code)
-		profile_picker.open.call_deferred(str(state.people[state.you].name))
+		net.send.call_deferred({"op": "profile", "avatar": menu.profile_avatar})
 	if not session_controls.visible:
 		menu.title.hide()
 		menu.friends_subtitle.hide()
-		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, controls, session_controls)
+		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, entry if entry.visible else controls, session_controls)
 	start_button.disabled = state.you != 0
-	code_button.text = "CODICE LOBBY: " + str(state.code)
+	is_host = state.you == 0
+	_sync_options(state)
+	code_button.text = str(state.code)
+	code_button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
 	code_button.set_meta("room_code", state.code)
 	for child in players_box.get_children():
+		players_box.remove_child(child)
 		child.queue_free()
 	for index in range(min(8, state.people.size())):
 		var p: Dictionary = state.people[index]
 		var row := PanelContainer.new()
-		row.custom_minimum_size = Vector2(720, 50)
+		row.custom_minimum_size = Vector2(0, 64)
 		row.clip_contents = true
 		row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.BUTTON_PURPLE))
 		var line := HBoxContainer.new()
@@ -170,6 +197,10 @@ func _update(state: Dictionary) -> void:
 		avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		avatar.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		avatar.texture = net.avatar_for_slot(index)
+		avatar.draw.connect(func():
+			if avatar.texture == null:
+				avatar.draw_circle(avatar.size / 2.0, 20, Color("d9d9d9"), true, -1, true)
+		)
 		line.add_child(avatar)
 		row.set_meta("avatar_view", avatar)
 		row.set_meta("slot", index)
@@ -182,6 +213,26 @@ func _update(state: Dictionary) -> void:
 		name_button.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 		name_button.flat = true
 		line.add_child(name_button)
+		var voice = get_node("/root/VoiceChat")
+		var voice_id := str(p.get("voice_id", ""))
+		var volume := HSlider.new()
+		volume.min_value = 0
+		volume.max_value = 100
+		volume.step = 1
+		volume.value = voice.player_volume(voice_id)
+		volume.custom_minimum_size = Vector2(220, 50)
+		volume.editable = index != int(state.you) and not bool(p.bot)
+		var speaker := Button.new()
+		line.add_child(speaker)
+		speaker.custom_minimum_size = Vector2(56, 50)
+		_set_icon(speaker, "volume-cross" if volume.value == 0 else "volume-high")
+		speaker.disabled = not volume.editable
+		speaker.pressed.connect(func(): volume.value = 100 if volume.value == 0 else 0)
+		line.add_child(volume)
+		volume.value_changed.connect(func(value):
+			voice.set_player_volume(voice_id, value)
+			_set_icon(speaker, "volume-cross" if value == 0 else "volume-high")
+		)
 		var remove := Button.new()
 		RoundedSquareButton.ButtonAudio.attach(remove)
 		remove.text = "×"
@@ -198,6 +249,32 @@ func _update(state: Dictionary) -> void:
 		line.add_child(remove)
 		players_box.add_child(row)
 	info.text = "In attesa dei giocatori…"
+
+func _set_icon(button: Button, icon_name: String) -> void:
+	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
+	button.expand_icon = true
+	button.add_theme_constant_override("icon_max_width", 32)
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
+func _send_options() -> void:
+	if syncing_options or not is_host or not session_controls.visible:
+		return
+	var command: Dictionary = lobby_options.values()
+	command["op"] = "settings"
+	net.send(command)
+
+func _sync_options(state: Dictionary) -> void:
+	syncing_options = true
+	var options: Dictionary = state.get("options", {})
+	lobby_options.lives.value = options.get("lives", 3)
+	lobby_options.rounds.value = options.get("starting_cards", 5)
+	lobby_options.bot_count.value = state.get("bot_count", 2)
+	lobby_options.fill_bots.button_pressed = state.get("bots", false)
+	lobby_options.bot_count.get_parent().visible = lobby_options.fill_bots.button_pressed
+	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
+		slider.editable = is_host
+	lobby_options.fill_bots.disabled = not is_host
+	syncing_options = false
 
 func _update_lobby_photos() -> void:
 	if players_box == null:

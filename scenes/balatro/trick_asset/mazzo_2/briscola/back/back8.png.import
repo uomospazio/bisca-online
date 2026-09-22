@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ck6o2kfe4dbua"
-path="res://.godot/imported/volume-high.svg-931a78013702f30235f25cc8049c5f62.ctex"
+uid="uid://bwn6210o12qvl"
+path="res://.godot/imported/back8.png-5dad66b59ebd2c7d5b02c27118c7e432.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/balatro/trick_asset/ui_bisca/volume-high.svg"
-dest_files=["res://.godot/imported/volume-high.svg-931a78013702f30235f25cc8049c5f62.ctex"]
+source_file="res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back8.png"
+dest_files=["res://.godot/imported/back8.png-5dad66b59ebd2c7d5b02c27118c7e432.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=8.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

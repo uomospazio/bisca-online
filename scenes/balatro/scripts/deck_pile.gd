@@ -1,7 +1,10 @@
 @tool
 extends Control
 
-const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png")
+var BACK: Texture2D:
+	get:
+		var settings = get_node_or_null("/root/GameSettings")
+		return settings.back_texture() if settings else preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back1.png")
 const LAYER_OFFSET := Vector2(0.4, -0.4)
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 var bend: float = 0.0:

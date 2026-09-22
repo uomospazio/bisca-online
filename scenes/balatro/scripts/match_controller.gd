@@ -6,7 +6,10 @@ var bot_policy = preload("res://scenes/balatro/scripts/local_bot_policy.gd").new
 var local_bot_generation := 0
 const Deck = preload("res://scenes/balatro/scripts/deck.gd")
 const CardScene = preload("res://scenes/balatro/card.tscn")
-const BACK = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/Back3.png")
+var BACK: Texture2D:
+	get:
+		var settings = get_node_or_null("/root/GameSettings")
+		return settings.back_texture() if settings else preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back1.png")
 const PlayerBadge = preload("res://scenes/balatro/scripts/player_badge.gd")
 const MainMenu = preload("res://scenes/balatro/scripts/main_menu.gd")
 const GameOverlay = preload("res://scenes/balatro/scripts/game_overlay.gd")
@@ -225,7 +228,7 @@ func _refresh_profile_photos() -> void:
 	var net = get_node("/root/NetworkSession")
 	for id in range(scores.get_child_count()):
 		var badge = scores.get_child(id)
-		badge.profile_texture = net.avatar_for_slot((id + online_match.local_id) % player_count) if online else null
+		badge.profile_texture = net.avatar_for_slot((id + online_match.local_id) % player_count) if online else (menu.profile_texture if id == 0 else null)
 		badge.queue_redraw()
 
 func _label(parent: Node, text: String, font_size: int = 24) -> MixedLabel:
@@ -557,7 +560,7 @@ func _refresh() -> void:
 					visible_lives = result.previous_lives
 					visible_out = visible_lives <= 0
 		badge.configure(_name_of(p.id), visible_lives, p.bid, displayed_taken.get(p.id, p.taken), rules.current == p.id, visible_out, rules.phase in ["play", "trick_complete"])
-		badge.profile_texture = get_node("/root/NetworkSession").avatar_for_slot((p.id + online_match.local_id) % player_count) if online else null
+		badge.profile_texture = get_node("/root/NetworkSession").avatar_for_slot((p.id + online_match.local_id) % player_count) if online else (menu.profile_texture if p.id == 0 else null)
 		# configure() resets opacity for normal/eliminated seats. During this
 		# sequence opacity belongs to the exit/reveal tween, including its delays.
 		if prediction_focus and p.id != 0:

@@ -20,9 +20,17 @@ func run() -> void:
 	throws._open(true)
 	await create_timer(0.35).timeout
 	assert(throws.item.visible and throws.item.scale.is_equal_approx(Vector2.ONE))
+	assert(throws.slots.size() == 3)
+	assert(throws.items.size() == 3)
+	assert(not throws.items[1].visible and not throws.items[2].visible)
+	assert(throws.items[1].mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	for slot in throws.slots:
+		assert(slot.visible and slot.scale.is_equal_approx(Vector2.ONE))
 	var children: int = throws.get_child_count()
-	throws._launch(0, 1)
+	var slot_origin: Vector2 = throws.item.position
+	throws._launch(0, 1, slot_origin)
 	assert(throws.get_child_count() == children + 1)
+	assert(throws.get_child(children).position.is_equal_approx(slot_origin))
 	await create_timer(1.9).timeout
 	assert(throws.get_child_count() == children)
 	throws.remaining = 8
@@ -40,9 +48,16 @@ func run() -> void:
 	assert(projectile.position.is_equal_approx(origin))
 	throws._received(1, 0)
 	assert(throws.get_child_count() == children + 1)
-	await create_timer(0.72).timeout
+	await create_timer(1.0).timeout
 	var destination: Vector2 = throws._point(host.scores.get_child(0), Vector2(80, 128)) - projectile.size / 2
 	assert(projectile.position.is_equal_approx(destination))
+	# Exercise the other object IDs without adding placeholder artwork.
+	for object_id in [1, 2]:
+		throws.textures[object_id] = throws.poop
+		var before: int = throws.get_child_count()
+		throws._received(0, 1, object_id)
+		assert(throws.get_child_count() == before + 1)
+		assert(throws.get_child(before).texture == throws.textures[object_id])
 	print("PASS: recipient sees sender-to-self trajectory; no duplicate sender echo")
 	print("PASS: throw icons, picker tween, projectile cleanup, cooldown")
 	quit()

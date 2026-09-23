@@ -4,7 +4,7 @@ class Session extends "res://scenes/balatro/scripts/network_session.gd":
 	var received: Array = []
 	func _ready() -> void:
 		set_process(false)
-		object_thrown.connect(func(sender, target): received.append([sender, target]))
+		object_thrown.connect(func(sender, target, object_id): received.append([sender, target, object_id]))
 
 var apis: Array[MultiplayerAPI] = []
 
@@ -42,13 +42,17 @@ func run() -> void:
 	server.members[first.get_unique_id()] = {"code": "TEST", "slot": 0}
 	server.members[second.get_unique_id()] = {"code": "TEST", "slot": 1}
 	server.rooms.TEST = {"rules": {"phase": "play", "players": [{"lives": 3}, {"lives": 3}]}, "people": [{"peer": first.get_unique_id()}, {"peer": second.get_unique_id()}]}
+	a.send({"op": "throw", "target": 1, "object_id": 1})
+	a.send({"op": "throw", "target": 1, "object_id": 99})
+	await create_timer(0.3).timeout
+	assert(b.received.is_empty(), "Empty or invalid slots must not be relayed")
 	a.send({"op": "throw", "target": 1})
 	await create_timer(0.3).timeout
-	assert(b.received == [[0, 1]], "Recipient did not receive throw")
-	assert(a.received == [[0, 1]], "Sender did not receive acknowledgement")
+	assert(b.received == [[0, 1, 0]], "Recipient did not receive throw")
+	assert(a.received == [[0, 1, 0]], "Sender did not receive acknowledgement")
 	b.send({"op": "throw", "target": 0})
 	await create_timer(0.3).timeout
-	assert(a.received == [[0, 1], [1, 0]])
+	assert(a.received == [[0, 1, 0], [1, 0, 0]])
 	a.send({"op": "throw", "target": 1})
 	await create_timer(0.3).timeout
 	assert(b.received.size() == 2, "Server failed to enforce cooldown")

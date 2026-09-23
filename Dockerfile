@@ -12,6 +12,7 @@ WORKDIR /app
 COPY deployment/server/ ./
 COPY scenes/balatro/scripts/network_session.gd scenes/balatro/scripts/match_rules.gd scenes/balatro/scripts/bot_policy.gd scenes/balatro/scripts/avatar_data.gd ./scenes/balatro/scripts/
 COPY scenes/balatro/scripts/livekit_auth.gd ./scenes/balatro/scripts/
+COPY scenes/balatro/scripts/throw_catalog.gd ./scenes/balatro/scripts/
 COPY deployment/nginx.conf ./nginx.conf
 COPY deployment/start-server.sh ./start-server.sh
 ENV GODOT_WS_PORT=8911

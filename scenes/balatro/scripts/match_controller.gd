@@ -265,10 +265,9 @@ func _build_ui() -> void:
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	turn_clock = Label.new()
 	ui.add_child(turn_clock)
-	# Timer beside the local player's profile, vertically aligned with it.
-	turn_clock.position = Vector2(230, 805)
+	# Updated from the hand's layout, including its scale and canvas transform.
 	turn_clock.size = Vector2(180, 50)
-	turn_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	turn_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	turn_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	turn_clock.z_index = 100
 	turn_clock.add_theme_font_override("font", KIDS_FONT)
@@ -616,7 +615,17 @@ func _refresh() -> void:
 		status.set_mixed_text("%s\nSei eliminato: puoi seguire la partita" % status.text)
 	hand.allow_play = rules.phase == "play" and rules.hand_size > 1 and rules.current == 0 and not busy and pending_joker == null
 
+func _position_turn_clock() -> void:
+	if not is_instance_valid(turn_clock) or not is_instance_valid(hand) or hand.cards.is_empty():
+		return
+	# Use the resting slot, so dragging/hovering a card cannot move the timer.
+	var edge: Vector2 = hand._slot_position(0) + Vector2(0, hand.cards[0].size.y / 2.0)
+	var canvas_point: Vector2 = hand.get_global_transform_with_canvas() * edge
+	var ui_point: Vector2 = game_ui.get_global_transform_with_canvas().affine_inverse() * canvas_point
+	turn_clock.position = ui_point - Vector2(turn_clock.size.x + 30.0, turn_clock.size.y / 0.8)
+
 func _process(delta: float) -> void:
+	_position_turn_clock()
 	if online:
 		return
 	if not is_instance_valid(turn_clock):

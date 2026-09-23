@@ -179,7 +179,7 @@ func _draw() -> void:
 	draw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size, Color("fff0cc"))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var prediction_box := StyleBoxFlat.new()
-	prediction_box.bg_color = Color("214f50")
+	prediction_box.bg_color = Color("fff0cc")
 	prediction_box.set_corner_radius_all(10)
 	var prediction_shadow := StyleBoxFlat.new()
 	prediction_shadow.bg_color = Color("153536")
@@ -190,10 +190,10 @@ func _draw() -> void:
 	draw_style_box(prediction_shadow, Rect2(94, 151, 68, 42))
 	draw_style_box(prediction_box, Rect2(91, 148, 68, 42))
 	if prediction >= 0:
-		_text(Vector2(125, 169), "/", 16, Color("fff0cc"), COUNTER_FONT, false)
-		_text(Vector2(143, 169), str(prediction), 24, Color("fff0cc"), KIDS_FONT, false)
+		_text(Vector2(125, 169), "/", 16, Color("214f50"), COUNTER_FONT, false)
+		_text(Vector2(143, 169), str(prediction), 24, Color("214f50"), KIDS_FONT, false)
 		if show_taken or taken > 0:
-			_text(Vector2(107, 169), str(taken), 24, Color("fff0cc"), KIDS_FONT, false)
+			_text(Vector2(107, 169), str(taken), 24, Color("214f50"), KIDS_FONT, false)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var name_size := 27
 	while font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x > 152 and name_size > 14:

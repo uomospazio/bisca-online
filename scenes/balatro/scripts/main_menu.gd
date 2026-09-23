@@ -204,8 +204,8 @@ func _show_home_info() -> void:
 	dialog.dialog_text = "SEMI: DENARI > COPPE > SPADE > BASTONI\nSTESSO SEME: VINCE IL NUMERO PIU' ALTO (1–10)\n\nJOLLY: ASSO DI DENARI\nPIU' ALTA: BATTE TUTTI. PIU' BASSA: PERDE CONTRO TUTTI.\n\nDICHIARA LE PRESE CHE FARAI: SE SBAGLI PERDI UNA VITA."
 	dialog.get_label().add_theme_font_override("font", KIDS_FONT)
 	dialog.get_label().add_theme_font_size_override("font_size", 24)
-	dialog.get_label().add_theme_color_override("font_color", BUTTON_TEXT)
-	dialog.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_PURPLE))
+	dialog.get_label().add_theme_color_override("font_color", BUTTON_PURPLE)
+	dialog.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_TEXT))
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2i(1000, 360))

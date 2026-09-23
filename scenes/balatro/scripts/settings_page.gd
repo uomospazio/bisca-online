@@ -19,6 +19,7 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings = get_node("/root/GameSettings")
 	var title := _label("SETTINGS", 66)
+	title.add_theme_color_override("font_color", Style.TEXT)
 	add_child(title)
 	title.position = Vector2(400, 125)
 	title.size = Vector2(1120, 95)
@@ -29,7 +30,7 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	add_child(panel)
 	panel.position = Vector2(530, 280)
 	panel.size = Vector2(860, 520)
-	var skin := Style.button_style(Style.NORMAL, Style.HOVER, 4)
+	var skin := Style.button_style(Style.TEXT, Style.HOVER, 4)
 	skin.content_margin_left = 36
 	skin.content_margin_right = 36
 	skin.content_margin_top = 28
@@ -75,7 +76,7 @@ func _label(text: String, font_size: int = 26) -> Label:
 	label.text = text
 	label.add_theme_font_override("font", FONT)
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", Style.TEXT)
+	label.add_theme_color_override("font_color", Style.NORMAL)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	return label
 
@@ -98,7 +99,7 @@ func _add_slider(parent: Control, title: String, key: String, voice_id: String =
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for state in ["slider", "grabber_area", "grabber_area_highlight"]:
 		var track := StyleBoxFlat.new()
-		track.bg_color = Style.SHADOW if state == "slider" else Style.TEXT
+		track.bg_color = Style.SHADOW if state == "slider" else Style.HOVER
 		track.set_corner_radius_all(5)
 		track.content_margin_top = 4
 		track.content_margin_bottom = 4
@@ -136,7 +137,7 @@ func _add_toggle(parent: Control, title: String, key: String) -> void:
 	toggle.add_theme_icon_override("checked", preload("res://scenes/balatro/visuals/settings_toggle_on.svg"))
 	toggle.add_theme_icon_override("unchecked", preload("res://scenes/balatro/visuals/settings_toggle_off.svg"))
 	toggle.custom_minimum_size = Vector2(110, 48)
-	toggle.add_theme_color_override("font_color", Style.TEXT)
+	toggle.add_theme_color_override("font_color", Style.NORMAL)
 	row.add_child(toggle)
 	Audio.attach(toggle)
 	toggles[key] = toggle

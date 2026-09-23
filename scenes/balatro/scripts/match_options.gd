@@ -9,7 +9,7 @@ var bot_count: HSlider
 var fill_bots: CheckButton
 
 func setup(menu: Control, multiplayer_game: bool) -> void:
-	var panel_style := Style.button_style(Style.NORMAL, Style.HOVER, 4)
+	var panel_style := Style.button_style(Style.TEXT, Style.HOVER, 4)
 	panel_style.set_corner_radius_all(20)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
@@ -23,7 +23,7 @@ func setup(menu: Control, multiplayer_game: bool) -> void:
 	heading.text = "IMPOSTAZIONI PARTITA"
 	heading.add_theme_font_override("font", menu.KIDS_FONT)
 	heading.add_theme_font_size_override("font_size", 24)
-	heading.add_theme_color_override("font_color", Style.TEXT)
+	heading.add_theme_color_override("font_color", Style.NORMAL)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(heading)
 	lives = _slider(menu, "VITE INIZIALI", 1, 10, 3)
@@ -32,7 +32,7 @@ func setup(menu: Control, multiplayer_game: bool) -> void:
 		fill_bots = CheckButton.new()
 		fill_bots.text = "RIEMPI CON BOT"
 		fill_bots.add_theme_font_override("font", menu.KIDS_FONT)
-		fill_bots.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+		fill_bots.add_theme_color_override("font_color", Style.NORMAL)
 		fill_bots.add_theme_font_size_override("font_size", 24)
 		fill_bots.add_theme_icon_override("checked", preload("res://scenes/balatro/visuals/settings_toggle_on.svg"))
 		fill_bots.add_theme_icon_override("unchecked", preload("res://scenes/balatro/visuals/settings_toggle_off.svg"))
@@ -57,7 +57,7 @@ func _slider(menu: Control, caption: String, minimum: int, maximum: int, initial
 	label.custom_minimum_size.x = 285
 	label.add_theme_font_override("font", menu.KIDS_FONT)
 	label.add_theme_font_size_override("font_size", 22)
-	label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+	label.add_theme_color_override("font_color", Style.NORMAL)
 	row.add_child(label)
 	var slider := HSlider.new()
 	slider.min_value = minimum
@@ -67,7 +67,7 @@ func _slider(menu: Control, caption: String, minimum: int, maximum: int, initial
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for state in ["slider", "grabber_area", "grabber_area_highlight"]:
 		var track := StyleBoxFlat.new()
-		track.bg_color = Style.SHADOW if state == "slider" else Style.TEXT
+		track.bg_color = Style.SHADOW if state == "slider" else Style.HOVER
 		track.set_corner_radius_all(5)
 		track.content_margin_top = 4
 		track.content_margin_bottom = 4
@@ -79,7 +79,7 @@ func _slider(menu: Control, caption: String, minimum: int, maximum: int, initial
 	value.text = str(initial)
 	value.custom_minimum_size.x = 45
 	value.add_theme_font_override("font", menu.KIDS_FONT)
-	value.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+	value.add_theme_color_override("font_color", Style.NORMAL)
 	row.add_child(value)
 	slider.value_changed.connect(func(number): value.text = str(int(number)))
 	return slider

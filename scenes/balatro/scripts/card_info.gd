@@ -29,7 +29,7 @@ func setup(controller: Control) -> void:
 	panel.offset_right = 650
 	panel.offset_bottom = 340
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	var style := Style.button_style(Style.NORMAL, Style.HOVER, 4)
+	var style := Style.button_style(Style.TEXT, Style.HOVER, 4)
 	style.content_margin_left = 40
 	style.content_margin_right = 40
 	style.content_margin_top = 30
@@ -44,7 +44,7 @@ func setup(controller: Control) -> void:
 	text.custom_minimum_size.y = 490
 	text.add_theme_font_override("normal_font", FONT)
 	text.add_theme_font_size_override("normal_font_size", 27)
-	text.add_theme_color_override("default_color", Style.TEXT)
+	text.add_theme_color_override("default_color", Style.NORMAL)
 	text.text = "[center][font_size=42]INFO[/font_size][/center]\n\nSEMI: DAL PIU' FORTE\n\nDENARI > COPPE > SPADE > BASTONI\nSTESSO SEME: VINCE IL NUMERO PIU' ALTO\n\nJOLLY = ASSO DI DENARI\n\nLA PIU' ALTA: batte tutti.\nLA PIU' BASSa: perde contro tutti."
 	column.add_child(text)
 	close_button = host.menu._button(column, "CHIUDI", close)

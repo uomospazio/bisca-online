@@ -96,7 +96,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.341176, 0.509804, 0.423529, 1)
+color = Color(0.156863, 0.560784, 0.392157, 1)
 script = ExtResource("14_lexispell_background")
 
 [node name="Parallax" type="Control" parent="." unique_id=279740905]

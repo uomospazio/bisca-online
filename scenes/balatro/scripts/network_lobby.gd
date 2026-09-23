@@ -151,7 +151,7 @@ func setup(owner_menu: Control) -> void:
 	session_controls.add_child(participant_panel)
 	participant_panel.position = Vector2(760, 130)
 	participant_panel.size = Vector2(900, 760)
-	var panel_style = menu._menu_button_style(menu.BUTTON_PURPLE, menu.BUTTON_CYAN, 4)
+	var panel_style = menu._menu_button_style(menu.BUTTON_TEXT, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
 	panel_style.content_margin_top = 24
@@ -235,7 +235,7 @@ func _update(state: Dictionary) -> void:
 		var row := PanelContainer.new()
 		row.custom_minimum_size = Vector2(0, 64)
 		row.clip_contents = true
-		row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.BUTTON_PURPLE))
+		row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.BUTTON_TEXT))
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 8)
 		row.add_child(line)
@@ -258,7 +258,7 @@ func _update(state: Dictionary) -> void:
 		name_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		name_button.add_theme_font_override("font", menu.KIDS_FONT)
 		name_button.add_theme_font_size_override("font_size", 24)
-		name_button.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+		name_button.add_theme_color_override("font_color", menu.BUTTON_PURPLE)
 		name_button.flat = true
 		line.add_child(name_button)
 		var voice = get_node("/root/VoiceChat")
@@ -287,7 +287,7 @@ func _update(state: Dictionary) -> void:
 		remove.custom_minimum_size = Vector2(64, 50)
 		remove.add_theme_font_override("font", menu.KIDS_FONT)
 		remove.add_theme_font_size_override("font_size", 30)
-		remove.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+		remove.add_theme_color_override("font_color", menu.BUTTON_PURPLE)
 		remove.flat = true
 		# Only the lobby creator sees removal controls, never on their own row.
 		if state.you == 0 and index > 0:

@@ -15,6 +15,8 @@ var syncing_options := false
 var is_host := false
 var players_box: VBoxContainer
 var code_button: Button
+var code_label: Label
+var copy_icon: TextureRect
 var entry: VBoxContainer
 var create_button: Button
 var join_button: Button
@@ -84,25 +86,71 @@ func setup(owner_menu: Control) -> void:
 	code_button = menu._button(session_controls, "CODICE PARTITA", func():
 		DisplayServer.clipboard_set(code_button.get_meta("room_code", ""))
 		copied_code = str(code_button.get_meta("room_code", ""))
-		code_button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/copy-success.svg")
 		info.text = "Codice copiato negli appunti"
 	)
-	code_button.position = Vector2(70, 130)
-	code_button.custom_minimum_size = Vector2(580, 80)
-	code_button.size = Vector2(580, 80)
-	_set_icon(code_button, "copy")
+	code_button.position = Vector2(260, 130)
+	code_button.custom_minimum_size = Vector2(420, 120)
+	code_button.size = Vector2(420, 120)
+
+	# Testo del codice separato dal Button, così può fare il tween da solo.
+	code_button.text = ""
+	code_button.icon = null
+
+	code_label = Label.new()
+	code_button.add_child(code_label)
+	code_label.position = Vector2(+50, 4)
+	code_label.size = code_button.size
+	code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	code_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	code_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	code_label.add_theme_font_override("font", menu.KIDS_FONT)
+	code_label.add_theme_font_size_override("font_size", 54)
+	code_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+	code_label.pivot_offset = code_label.size / 2.0
+
+	# Copy come figlia del code_button: segue hover/rotazione del bottone.
+	copy_icon = TextureRect.new()
+	code_button.add_child(copy_icon)
+	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/copy.svg")
+	copy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	copy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	copy_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	copy_icon.position = Vector2(25, 15)
+	copy_icon.size = Vector2(96, 96)
+	copy_icon.pivot_offset = copy_icon.size / 2.0
+	copy_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# Al click tweenano SOLO testo e copy, non il bottone.
+	code_button.pressed.connect(func():
+		var tween := create_tween()
+
+		tween.set_ease(Tween.EASE_IN)
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.tween_property(code_label, "scale", Vector2.ZERO, 0.12)
+		# tween.parallel().tween_property(copy_icon, "scale", Vector2.ZERO, 0.12)
+
+		tween.tween_callback(func():
+			copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/copy-success.svg")
+		)
+
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.tween_property(code_label, "scale", Vector2.ONE, 0.22)
+		# tween.parallel().tween_property(copy_icon, "scale", Vector2.ONE, 0.22)
+	)
+	
 	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	session_controls.add_child(lobby_options)
-	lobby_options.position = Vector2(70, 250)
-	lobby_options.size = Vector2(580, 560)
+	lobby_options.position = Vector2(260, 300)
+	lobby_options.size = Vector2(430, 580)
 	lobby_options.setup(menu, true)
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.value_changed.connect(func(_value): _send_options())
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	var participant_panel := PanelContainer.new()
 	session_controls.add_child(participant_panel)
-	participant_panel.position = Vector2(700, 130)
-	participant_panel.size = Vector2(1150, 770)
+	participant_panel.position = Vector2(760, 130)
+	participant_panel.size = Vector2(900, 760)
 	var panel_style = menu._menu_button_style(menu.BUTTON_PURPLE, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
@@ -113,7 +161,7 @@ func setup(owner_menu: Control) -> void:
 	players_box.add_theme_constant_override("separation", 8)
 	participant_panel.add_child(players_box)
 	start_button = menu._button(session_controls, "PLAY", func(): net.send({"op": "start"}))
-	start_button.position = Vector2(1510, 790)
+	start_button.position = Vector2(1320, 755)
 	start_button.size = Vector2(300, 80)
 	start_button.custom_minimum_size.y = 80
 	_set_icon(start_button, "play")
@@ -126,8 +174,8 @@ func setup(owner_menu: Control) -> void:
 	info.add_theme_font_size_override("font_size", 24)
 	var back_row := VBoxContainer.new()
 	add_child(back_row)
-	back_row.position = Vector2(70, 920)
-	back_row.size.x = 300
+	back_row.position = Vector2(50, 940)
+	back_row.size.x = 260
 	menu._button(back_row, "Indietro", _back)
 	net.updated.connect(_update)
 	net.problem.connect(func(message): info.text = message)
@@ -176,9 +224,9 @@ func _update(state: Dictionary) -> void:
 	start_button.disabled = state.you != 0
 	is_host = state.you == 0
 	_sync_options(state)
-	code_button.text = str(state.code)
-	code_button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
+	code_label.text = str(state.code)
 	code_button.set_meta("room_code", state.code)
+	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
 	for child in players_box.get_children():
 		players_box.remove_child(child)
 		child.queue_free()
@@ -253,7 +301,7 @@ func _update(state: Dictionary) -> void:
 func _set_icon(button: Button, icon_name: String) -> void:
 	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
 	button.expand_icon = true
-	button.add_theme_constant_override("icon_max_width", 32)
+	button.add_theme_constant_override("icon_max_width", 56)
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 func _send_options() -> void:

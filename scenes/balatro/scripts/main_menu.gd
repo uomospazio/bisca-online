@@ -65,11 +65,7 @@ func _lock_landscape_web() -> void:
 	JavaScriptBridge.eval("""
 		(async () => {
 			try {
-				const elem = document.documentElement;
-
-				if (!document.fullscreenElement && elem.requestFullscreen) {
-					await elem.requestFullscreen();
-				}
+				
 
 				if (screen.orientation && screen.orientation.lock) {
 					await screen.orientation.lock("landscape");
@@ -104,16 +100,16 @@ func _ready() -> void:
 	home_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var play_choices := HBoxContainer.new()
 	home_page.add_child(play_choices)
-	play_choices.position = Vector2(540, 820)
-	play_choices.size = Vector2(840, 96)
+	play_choices.position = Vector2(560, 820)
+	play_choices.size = Vector2(800, 96)
 	play_choices.add_theme_constant_override("separation", 48)
 	_button(play_choices, "SINGLEPLAYER", show_setup).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(play_choices, "MULTIPLAYER", _show_network).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var settings_button := _button(home_page, "SETTINGS", _show_settings)
-	settings_button.position = Vector2(48, 40)
+	settings_button.position = Vector2(48, 156)
 	settings_button.size = Vector2(240, 96)
 	var info_button := _button(home_page, "INFO", _show_home_info)
-	info_button.position = Vector2(1632, 40)
+	info_button.position = Vector2(48, 40)
 	info_button.size = Vector2(240, 96)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
@@ -341,7 +337,7 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.text = text.to_upper()
 	button.custom_minimum_size.y = MENU_BUTTON_HEIGHT
 	button.add_theme_font_override("font", KIDS_FONT)
-	button.add_theme_font_size_override("font_size", 24)
+	button.add_theme_font_size_override("font_size", 28)
 	button.add_theme_stylebox_override("normal", _menu_button_style(BUTTON_PURPLE))
 	button.add_theme_stylebox_override("hover", _menu_button_style(BUTTON_CYAN, BUTTON_TEXT, 6))
 	button.add_theme_stylebox_override("pressed", _menu_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2))

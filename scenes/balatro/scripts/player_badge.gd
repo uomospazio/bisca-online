@@ -151,12 +151,12 @@ func _draw() -> void:
 	if highlighted:
 		# Glowing frame behind the avatar, leaving the name outside the panel.
 		var frame := StyleBoxFlat.new()
-		frame.bg_color = Color(0.992, 0.894, 0.725, 0.48)
-		frame.border_color = Color("fde4b9")
-		frame.set_border_width_all(3)
-		frame.set_corner_radius_all(12)
-		frame.shadow_color = Color(1.0, 0.82, 0.35, 0.5)
-		frame.shadow_size = 12
+		frame.bg_color = Color(0.79, 0.985, 0.51, 0.48)
+		frame.border_color = Color("fde4b900")
+		frame.set_border_width_all(5)
+		frame.set_corner_radius_all(68)
+		frame.shadow_color = Color(0.333, 0.882, 0.0, 0.827)
+		frame.shadow_size = 5
 		frame.shadow_offset = Vector2.ZERO
 		draw_style_box(frame, Rect2(12, 60, 136, 136))
 	var avatar := Vector2(80, 128)

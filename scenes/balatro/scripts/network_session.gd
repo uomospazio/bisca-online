@@ -5,6 +5,11 @@ signal clock_updated(seconds: float)
 signal problem(message: String)
 signal connection_lost
 signal avatars_changed
+signal object_thrown(sender: int, target: int)
+
+@rpc("authority", "call_remote", "reliable")
+func thrown(sender: int, target: int) -> void:
+	object_thrown.emit(sender, target)
 
 const AvatarData = preload("res://scenes/balatro/scripts/avatar_data.gd")
 var avatar_textures: Dictionary = {}
@@ -386,6 +391,20 @@ func request(command: Dictionary) -> void:
 	var member: Dictionary = members[peer]
 	var room: Dictionary = rooms[member.code]
 	var slot: int = member.slot
+	if op == "throw":
+		var target := int(command.get("target", -1))
+		if room.rules == null or room.rules.phase == "finished" or target < 0 or target >= room.people.size() or target == slot:
+			return
+		if room.rules.players[slot].lives <= 0 or room.rules.players[target].lives <= 0:
+			return
+		var now := Time.get_ticks_msec()
+		if now - int(room.people[slot].get("last_throw", -8000)) < 8000:
+			return
+		room.people[slot]["last_throw"] = now
+		for recipient in room.people:
+			if _peer_connected(recipient.peer):
+				thrown.rpc_id(recipient.peer, slot, target)
+		return
 	if op == "profile":
 		var person: Dictionary = room.people[slot]
 		if not command.get("avatar", "") is String:

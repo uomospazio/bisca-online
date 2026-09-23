@@ -83,7 +83,7 @@ func _ready() -> void:
 	add_child(menu_content)
 	menu_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_title(menu_content)
-	friends_subtitle = Label.new()
+	friends_subtitle = preload("res://scenes/balatro/scripts/idle_subtitle.gd").new()
 	menu_content.add_child(friends_subtitle)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
 	friends_subtitle.position = Vector2(0, 175)
@@ -247,6 +247,7 @@ func _show_menu_title(with_friends: bool = false) -> void:
 	friends_subtitle.add_theme_font_size_override("font_size", 32)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
 	friends_subtitle.position = Vector2(0, 400)
+	friends_subtitle.set_animated(with_friends)
 	friends_subtitle.add_theme_font_size_override("font_size", 56)
 	title.scale = Vector2.ONE
 	title.position = TITLE_POSITION
@@ -368,6 +369,7 @@ func chosen_name() -> String:
 func show_setup() -> void:
 	_show_menu_title()
 	friends_subtitle.text = "SOLITARIA"
+	friends_subtitle.set_animated(true)
 	friends_subtitle.add_theme_font_size_override("font_size", 56)
 	friends_subtitle.position = Vector2(0, 400)
 	friends_subtitle.show()

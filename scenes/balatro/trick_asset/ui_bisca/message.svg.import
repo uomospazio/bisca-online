@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dqqun8o34bel5"
-path="res://.godot/imported/mic-on.svg-ff26edf889adf21e54fc7317663a547f.ctex"
+uid="uid://djjrcsn45jc5m"
+path="res://.godot/imported/message.svg-e105ba374b4d6784b55e43a8c34aa9c4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/balatro/trick_asset/ui_bisca/mic-on.svg"
-dest_files=["res://.godot/imported/mic-on.svg-ff26edf889adf21e54fc7317663a547f.ctex"]
+source_file="res://scenes/balatro/trick_asset/ui_bisca/message.svg"
+dest_files=["res://.godot/imported/message.svg-e105ba374b4d6784b55e43a8c34aa9c4.ctex"]
 
 [params]
 

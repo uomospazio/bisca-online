@@ -51,7 +51,7 @@ func _ready() -> void:
 	overlay_shade = ColorRect.new()
 	add_child(overlay_shade)
 	overlay_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_shade.color = Color(0.025, 0.06, 0.035, 0.55)
+	overlay_shade.color = Color(0.082353, 0.207843, 0.211765, 0.55)
 	overlay_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner_center = CenterContainer.new()
 	add_child(banner_center)

@@ -16,7 +16,7 @@ func setup(controller: Control) -> void:
 	var shade := ColorRect.new()
 	screen.add_child(shade)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.19, 0.19, 0.27, 0.75)
+	shade.color = Color(0.082353, 0.207843, 0.211765, 0.75)
 	shade.gui_input.connect(func(event):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			close()

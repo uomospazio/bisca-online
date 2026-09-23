@@ -133,10 +133,12 @@ func _ready() -> void:
 		voice_button.text = "VOCE OFF" if not voice.enabled else ("MUTO" if voice.muted else "VOCE ON")
 	)
 	game_ui.visibility_changed.connect(func():
+		$GameBackground.set_in_game(game_ui.visible)
 		voice_button.visible = online
 		if not game_ui.visible:
 			voice._call("closePanel")
 	)
+	$GameBackground.set_in_game(game_ui.visible)
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
 	overlay.replay_requested.connect(func():
@@ -236,8 +238,8 @@ func _label(parent: Node, text: String, font_size: int = 24) -> MixedLabel:
 	label.set_mixed_text(text)
 	label.add_theme_font_size_override("normal_font_size", font_size)
 	label.add_theme_font_override("normal_font", KIDS_FONT)
-	label.add_theme_color_override("default_color", Color("19271f"))
-	label.add_theme_color_override("font_color", Color("19271f"))
+	label.add_theme_color_override("default_color", Color("153536"))
+	label.add_theme_color_override("font_color", Color("153536"))
 	parent.add_child(label)
 	return label
 
@@ -268,7 +270,7 @@ func _build_ui() -> void:
 	turn_clock.z_index = 100
 	turn_clock.add_theme_font_override("font", KIDS_FONT)
 	turn_clock.add_theme_font_size_override("font_size", 28)
-	turn_clock.add_theme_color_override("font_color", Color("fde4b9"))
+	turn_clock.add_theme_color_override("font_color", Color("fff0cc"))
 	turn_clock.hide()
 	status = _label(ui, "", 28)
 	status.position = Vector2(100, 8)
@@ -284,7 +286,7 @@ func _build_ui() -> void:
 	damage_shade = ColorRect.new()
 	ui.add_child(damage_shade)
 	damage_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	damage_shade.color = Color(0.02, 0.03, 0.04, 0.65)
+	damage_shade.color = Color(0.082353, 0.207843, 0.211765, 0.65)
 	damage_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	damage_shade.z_index = 20
 	damage_shade.hide()
@@ -338,7 +340,7 @@ func _hold_button_in(text: String, callback: Callable, parent: Node) -> HoldButt
 	button.custom_minimum_size = Vector2(250, 90)
 	button.hold_duration = 0.75
 	button.base_color = BUTTON_PURPLE
-	button.fill_color = Color("74ab8e")
+	button.fill_color = Color("347667")
 	button.confirm_progress_color = BUTTON_CYAN
 	button.font = KIDS_FONT
 	button.font_size = 24

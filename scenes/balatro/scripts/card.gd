@@ -31,7 +31,7 @@ func show_joker_direction(high: bool) -> void:
 		Vector2(6, 18), Vector2(-6, 18), Vector2(-6, -3), Vector2(-16, -3)
 	])
 	joker_arrow.rotation = 0.0 if high else PI
-	joker_arrow.color = Color("35c96a") if high else Color("ed4242")
+	joker_arrow.color = Color("42c985") if high else Color("e85d68")
 
 func set_face_down(value: bool) -> void:
 	face_down = value

@@ -247,7 +247,7 @@ func _update(state: Dictionary) -> void:
 		avatar.texture = net.avatar_for_slot(index)
 		avatar.draw.connect(func():
 			if avatar.texture == null:
-				avatar.draw_circle(avatar.size / 2.0, 20, Color("d9d9d9"), true, -1, true)
+				avatar.draw_circle(avatar.size / 2.0, 20, Color("e5e8d8"), true, -1, true)
 		)
 		line.add_child(avatar)
 		row.set_meta("avatar_view", avatar)

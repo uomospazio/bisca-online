@@ -22,7 +22,7 @@ const BUTTON_PURPLE_PRESSED := LexispellStyle.NORMAL
 const BUTTON_CYAN := LexispellStyle.HOVER
 const BUTTON_DISABLED := LexispellStyle.DISABLED
 const BUTTON_TEXT := LexispellStyle.TEXT
-const BUTTON_RED := Color(0.89, 0.3204, 0.3204)
+const BUTTON_RED := Color(0.909804, 0.364706, 0.407843)
 
 signal start_requested(player_name: String, count: int)
 
@@ -122,7 +122,7 @@ func _ready() -> void:
 	profile_button.tooltip_text = "Scegli la foto profilo"
 	profile_button.draw.connect(func():
 		if profile_texture == null:
-			profile_button.draw_circle(Vector2(130, 130), 127, Color("d9d9d9"), true, -1, true)
+			profile_button.draw_circle(Vector2(130, 130), 127, Color("e5e8d8"), true, -1, true)
 		profile_button.draw_arc(Vector2(130, 130), 127, 0, TAU, 128, Color.BLACK, 5.0, true)
 	)
 	var camera_icon := TextureRect.new()
@@ -257,7 +257,7 @@ func _label(parent: Node, text: String, font_size: int) -> MixedLabel:
 	label.set_mixed_text(text)
 	label.add_theme_font_override("normal_font", KIDS_FONT)
 	label.add_theme_font_size_override("normal_font_size", font_size)
-	label.add_theme_color_override("font_color", Color("474660"))
+	label.add_theme_color_override("font_color", Color("214f50"))
 	parent.add_child(label)
 	return label
 
@@ -287,8 +287,8 @@ func _build_title(parent: Control) -> void:
 		outer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		outer.add_theme_font_override("font", title_font)
 		outer.add_theme_font_size_override("font_size", 296)
-		outer.add_theme_color_override("font_color", Color("474660"))
-		outer.add_theme_color_override("font_outline_color", Color("fde4b9"))
+		outer.add_theme_color_override("font_color", Color("214f50"))
+		outer.add_theme_color_override("font_outline_color", Color("fff0cc"))
 		outer.add_theme_constant_override("outline_size", 20)
 		letter.add_child(outer)
 		var inner := Label.new()
@@ -298,8 +298,8 @@ func _build_title(parent: Control) -> void:
 		inner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		inner.add_theme_font_override("font", title_font)
 		inner.add_theme_font_size_override("font_size", 296)
-		inner.add_theme_color_override("font_color", Color("474660"))
-		inner.add_theme_color_override("font_outline_color", Color("fde4b9"))
+		inner.add_theme_color_override("font_color", Color("214f50"))
+		inner.add_theme_color_override("font_outline_color", Color("fff0cc"))
 		inner.add_theme_constant_override("outline_size", 30)
 		letter.add_child(inner)
 		title_letters.append(letter)
@@ -319,8 +319,8 @@ func _start_title_wave() -> void:
 
 func _style_input(input: LineEdit, font_size: int) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("fde4b9")
-	style.border_color = Color("263d30")
+	style.bg_color = Color("fff0cc")
+	style.border_color = Color("214f50")
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(10)
 	style.content_margin_left = 16
@@ -328,9 +328,9 @@ func _style_input(input: LineEdit, font_size: int) -> void:
 	input.add_theme_stylebox_override("normal", style)
 	input.add_theme_font_override("font", KIDS_FONT)
 	input.add_theme_font_size_override("font_size", font_size)
-	input.add_theme_color_override("font_color", Color("474660"))
-	input.add_theme_color_override("font_placeholder_color", Color("777b72"))
-	input.add_theme_color_override("caret_color", Color("474660"))
+	input.add_theme_color_override("font_color", Color("214f50"))
+	input.add_theme_color_override("font_placeholder_color", Color("65756b"))
+	input.add_theme_color_override("caret_color", Color("214f50"))
 
 func _button(parent: Node, text: String, callback: Callable) -> Button:
 	var button := RoundedSquareButton.new()

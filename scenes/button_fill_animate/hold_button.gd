@@ -11,14 +11,14 @@ const HOLD_SOUND = preload("res://scenes/button_fill_animate/lexispell_hold.wav"
 const CONFIRM_SOUND = preload("res://scenes/button_fill_animate/lexispell_confirm.wav")
 
 @export var hold_duration := 0.75
-@export var base_color := Color("474660")
-@export var fill_color := Color("74ab8e")
-@export var hover_color := Color("74ab8e")
+@export var base_color := Color("214f50")
+@export var fill_color := Color("347667")
+@export var hover_color := Color("347667")
 @export var caption := ""
 @export var font: Font
 @export var font_size := 26
 @export var corner_radius := 16
-@export var confirm_progress_color := Color("74ab8e")
+@export var confirm_progress_color := Color("347667")
 @export var hold_target_scale := Vector2(1.30, 1.30)
 @export var confirm_target_scale := Vector2(1.4, 1.4)
 

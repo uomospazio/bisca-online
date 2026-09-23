@@ -21,7 +21,7 @@ func setup(controller: Control) -> void:
 	var shade := ColorRect.new()
 	screen.add_child(shade)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.19, 0.19, 0.27, 0.85)
+	shade.color = Color(0.082353, 0.207843, 0.211765, 0.85)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
 	actions = Control.new()
 	screen.add_child(actions)
@@ -57,7 +57,7 @@ func setup(controller: Control) -> void:
 	host.menu._button(buttons, "SETTINGS", _show_settings)
 	restart_button = host.menu._button(buttons, "RESTART", func(): _leave(true))
 	var quit_button: Button = host.menu._button(buttons, "QUIT", func(): _leave(false))
-	quit_button.add_theme_stylebox_override("normal", Style.button_style(Color(0.89, 0.3204, 0.3204)))
+	quit_button.add_theme_stylebox_override("normal", Style.button_style(Color(0.909804, 0.364706, 0.407843)))
 	hide()
 
 func open() -> void:

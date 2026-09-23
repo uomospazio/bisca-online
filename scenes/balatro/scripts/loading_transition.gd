@@ -33,7 +33,7 @@ func _ready() -> void:
 	noise_texture.seamless = true
 	var material := ShaderMaterial.new()
 	material.shader = SHADER
-	material.set_shader_parameter("base_color", Color("474660"))
+	material.set_shader_parameter("base_color", Color("214f50"))
 	material.set_shader_parameter("factor", 0.0)
 	material.set_shader_parameter("gradient_texture", gradient_texture)
 	material.set_shader_parameter("gradient_fixed", true)
@@ -55,10 +55,10 @@ func _ready() -> void:
 	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	caption.add_theme_font_override("normal_font", FONT)
 	caption.add_theme_font_size_override("normal_font_size", 44)
-	caption.add_theme_color_override("default_color", Color("fde4b9"))
-	caption.add_theme_color_override("font_outline_color", Color("74ab8e"))
+	caption.add_theme_color_override("default_color", Color("fff0cc"))
+	caption.add_theme_color_override("font_outline_color", Color("347667"))
 	caption.add_theme_constant_override("outline_size", 32)
-	caption.add_theme_color_override("font_shadow_color", Color("474660"))
+	caption.add_theme_color_override("font_shadow_color", Color("214f50"))
 	caption.add_theme_constant_override("shadow_outline_size", 32)
 	caption.add_theme_constant_override("shadow_offset_x", 3)
 	caption.add_theme_constant_override("shadow_offset_y", 5)

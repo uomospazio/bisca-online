@@ -22,10 +22,10 @@
     openPanel() {
       this.closePanel();
       const root=document.createElement('div');this.panel=root;
-      root.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#14213daa;display:grid;place-items:center;padding:12px;box-sizing:border-box';
-      root.innerHTML=`<section role="dialog" aria-modal="true" aria-label="Chat vocale" style="box-sizing:border-box;width:min(480px,100%);max-height:90dvh;overflow:auto;background:#48465f;color:#fde4b9;border:3px solid #74ab8e;border-radius:22px;padding:22px;font:600 16px system-ui"><h2 style="margin-top:0">CHAT VOCALE</h2><p>Premi ATTIVA AUDIO e consenti l'accesso nel browser. Anche i tuoi amici devono attivarla.</p><p data-status role="status"></p><div data-actions style="display:flex;gap:10px;flex-wrap:wrap"></div><div data-people></div><p style="font-size:13px">La partita continua mentre questo pannello e' aperto. Chiudere il pannello non spegne il microfono.</p></section>`;
+      root.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#153536aa;display:grid;place-items:center;padding:12px;box-sizing:border-box';
+      root.innerHTML=`<section role="dialog" aria-modal="true" aria-label="Chat vocale" style="box-sizing:border-box;width:min(480px,100%);max-height:90dvh;overflow:auto;background:#214f50;color:#fff0cc;border:3px solid #347667;border-radius:22px;padding:22px;font:600 16px system-ui"><h2 style="margin-top:0">CHAT VOCALE</h2><p>Premi ATTIVA AUDIO e consenti l'accesso nel browser. Anche i tuoi amici devono attivarla.</p><p data-status role="status"></p><div data-actions style="display:flex;gap:10px;flex-wrap:wrap"></div><div data-people></div><p style="font-size:13px">La partita continua mentre questo pannello e' aperto. Chiudere il pannello non spegne il microfono.</p></section>`;
       const actions=root.querySelector('[data-actions]');
-      const button=(text,action)=>{const b=document.createElement('button');b.textContent=text;b.style.cssText='border:2px solid #fde4b9;border-radius:14px;padding:12px;background:#74ab8e;color:#14213d;font:bold 15px system-ui;cursor:pointer';b.onclick=action;actions.appendChild(b);return b;};
+      const button=(text,action)=>{const b=document.createElement('button');b.textContent=text;b.style.cssText='border:2px solid #fff0cc;border-radius:14px;padding:12px;background:#347667;color:#153536;font:bold 15px system-ui;cursor:pointer';b.onclick=action;actions.appendChild(b);return b;};
       // A real DOM click keeps microphone permission and AudioContext activation
       // in the browser's user gesture, rather than a later Godot frame.
       this.startButton=button('ATTIVA AUDIO',()=>this.enabled?this.stop():this.start());
@@ -52,7 +52,7 @@
         const row=document.createElement('label');row.style.cssText='display:block;margin:16px 0';
         const state=this.peers.get(id)?.state;
         row.append(document.createTextNode(`${person.name || 'Giocatore'} — ${state==='connected'?'connesso':state==='failed'?'connessione fallita':state?'connessione…':'chat non attiva'}`));
-        const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='100';slider.value=String((this.volumes.get(id)??1)*100);slider.style.cssText='display:block;width:100%;accent-color:#74ab8e';slider.setAttribute('aria-label',`Volume ${person.name || 'giocatore'}`);
+        const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='100';slider.value=String((this.volumes.get(id)??1)*100);slider.style.cssText='display:block;width:100%;accent-color:#347667';slider.setAttribute('aria-label',`Volume ${person.name || 'giocatore'}`);
         slider.oninput=()=>{this.setVolume(id,Number(slider.value)/100);this.event({op:'volume',id,value:Number(slider.value)});};row.appendChild(slider);list.appendChild(row);
       }
     }

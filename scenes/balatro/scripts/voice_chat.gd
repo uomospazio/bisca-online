@@ -116,6 +116,20 @@ func open_panel() -> void:
 		dialog.canceled.connect(dialog.queue_free)
 		dialog.popup_centered(Vector2i(520, 180))
 
+func toggle_audio() -> void:
+	if enabled or pending:
+		stop()
+	elif bridge == null:
+		open_panel()
+	elif my_slot < 0 or my_slot >= people.size() or people[my_slot].get("id", "").is_empty():
+		status = "Entra prima in una lobby multiplayer."
+		changed.emit()
+	else:
+		pending = true
+		status = "Connessione alla chat vocale…"
+		changed.emit()
+		_call("start")
+
 func stop() -> void:
 	_call("stop")
 	enabled = false

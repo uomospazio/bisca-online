@@ -114,7 +114,7 @@ func deal_from(deck, pile, participants: int = 1, full_deck: bool = false) -> vo
 
 func _ready() -> void:
 	# Grow around the bottom centre, keeping the hand centred and above the edge.
-	pivot_offset = Vector2(size.x / 2.8, size.y / 1.5)
+	pivot_offset = Vector2(size.x / 2.0, size.y / 1.5)
 	for child in get_children():
 		if child is Control and child.has_signal("drag_started"):
 			_register_card(child)

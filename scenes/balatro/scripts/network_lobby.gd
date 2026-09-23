@@ -179,6 +179,7 @@ func setup(owner_menu: Control) -> void:
 	menu._button(back_row, "Indietro", _back)
 	net.updated.connect(_update)
 	net.problem.connect(func(message): info.text = message)
+	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)
 
 func open() -> void:
 	show()
@@ -230,12 +231,24 @@ func _update(state: Dictionary) -> void:
 	for child in players_box.get_children():
 		players_box.remove_child(child)
 		child.queue_free()
-	for index in range(min(8, state.people.size())):
-		var p: Dictionary = state.people[index]
+	for index in range(8):
 		var row := PanelContainer.new()
 		row.custom_minimum_size = Vector2(0, 64)
 		row.clip_contents = true
-		row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.BUTTON_TEXT))
+		row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.BUTTON_PURPLE))
+		if index >= state.people.size():
+			row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.LexispellStyle.DISABLED))
+			var empty := Label.new()
+			empty.text = "EMPTY"
+			empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			empty.add_theme_font_override("font", menu.KIDS_FONT)
+			empty.add_theme_font_size_override("font_size", 24)
+			empty.add_theme_color_override("font_color", menu.LexispellStyle.DISABLED_TEXT)
+			row.add_child(empty)
+			players_box.add_child(row)
+			continue
+		var p: Dictionary = state.people[index]
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 8)
 		row.add_child(line)
@@ -255,39 +268,40 @@ func _update(state: Dictionary) -> void:
 		var name_button := Button.new()
 		name_button.text = str(p.name) + ("  · OFFLINE" if not p.connected else "")
 		name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		name_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		name_button.add_theme_font_override("font", menu.KIDS_FONT)
 		name_button.add_theme_font_size_override("font_size", 24)
-		name_button.add_theme_color_override("font_color", menu.BUTTON_PURPLE)
+		name_button.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 		name_button.flat = true
 		line.add_child(name_button)
 		var voice = get_node("/root/VoiceChat")
 		var voice_id := str(p.get("voice_id", ""))
-		var volume := HSlider.new()
-		volume.min_value = 0
-		volume.max_value = 100
-		volume.step = 1
-		volume.value = voice.player_volume(voice_id)
-		volume.custom_minimum_size = Vector2(220, 50)
-		volume.editable = index != int(state.you) and not bool(p.bot)
 		var speaker := Button.new()
 		line.add_child(speaker)
 		speaker.custom_minimum_size = Vector2(56, 50)
-		_set_icon(speaker, "volume-cross" if volume.value == 0 else "volume-high")
-		speaker.disabled = not volume.editable
-		speaker.pressed.connect(func(): volume.value = 100 if volume.value == 0 else 0)
-		line.add_child(volume)
-		volume.value_changed.connect(func(value):
-			voice.set_player_volume(voice_id, value)
-			_set_icon(speaker, "volume-cross" if value == 0 else "volume-high")
-		)
+		speaker.flat = true
+		RoundedSquareButton.ButtonAudio.attach(speaker)
+		row.set_meta("voice_button", speaker)
+		row.set_meta("voice_self", index == int(state.you))
+		row.set_meta("voice_id", voice_id)
+		row.set_meta("voice_bot", bool(p.bot))
+		if index == int(state.you):
+			speaker.pressed.connect(voice.toggle_audio)
+		else:
+			speaker.disabled = bool(p.bot) or voice_id.is_empty()
+			speaker.pressed.connect(func():
+				voice.set_player_volume(voice_id, 100 if voice.player_volume(voice_id) == 0 else 0)
+				_update_voice_buttons()
+			)
 		var remove := Button.new()
 		RoundedSquareButton.ButtonAudio.attach(remove)
 		remove.text = "×"
 		remove.custom_minimum_size = Vector2(64, 50)
 		remove.add_theme_font_override("font", menu.KIDS_FONT)
 		remove.add_theme_font_size_override("font_size", 30)
-		remove.add_theme_color_override("font_color", menu.BUTTON_PURPLE)
+		for state_color in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			remove.add_theme_color_override(state_color, menu.BUTTON_TEXT)
 		remove.flat = true
 		# Only the lobby creator sees removal controls, never on their own row.
 		if state.you == 0 and index > 0:
@@ -297,6 +311,26 @@ func _update(state: Dictionary) -> void:
 		line.add_child(remove)
 		players_box.add_child(row)
 	info.text = "In attesa dei giocatori…"
+	_update_voice_buttons()
+
+func _update_voice_buttons() -> void:
+	if players_box == null:
+		return
+	var voice = get_node("/root/VoiceChat")
+	for row in players_box.get_children():
+		if not row.has_meta("voice_button"):
+			continue
+		var speaker: Button = row.get_meta("voice_button")
+		var active: bool
+		if row.get_meta("voice_self"):
+			active = voice.enabled
+			speaker.tooltip_text = "Annulla connessione" if voice.pending else ("Disattiva chat vocale" if active else "Attiva chat vocale")
+		else:
+			active = not row.get_meta("voice_bot") and voice.player_volume(row.get_meta("voice_id")) > 0
+			speaker.tooltip_text = "Silenzia giocatore" if active else "Riattiva audio giocatore"
+		_set_icon(speaker, "volume-high" if active else "volume-cross")
+	if session_controls.visible and (voice.enabled or voice.pending or voice.status.begins_with("Errore") or voice.status.begins_with("Microfono")):
+		info.text = voice.status
 
 func _set_icon(button: Button, icon_name: String) -> void:
 	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)

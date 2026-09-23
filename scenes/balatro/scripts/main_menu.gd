@@ -34,7 +34,7 @@ var profile_avatar := ""
 var profile_texture: Texture2D
 var setup_page: VBoxContainer
 var match_options: PanelContainer
-var bot_slider: HSlider
+var bot_slider: Range
 var single_name_input: LineEdit
 var title: Control
 var friends_subtitle: Label
@@ -329,7 +329,7 @@ func _style_input(input: LineEdit, font_size: int) -> void:
 	input.add_theme_font_override("font", KIDS_FONT)
 	input.add_theme_font_size_override("font_size", font_size)
 	input.add_theme_color_override("font_color", Color("214f50"))
-	input.add_theme_color_override("font_placeholder_color", Color("65756b"))
+	input.add_theme_color_override("font_placeholder_color", BUTTON_PURPLE)
 	input.add_theme_color_override("caret_color", Color("214f50"))
 
 func _button(parent: Node, text: String, callback: Callable) -> Button:

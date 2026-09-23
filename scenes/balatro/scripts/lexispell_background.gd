@@ -9,7 +9,8 @@ var felt: ColorRect
 func set_in_game(value: bool) -> void:
 	if is_instance_valid(felt):
 		felt.visible = value
-		get_node("Stars").visible = not value
+		# Motivo della home disattivato per prova; decommentare per ripristinarlo.
+		# get_node("Stars").visible = not value
 
 func _ready() -> void:
 	color = Color(0.156863, 0.560784, 0.392157, 1)
@@ -31,6 +32,9 @@ func _ready() -> void:
 	pattern.set_shader_parameter("scrolling_dir", Vector2(0.5, 0.5))
 	stars.material = pattern
 	add_child(stars)
+	# Per ripristinare i semi animati, decommentare show() e la riga in set_in_game.
+	stars.hide()
+	# stars.show()
 	stars.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pattern.set_shader_parameter("size", size)
 	resized.connect(func(): pattern.set_shader_parameter("size", size))

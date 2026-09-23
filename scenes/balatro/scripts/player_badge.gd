@@ -1,4 +1,3 @@
-@tool
 extends Control
 
 signal life_animation_finished
@@ -25,15 +24,10 @@ var heart_rotation := 0.1:
 		queue_redraw()
 
 func animate_heart() -> Tween:
-	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.set_parallel(true)
-	# Stesso pop/rotazione dei pulsanti Lexispell durante l'interazione.
-	tween.tween_property(self, "heart_scale:x", 1.2, 0.2)
-	tween.tween_property(self, "heart_scale:y", 1.2, 0.35)
-	tween.tween_property(self, "heart_rotation", deg_to_rad(5.0 * [-1, 1].pick_random()), 0.1)
-	tween.tween_property(self, "heart_rotation", 0.0, 0.1).set_delay(0.1)
-	tween.chain().tween_property(self, "heart_scale:x", 1.0, 0.25)
-	tween.parallel().tween_property(self, "heart_scale:y", 1.0, 0.35)
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_BACK)
+	tween.set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "heart_scale", Vector2(0.05, 0.05), 0.30)
 	return tween
 
 var life_animating := false
@@ -54,22 +48,32 @@ func animate_life_change(previous: int, damage: int, final_lives: int, dim_after
 	eliminated = previous <= 0
 	_update_elimination_tint()
 	queue_redraw()
+
 	if damage > 0:
-		var bounce := animate_heart()
-		# Il contatore cambia quando il cuore è già nel suo pop, non all'inizio.
-		await get_tree().create_timer(0.2, false).timeout
+		var shrink := animate_heart()
+		await shrink.finished
+
+		# Cambia il numero delle vite quando il cuore è piccolo.
 		lives = final_lives
 		GameAudio.play(self, GameAudio.LIFE)
 		eliminated = final_lives <= 0
 		_update_elimination_tint()
 		queue_redraw()
-		await bounce.finished
+
+		# Ritorno con effetto pop.
+		var grow := create_tween()
+		grow.set_trans(Tween.TRANS_BACK)
+		grow.set_ease(Tween.EASE_OUT)
+		grow.tween_property(self, "heart_scale", Vector2.ONE, 0.18)
+		await grow.finished
+
 	# A simultaneous-elimination tie can restore one life after reaching zero.
 	if lives != final_lives:
 		await get_tree().create_timer(0.5, false).timeout
 		lives = final_lives
 		eliminated = final_lives <= 0
 		_update_elimination_tint()
+
 	queue_redraw()
 	life_animating = false
 	life_animation_finished.emit()
@@ -179,7 +183,7 @@ func _draw() -> void:
 	draw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size, Color("fff0cc"))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var prediction_box := StyleBoxFlat.new()
-	prediction_box.bg_color = Color("fff0cc")
+	prediction_box.bg_color = Color("214f50")
 	prediction_box.set_corner_radius_all(10)
 	var prediction_shadow := StyleBoxFlat.new()
 	prediction_shadow.bg_color = Color("153536")
@@ -190,10 +194,10 @@ func _draw() -> void:
 	draw_style_box(prediction_shadow, Rect2(94, 151, 68, 42))
 	draw_style_box(prediction_box, Rect2(91, 148, 68, 42))
 	if prediction >= 0:
-		_text(Vector2(125, 169), "/", 16, Color("214f50"), COUNTER_FONT, false)
-		_text(Vector2(143, 169), str(prediction), 24, Color("214f50"), KIDS_FONT, false)
+		_text(Vector2(125, 169), "/", 16, Color("fff0cc"), COUNTER_FONT, false)
+		_text(Vector2(143, 169), str(prediction), 24, Color("fff0cc"), KIDS_FONT, false)
 		if show_taken or taken > 0:
-			_text(Vector2(107, 169), str(taken), 24, Color("214f50"), KIDS_FONT, false)
+			_text(Vector2(107, 169), str(taken), 24, Color("fff0cc"), KIDS_FONT, false)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var name_size := 27
 	while font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x > 152 and name_size > 14:

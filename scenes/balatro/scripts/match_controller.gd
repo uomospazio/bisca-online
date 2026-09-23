@@ -532,7 +532,7 @@ func _animate_round_damage() -> void:
 
 func _refresh() -> void:
 	_clear(actions)
-	actions.position.y = 625.0 if rules.phase == "prediction" else 630.0
+	actions.position.y = 550.0 if rules.phase == "prediction" else 630.0
 	joker_buttons.clear()
 	joker_cancel_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var view: Dictionary = rules.view_for(0)
@@ -583,6 +583,7 @@ func _refresh() -> void:
 				if rules.hand_size == 1:
 					caption = "Perdo" if bid == 0 else "Vinco"
 				var prediction_button := _button(caption, _predict.bind(bid), rules.legal_bids(0).has(bid))
+				prediction_button.custom_minimum_size.y = 80
 				prediction_button.pivot_offset = prediction_button.size / 2.0
 				prediction_button.scale = Vector2.ONE * 0.72
 				prediction_button.rotation_degrees = 5.0 * [-1.0, 1.0].pick_random()

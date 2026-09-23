@@ -14,6 +14,7 @@ var copied_code := ""
 var syncing_options := false
 var is_host := false
 var players_box: VBoxContainer
+var players_label: Label
 var code_button: Button
 var code_label: Label
 var copy_icon: TextureRect
@@ -149,20 +150,34 @@ func setup(owner_menu: Control) -> void:
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	var participant_panel := PanelContainer.new()
 	session_controls.add_child(participant_panel)
-	participant_panel.position = Vector2(760, 130)
-	participant_panel.size = Vector2(900, 760)
+	participant_panel.position = Vector2(920, 130)
+	participant_panel.size = Vector2(620, 820)
 	var panel_style = menu._menu_button_style(menu.BUTTON_TEXT, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
 	panel_style.content_margin_top = 24
-	panel_style.content_margin_bottom = 120
+	panel_style.content_margin_bottom = 24
 	participant_panel.add_theme_stylebox_override("panel", panel_style)
+	var participant_content := VBoxContainer.new()
+	participant_content.add_theme_constant_override("separation", 14)
+	participant_panel.add_child(participant_content)
+
+	players_label = Label.new()
+	players_label.text = "PLAYERS 0/8"
+	players_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	players_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	players_label.custom_minimum_size.y = 42
+	players_label.add_theme_font_override("font", menu.KIDS_FONT)
+	players_label.add_theme_font_size_override("font_size", 28)
+	players_label.add_theme_color_override("font_color", menu.BUTTON_PURPLE)
+	participant_content.add_child(players_label)
+
 	players_box = VBoxContainer.new()
 	players_box.add_theme_constant_override("separation", 8)
-	participant_panel.add_child(players_box)
+	participant_content.add_child(players_box)
 	start_button = menu._button(session_controls, "PLAY", func(): net.send({"op": "start"}))
-	start_button.position = Vector2(1320, 755)
-	start_button.size = Vector2(300, 80)
+	start_button.position = Vector2(1600, 940)
+	start_button.size = Vector2(260, 80)
 	start_button.custom_minimum_size.y = 80
 	_set_icon(start_button, "play")
 	session_controls.hide()
@@ -227,17 +242,26 @@ func _update(state: Dictionary) -> void:
 	_sync_options(state)
 	code_label.text = str(state.code)
 	code_button.set_meta("room_code", state.code)
+	players_label.text = "PLAYERS %d/8" % min(8, state.people.size())
 	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
 	for child in players_box.get_children():
 		players_box.remove_child(child)
 		child.queue_free()
 	for index in range(8):
 		var row := PanelContainer.new()
-		row.custom_minimum_size = Vector2(0, 64)
+		row.custom_minimum_size = Vector2(590, 82)
+		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		row.clip_contents = true
-		row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.BUTTON_PURPLE))
+		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
+		row_style.shadow_size = 0
+		row_style.shadow_offset = Vector2.ZERO
+		row.add_theme_stylebox_override("panel", row_style)
+
 		if index >= state.people.size():
-			row.add_theme_stylebox_override("panel", menu._menu_button_style(menu.LexispellStyle.DISABLED))
+			var empty_style = menu._menu_button_style(menu.LexispellStyle.DISABLED)
+			empty_style.shadow_size = 0
+			empty_style.shadow_offset = Vector2.ZERO
+			row.add_theme_stylebox_override("panel", empty_style)
 			var empty := Label.new()
 			empty.text = "EMPTY"
 			empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -281,8 +305,23 @@ func _update(state: Dictionary) -> void:
 		line.add_child(speaker)
 		speaker.custom_minimum_size = Vector2(56, 50)
 		speaker.flat = true
+		speaker.icon = null
 		RoundedSquareButton.ButtonAudio.attach(speaker)
+
+		var speaker_icon := TextureRect.new()
+		speaker.add_child(speaker_icon)
+		speaker_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		speaker_icon.offset_left = 6
+		speaker_icon.offset_top = 3
+		speaker_icon.offset_right = -6
+		speaker_icon.offset_bottom = -3
+		speaker_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		speaker_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		speaker_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		speaker_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 		row.set_meta("voice_button", speaker)
+		row.set_meta("voice_icon", speaker_icon)
 		row.set_meta("voice_self", index == int(state.you))
 		row.set_meta("voice_id", voice_id)
 		row.set_meta("voice_bot", bool(p.bot))
@@ -321,16 +360,63 @@ func _update_voice_buttons() -> void:
 		if not row.has_meta("voice_button"):
 			continue
 		var speaker: Button = row.get_meta("voice_button")
+		var speaker_icon: TextureRect = row.get_meta("voice_icon")
 		var active: bool
 		if row.get_meta("voice_self"):
 			active = voice.enabled
 			speaker.tooltip_text = "Annulla connessione" if voice.pending else ("Disattiva chat vocale" if active else "Attiva chat vocale")
+			_set_voice_icon_tween(speaker_icon, "mic-on" if active else "mic-off")
 		else:
 			active = not row.get_meta("voice_bot") and voice.player_volume(row.get_meta("voice_id")) > 0
 			speaker.tooltip_text = "Silenzia giocatore" if active else "Riattiva audio giocatore"
-		_set_icon(speaker, "volume-high" if active else "volume-cross")
+			_set_voice_icon(speaker_icon, "volume-high" if active else "volume-cross")
 	if session_controls.visible and (voice.enabled or voice.pending or voice.status.begins_with("Errore") or voice.status.begins_with("Microfono")):
 		info.text = voice.status
+
+func _set_voice_icon_tween(icon: TextureRect, icon_name: String) -> void:
+	var current_icon := str(icon.get_meta("current_icon", ""))
+
+	# Prima assegnazione: niente animazione.
+	if current_icon.is_empty():
+		icon.texture = load(
+			"res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name
+		)
+		icon.set_meta("current_icon", icon_name)
+		return
+
+	# Se l'icona non è cambiata, non fare nulla.
+	if current_icon == icon_name:
+		return
+
+	# Interrompe un eventuale tween precedente.
+	if icon.has_meta("voice_tween"):
+		var old_tween: Tween = icon.get_meta("voice_tween")
+		if old_tween != null and old_tween.is_valid():
+			old_tween.kill()
+
+	icon.pivot_offset = icon.size / 2.0
+
+	var tween := create_tween()
+	icon.set_meta("voice_tween", tween)
+
+	tween.set_trans(Tween.TRANS_BACK)
+	tween.set_ease(Tween.EASE_IN)
+	tween.tween_property(icon, "scale", Vector2(0.25, 0.25), 0.10)
+
+	tween.tween_callback(func():
+		icon.texture = load(
+			"res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name
+		)
+		icon.set_meta("current_icon", icon_name)
+	)
+
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(icon, "scale", Vector2.ONE, 0.18)
+
+
+func _set_voice_icon(icon: TextureRect, icon_name: String) -> void:
+	icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
+
 
 func _set_icon(button: Button, icon_name: String) -> void:
 	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)

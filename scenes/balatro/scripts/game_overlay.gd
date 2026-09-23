@@ -81,7 +81,7 @@ func _ready() -> void:
 	column.add_child(title)
 	title.custom_minimum_size.y = 112
 	title.add_theme_font_override("normal_font", KIDS_FONT)
-	title.add_theme_font_size_override("normal_font_size", 86)
+	title.add_theme_font_size_override("normal_font_size", 92)
 	title.add_theme_color_override("default_color", LexispellStyle.TEXT)
 	title.add_theme_color_override("font_color", LexispellStyle.TEXT)
 	title.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
@@ -143,8 +143,8 @@ func announce_turn(prediction: bool, single_card: bool = false) -> void:
 		# below it. The overlay must not block those buttons.
 		overlay_shade.hide()
 		# Keep the banner above the prediction buttons instead of covering them.
-		banner_center.offset_top = 0
-		banner_center.offset_bottom = 0
+		banner_center.offset_top = -50
+		banner_center.offset_bottom = -50
 		banner_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		modulate.a = 0.0

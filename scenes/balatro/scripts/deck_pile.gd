@@ -32,7 +32,7 @@ func return_home() -> void:
 	z_index = 0
 
 func _home_position() -> Vector2:
-	return get_parent().size + Vector2(-1500, -267)
+	return get_parent().size + Vector2(-200, -267)
 
 func place_home() -> void:
 	position = _home_position()

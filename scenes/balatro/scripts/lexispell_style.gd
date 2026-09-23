@@ -11,7 +11,7 @@ const DISABLED_TEXT := Color(0.760784, 0.792157, 0.733333)
 static func button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
-	style.set_corner_radius_all(25)
+	style.set_corner_radius_all(22)
 	style.corner_detail = 12
 	style.anti_aliasing_size = 0.285
 	if border_width == 2:

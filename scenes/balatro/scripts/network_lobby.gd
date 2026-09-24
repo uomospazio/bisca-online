@@ -325,14 +325,11 @@ func _update(state: Dictionary) -> void:
 		row.set_meta("voice_self", index == int(state.you))
 		row.set_meta("voice_id", voice_id)
 		row.set_meta("voice_bot", bool(p.bot))
+		row.set_meta("voice_active", bool(p.get("voice_active", false)))
 		if index == int(state.you):
 			speaker.pressed.connect(voice.toggle_audio)
 		else:
-			speaker.disabled = bool(p.bot) or voice_id.is_empty()
-			speaker.pressed.connect(func():
-				voice.set_player_volume(voice_id, 100 if voice.player_volume(voice_id) == 0 else 0)
-				_update_voice_buttons()
-			)
+			speaker.disabled = true
 		var remove := Button.new()
 		RoundedSquareButton.ButtonAudio.attach(remove)
 		remove.text = "×"
@@ -367,8 +364,8 @@ func _update_voice_buttons() -> void:
 			speaker.tooltip_text = "Annulla connessione" if voice.pending else ("Disattiva chat vocale" if active else "Attiva chat vocale")
 			_set_voice_icon_tween(speaker_icon, "mic-on" if active else "mic-off")
 		else:
-			active = not row.get_meta("voice_bot") and voice.player_volume(row.get_meta("voice_id")) > 0
-			speaker.tooltip_text = "Silenzia giocatore" if active else "Riattiva audio giocatore"
+			active = bool(row.get_meta("voice_active", false))
+			speaker.tooltip_text = "Microfono attivo" if active else "Microfono disattivato"
 			_set_voice_icon(speaker_icon, "volume-high" if active else "volume-cross")
 	if session_controls.visible and (voice.enabled or voice.pending or voice.status.begins_with("Errore") or voice.status.begins_with("Microfono")):
 		info.text = voice.status

@@ -98,6 +98,7 @@ func _process(delta: float) -> void:
 	follow_mouse(delta)
 	rotate_velocity(delta)
 	handle_shadow(delta)
+	shadow.visible = following_mouse or is_played
 	
 func rotate_velocity(delta: float) -> void:
 	if not following_mouse: return

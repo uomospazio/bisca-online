@@ -408,6 +408,10 @@ func request(command: Dictionary) -> void:
 			if _peer_connected(recipient.peer):
 				thrown.rpc_id(recipient.peer, slot, target, object_id)
 		return
+	if op == "voice_state":
+		room.people[slot]["voice_active"] = bool(command.get("active", false))
+		_broadcast(room)
+		return
 	if op == "profile":
 		var person: Dictionary = room.people[slot]
 		if not command.get("avatar", "") is String:
@@ -505,7 +509,7 @@ func _broadcast(room: Dictionary) -> void:
 		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
 		state["bot_count"] = room.get("bot_count", 2)
 		for p in room.people:
-			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id})
+			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id, "voice_active": bool(p.get("voice_active", false))})
 		if room.rules != null:
 			state.merge(room.rules.view_for(id))
 			state["completed_tricks"] = room.rules.completed_tricks

@@ -688,23 +688,17 @@ func _hide_prediction_buttons(bid: int) -> void:
 			selected = button
 		else:
 			others.append(button)
-	for button in others:
-		var fade_other := button.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-		fade_other.set_parallel(true)
-		fade_other.tween_property(button, "scale:x", 0.72, 0.18)
-		fade_other.tween_property(button, "scale:y", 0.72, 0.18)
-		fade_other.tween_property(button, "rotation_degrees", 5.0 * [-1.0, 1.0].pick_random(), 0.1)
-		fade_other.tween_property(button, "modulate:a", 0.0, 0.14)
-	if not others.is_empty():
-		await get_tree().create_timer(0.14, false).timeout
+	var disappearing: Array[Control] = others.duplicate()
 	if is_instance_valid(selected):
-		var fade_selected := selected.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-		fade_selected.set_parallel(true)
-		fade_selected.tween_property(selected, "scale:x", 0.72, 0.2)
-		fade_selected.tween_property(selected, "scale:y", 0.72, 0.2)
-		fade_selected.tween_property(selected, "rotation_degrees", 5.0 * [-1.0, 1.0].pick_random(), 0.1)
-		fade_selected.tween_property(selected, "modulate:a", 0.0, 0.18)
-		await fade_selected.finished
+		disappearing.append(selected)
+	if not disappearing.is_empty():
+		var fade_all := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		fade_all.set_parallel(true)
+		for button in disappearing:
+			fade_all.tween_property(button, "scale", Vector2.ONE * 0.72, 0.18)
+			fade_all.tween_property(button, "rotation_degrees", 5.0 * [-1.0, 1.0].pick_random(), 0.1)
+			fade_all.tween_property(button, "modulate:a", 0.0, 0.18)
+		await fade_all.finished
 	var text_elements: Array[Control] = []
 	for child in actions.get_children():
 		if child is Control and not child is Button:

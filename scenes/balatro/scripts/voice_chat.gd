@@ -132,6 +132,8 @@ func toggle_audio() -> void:
 
 func stop() -> void:
 	_call("stop")
+	if network_session != null:
+		network_session.send({"op": "voice_state", "active": false})
 	enabled = false
 	pending = false
 	muted = false
@@ -186,6 +188,8 @@ func _process(_delta: float) -> void:
 			enabled = bool(event.enabled)
 			pending = bool(event.get("pending", false))
 			muted = bool(event.muted)
+			if network_session != null:
+				network_session.send({"op": "voice_state", "active": enabled})
 			changed.emit()
 
 func _exit_tree() -> void:

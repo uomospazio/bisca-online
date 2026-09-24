@@ -10,8 +10,8 @@ const Catalog = preload("res://scenes/balatro/scripts/throw_catalog.gd")
 var textures: Array[Texture2D] = []
 var items: Array[TextureRect] = []
 var selected := 0
-const SLOT_RADIUS := 100.0
-const SLOT_ANGLES := [-50.0, 0.0, 50.0]
+const SLOT_RADIUS := 110.0
+const SLOT_ANGLES := [-60.0, -10.0, 40.0]
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 var host: Control
 var menu_button: Button

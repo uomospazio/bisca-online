@@ -169,6 +169,8 @@ func _apply(value: Dictionary) -> void:
 	host.pending_joker = null
 	host.busy = value.stage != "turn"
 	host._refresh()
+	if value.stage == "turn":
+		host._play_turn_sound()
 	if value.phase == "finished" and value.stage == "turn":
 		host.overlay.show_victory(host._name_of(host.rules.winner))
 	elif value.phase == "prediction" and host.rules.current == 0 and value.stage == "turn":

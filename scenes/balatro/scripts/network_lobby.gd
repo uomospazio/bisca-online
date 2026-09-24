@@ -330,6 +330,8 @@ func _update(state: Dictionary) -> void:
 			speaker.pressed.connect(voice.toggle_audio)
 		else:
 			speaker.disabled = true
+			speaker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			speaker.focus_mode = Control.FOCUS_NONE
 		var remove := Button.new()
 		RoundedSquareButton.ButtonAudio.attach(remove)
 		remove.text = "×"
@@ -360,7 +362,7 @@ func _update_voice_buttons() -> void:
 		var speaker_icon: TextureRect = row.get_meta("voice_icon")
 		var active: bool
 		if row.get_meta("voice_self"):
-			active = voice.enabled
+			active = voice.enabled and not voice.muted and not voice.pending
 			speaker.tooltip_text = "Annulla connessione" if voice.pending else ("Disattiva chat vocale" if active else "Attiva chat vocale")
 			_set_voice_icon_tween(speaker_icon, "mic-on" if active else "mic-off")
 		else:

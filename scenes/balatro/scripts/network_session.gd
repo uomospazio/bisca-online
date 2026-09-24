@@ -409,7 +409,10 @@ func request(command: Dictionary) -> void:
 				thrown.rpc_id(recipient.peer, slot, target, object_id)
 		return
 	if op == "voice_state":
-		room.people[slot]["voice_active"] = bool(command.get("active", false))
+		var active := bool(command.get("active", false))
+		if bool(room.people[slot].get("voice_active", false)) == active:
+			return
+		room.people[slot]["voice_active"] = active
 		_broadcast(room)
 		return
 	if op == "profile":
@@ -545,6 +548,7 @@ func clock(seconds: float) -> void:
 # =========================================================
 
 func _revoke_voice(room: Dictionary, person: Dictionary) -> void:
+	person["voice_active"] = false
 	LiveKitAuth.remove_participant(self, str(room.get("livekit_room", "")), str(person.get("livekit_identity", "")))
 	# A new transport identity prevents a late removal from kicking a rejoin.
 	person.erase("livekit_identity")

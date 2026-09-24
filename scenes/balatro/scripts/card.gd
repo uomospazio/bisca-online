@@ -98,7 +98,6 @@ func _process(delta: float) -> void:
 	follow_mouse(delta)
 	rotate_velocity(delta)
 	handle_shadow(delta)
-	shadow.visible = following_mouse or is_played
 	
 func rotate_velocity(delta: float) -> void:
 	if not following_mouse: return
@@ -115,9 +114,12 @@ func rotate_velocity(delta: float) -> void:
 	
 	rotation = displacement
 
-func handle_shadow(delta: float) -> void:
-	# Y position is enver changed.
-	# Only x changes depending on how far we are from the center of the screen
+func handle_shadow(_delta: float) -> void:
+	shadow.visible = following_mouse
+	if not following_mouse:
+		return
+	shadow.position = Vector2(-10, 10)
+	shadow.self_modulate.a = 0.35
 	var center: Vector2 = get_viewport_rect().size / 2.0
 	var distance: float = global_position.x - center.x
 	

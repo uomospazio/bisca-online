@@ -233,6 +233,10 @@ func lock_interaction() -> void:
 	_cancel_hold()
 
 func stop_visual_tweens() -> void:
+	if confirm_tween and confirm_tween.is_running():
+		confirm_tween.kill()
+	if hold_scale_tween and hold_scale_tween.is_running():
+		hold_scale_tween.kill()
 	if hover_tween and hover_tween.is_running():
 		hover_tween.kill()
 	if reset_tween and reset_tween.is_running():

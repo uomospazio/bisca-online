@@ -106,7 +106,9 @@ func _process(delta: float) -> void:
 		return
 	var own: Control = host.scores.get_child(0)
 	menu_button.visible = own.is_visible_in_tree() and not own.eliminated
-	menu_button.position = _point(own, Vector2(155, 65))
+	# Keep the menu and its slots at the table seat while badges move to center.
+	if not host.damage_shade.visible:
+		menu_button.position = _point(own, Vector2(155, 65))
 	menu_button.disabled = remaining > 0
 	menu_button.tooltip_text = "Ricarica: %ds" % ceili(remaining) if remaining > 0 else "Lancia un oggetto"
 	if not is_visible_in_tree() or not menu_button.visible:

@@ -153,6 +153,8 @@ func leave() -> void:
 func set_muted(value: bool) -> void:
 	muted = value
 	_call("setMuted", [value])
+	if network_session != null:
+		network_session.send({"op": "voice_state", "active": enabled and not muted and not pending})
 	changed.emit()
 
 func player_volume(id: String) -> float:
@@ -189,7 +191,7 @@ func _process(_delta: float) -> void:
 			pending = bool(event.get("pending", false))
 			muted = bool(event.muted)
 			if network_session != null:
-				network_session.send({"op": "voice_state", "active": enabled})
+				network_session.send({"op": "voice_state", "active": enabled and not muted and not pending})
 			changed.emit()
 
 func _exit_tree() -> void:

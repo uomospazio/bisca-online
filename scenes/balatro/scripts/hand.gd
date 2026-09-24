@@ -52,7 +52,7 @@ func return_card(card: Control) -> void:
 	_register_card(card)
 	_arrange()
 
-@export var card_spacing: float = -24.0
+@export var card_spacing: float = 10.0
 @export var vertical_variation: float = 6.0
 @export var rotation_variation: float = 1.5
 @export var fan_angle: float = 3.0

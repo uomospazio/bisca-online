@@ -6,6 +6,7 @@ const COUNTER = preload("res://scenes/balatro/audio/counter.wav")
 const LIFE = preload("res://scenes/balatro/audio/pop_ui.mp3")
 const VICTORY = preload("res://scenes/balatro/audio/victory.wav")
 const NOTICE = preload("res://scenes/balatro/audio/button_hover.wav")
+const TURN = preload("res://scenes/balatro/audio/turn.mp3")
 
 static func play(owner: Node, sound: AudioStream, volume := -10.0) -> void:
 	if Engine.is_editor_hint() or not owner.is_inside_tree():

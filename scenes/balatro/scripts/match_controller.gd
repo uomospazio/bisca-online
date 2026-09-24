@@ -5,7 +5,7 @@ const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 var bot_policy = preload("res://scenes/balatro/scripts/local_bot_policy.gd").new()
 var local_bot_generation := 0
 const LOCAL_BOT_PREDICTION_DELAY := 0.3
-const LOCAL_BOT_PLAY_DELAY := 0.3
+const LOCAL_BOT_PLAY_DELAY := 0.1
 const Deck = preload("res://scenes/balatro/scripts/deck.gd")
 const CardScene = preload("res://scenes/balatro/card.tscn")
 var BACK: Texture2D:
@@ -51,6 +51,7 @@ var loading_screen: CanvasLayer
 var pause_menu: CanvasLayer
 var damage_shade: ColorRect
 var last_turn_notice := ""
+var last_turn_sound := ""
 const TURN_SECONDS := 30.0
 var turn_time_left := 0.0
 var timed_turn := ""
@@ -213,6 +214,7 @@ func _show_menu() -> void:
 		button.show()
 	timed_turn = ""
 	turn_time_left = 0.0
+	last_turn_sound = ""
 	turn_clock.hide()
 	overlay.hide()
 	game_ui.hide()
@@ -269,7 +271,7 @@ func _build_ui() -> void:
 	ui.add_child(turn_clock)
 	# Updated from the hand's layout, including its scale and canvas transform.
 	turn_clock.size = Vector2(180, 50)
-	turn_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	turn_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	turn_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	turn_clock.z_index = 100
 	turn_clock.add_theme_font_override("font", KIDS_FONT)
@@ -367,6 +369,7 @@ func _start(count: int) -> void:
 	menu.hide()
 	overlay.hide()
 	last_turn_notice = ""
+	last_turn_sound = ""
 	game_ui.show()
 	$Parallax.show()
 	player_count = count
@@ -617,14 +620,26 @@ func _refresh() -> void:
 		status.set_mixed_text("%s\nSei eliminato: puoi seguire la partita" % status.text)
 	hand.allow_play = rules.phase == "play" and rules.hand_size > 1 and rules.current == 0 and not busy and pending_joker == null
 
+func _play_turn_sound() -> void:
+	if rules.current != 0 or not rules.phase in ["prediction", "play"]:
+		return
+	if rules.phase == "play" and rules.hand_size == 1:
+		return
+	var key := "%d:%s:%d" % [rules.round_number, rules.phase, rules.completed_tricks]
+	if key == last_turn_sound:
+		return
+	last_turn_sound = key
+	GameAudio.play(self, GameAudio.TURN)
+
 func _position_turn_clock() -> void:
 	if not is_instance_valid(turn_clock) or not is_instance_valid(hand) or hand.cards.is_empty():
 		return
 	# Use the resting slot, so dragging/hovering a card cannot move the timer.
-	var edge: Vector2 = hand._slot_position(0) + Vector2(0, hand.cards[0].size.y / 2.0)
+	var last_index: int = hand.cards.size() - 1
+	var edge: Vector2 = hand._slot_position(last_index) + Vector2(hand.cards[last_index].size.x, hand.cards[last_index].size.y / 2.0)
 	var canvas_point: Vector2 = hand.get_global_transform_with_canvas() * edge
 	var ui_point: Vector2 = game_ui.get_global_transform_with_canvas().affine_inverse() * canvas_point
-	turn_clock.position = ui_point - Vector2(turn_clock.size.x + 30.0, turn_clock.size.y / 0.8)
+	turn_clock.position = ui_point + Vector2(30.0, -turn_clock.size.y / 0.8)
 
 func _process(delta: float) -> void:
 	_position_turn_clock()
@@ -765,28 +780,13 @@ func _on_joker_hold_completed(high: bool) -> void:
 	busy = true
 	hand.allow_play = false
 	joker_cancel_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var selected: Control = joker_buttons[1] if high else joker_buttons[0]
-	var other: Control = joker_buttons[0] if high else joker_buttons[1]
 	for button in joker_buttons:
 		button.lock_interaction()
-	if selected.confirming:
-		await selected.confirmation_finished
-	await _hide_joker_button(other)
-	await _hide_joker_button(selected)
+		button.stop_visual_tweens()
+		button.hide()
 	var card = pending_joker
 	busy = false
 	_play_human(card, high)
-
-func _hide_joker_button(button: Control) -> void:
-	if not is_instance_valid(button):
-		return
-	button.stop_visual_tweens()
-	var animation := button.create_tween().set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BACK)
-	animation.set_parallel(true)
-	animation.tween_property(button, "modulate:a", 0.0, 0.18)
-	animation.tween_property(button, "scale", Vector2.ONE * 0.72, 0.18)
-	await animation.finished
-	button.hide()
 
 func _on_joker_cancel_input(event: InputEvent) -> void:
 	if not pending_joker:
@@ -941,11 +941,13 @@ func _drive() -> void:
 			overlay.show_victory(_name_of(rules.winner))
 			return
 		if rules.current == 0 and rules.phase == "prediction":
+			_play_turn_sound()
 			var notice := "%d:%s:%d" % [rules.round_number, rules.phase, rules.completed_tricks]
 			if notice != last_turn_notice:
 				last_turn_notice = notice
 				await overlay.announce_turn(true, rules.hand_size == 1)
 		if rules.phase == "round_complete" or rules.current == 0:
+			_play_turn_sound()
 			busy = false
 			_refresh()
 			return

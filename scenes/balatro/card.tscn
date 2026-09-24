@@ -30,6 +30,7 @@ script = ExtResource("1_borcn")
 velocity_multiplier = 1.0
 
 [node name="Shadow" type="TextureRect" parent="." unique_id=1439729119]
+visible = false
 modulate = Color(0, 0, 0, 1)
 self_modulate = Color(1, 1, 1, 0.168627)
 show_behind_parent = true

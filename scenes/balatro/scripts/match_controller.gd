@@ -4,6 +4,8 @@ const Rules = preload("res://scenes/balatro/scripts/match_rules.gd")
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 var bot_policy = preload("res://scenes/balatro/scripts/local_bot_policy.gd").new()
 var local_bot_generation := 0
+const LOCAL_BOT_PREDICTION_DELAY := 0.3
+const LOCAL_BOT_PLAY_DELAY := 0.3
 const Deck = preload("res://scenes/balatro/scripts/deck.gd")
 const CardScene = preload("res://scenes/balatro/card.tscn")
 var BACK: Texture2D:
@@ -954,7 +956,8 @@ func _drive() -> void:
 			_refresh()
 			return
 		var id: int = rules.current
-		await get_tree().create_timer(0.65, false).timeout
+		var bot_delay := LOCAL_BOT_PREDICTION_DELAY if rules.phase == "prediction" else LOCAL_BOT_PLAY_DELAY
+		await get_tree().create_timer(bot_delay, false).timeout
 		# Bots only consume their own redacted view, never another hand.
 		var view: Dictionary = rules.view_for(id)
 		var generation := local_bot_generation

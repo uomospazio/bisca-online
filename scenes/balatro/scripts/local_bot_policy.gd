@@ -3,6 +3,7 @@ extends "res://scenes/balatro/scripts/bot_policy.gd"
 # Single-player only. Yield between simulated moves (not entire rollouts),
 # keeping input/rendering responsive even in thread-free mobile Web exports.
 const FRAME_BUDGET_USEC := 1500
+const LOCAL_BID_SAMPLES := 8
 
 func decide(view: Dictionary, actor: int, tree: SceneTree, valid: Callable) -> Dictionary:
 	if not valid.is_valid() or not valid.call():
@@ -15,7 +16,8 @@ func decide(view: Dictionary, actor: int, tree: SceneTree, valid: Callable) -> D
 	scores.resize(options.size())
 	scores.fill(0.0)
 	var deadline := Time.get_ticks_usec() + FRAME_BUDGET_USEC
-	for sample in range(BID_SAMPLES if bidding else PLAY_SAMPLES):
+	var sample_count := LOCAL_BID_SAMPLES if bidding else PLAY_SAMPLES
+	for sample in range(sample_count):
 		var world := _sample_world(view, actor)
 		for index in range(options.size()):
 			var players: Array = world.players.duplicate(true)

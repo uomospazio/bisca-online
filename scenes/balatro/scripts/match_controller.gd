@@ -126,7 +126,10 @@ func _ready() -> void:
 	info_button.offset_bottom = 88
 	info_button.z_index = 200
 	var voice = get_node("/root/VoiceChat")
-	var voice_button: Button = menu._button(game_ui, "VOCE", voice.open_panel)
+	var voice_button: Button = menu._button(game_ui, "CHAT", voice.open_panel)
+	voice_button.expand_icon = true
+	voice_button.add_theme_constant_override("icon_max_width", 28)
+	voice_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	voice_button.custom_minimum_size = Vector2(150, 64)
 	voice_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	voice_button.offset_left = -178
@@ -135,9 +138,11 @@ func _ready() -> void:
 	voice_button.offset_bottom = 168
 	voice_button.z_index = 200
 	voice_button.tooltip_text = "Attiva la chat vocale e regola i volumi dei giocatori"
-	voice.changed.connect(func():
-		voice_button.text = "VOCE OFF" if not voice.enabled else ("MUTO" if voice.muted else "VOCE ON")
-	)
+	var update_voice_icon := func():
+		var mic_active: bool = voice.enabled and not voice.muted and not voice.pending
+		voice_button.icon = preload("res://scenes/balatro/trick_asset/ui_bisca/mic-on.svg") if mic_active else preload("res://scenes/balatro/trick_asset/ui_bisca/mic-off.svg")
+	voice.changed.connect(update_voice_icon)
+	update_voice_icon.call()
 	game_ui.visibility_changed.connect(func():
 		$GameBackground.set_in_game(game_ui.visible)
 		voice_button.visible = online

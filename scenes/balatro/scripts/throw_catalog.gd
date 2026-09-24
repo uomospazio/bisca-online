@@ -5,7 +5,7 @@ extends RefCounted
 # both client and server after changing this list.
 const FILES := [
 	"poop.svg", # Slot 1: upper right
-	"fword.svg", # Slot 2: right — e.g. "tomato.svg"
+	"gay.svg", # Slot 2: right — e.g. "tomato.svg"
 	"", # Slot 3: lower right — e.g. "egg.svg"
 ]
 

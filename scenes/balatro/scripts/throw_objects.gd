@@ -1,6 +1,11 @@
 extends Control
 
 const COOLDOWN := 8.0
+const SHORT_THROW_DISTANCE := 700.0
+const FAST_THROW = preload("res://scenes/balatro/audio/fast-throw.mp3")
+const LONG_THROW = preload("res://scenes/balatro/audio/long-throw.mp3")
+const IMPACT = preload("res://scenes/balatro/audio/impact.mp3")
+const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 const Catalog = preload("res://scenes/balatro/scripts/throw_catalog.gd")
 var textures: Array[Texture2D] = []
 var items: Array[TextureRect] = []
@@ -30,23 +35,23 @@ func setup(controller: Control) -> void:
 		textures.append(load(path) as Texture2D if not filename.is_empty() and ResourceLoader.exists(path) else null)
 	menu_button = RoundedSquareButton.new()
 	add_child(menu_button)
-	menu_button.size = Vector2(44, 44)
+	menu_button.size = Vector2(54, 54)
 	menu_button.expand_icon = true
 	menu_button.icon = _svg("res://scenes/balatro/trick_asset/ui_bisca/message.svg")
-	menu_button.add_theme_constant_override("icon_max_width", 26)
+	menu_button.add_theme_constant_override("icon_max_width", 32)
 	menu_button.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var style := Style.button_style(Style.HOVER if state in ["hover", "focus"] else Style.NORMAL)
-		style.set_corner_radius_all(22)
+		style.set_corner_radius_all(27)
 		menu_button.add_theme_stylebox_override(state, style)
 	menu_button.pressed.connect(func(): _open(not opened))
 	for index in range(3):
 		var slot := Panel.new()
-		slot.size = Vector2(64, 64)
+		slot.size = Vector2(76, 76)
 		slot.pivot_offset = slot.size / 2
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var style := Style.button_style(Style.NORMAL if textures[index] != null else Style.DISABLED)
-		style.set_corner_radius_all(32)
+		style.set_corner_radius_all(38)
 		slot.add_theme_stylebox_override("panel", style)
 		add_child(slot)
 		slot.hide()
@@ -89,7 +94,11 @@ func _point(badge: Control, point: Vector2) -> Vector2:
 
 func _slot_position(index: int) -> Vector2:
 	var center := menu_button.position + menu_button.size / 2.0
-	return center + Vector2.RIGHT.rotated(deg_to_rad(SLOT_ANGLES[index])) * SLOT_RADIUS - Vector2(32, 32)
+	return center + Vector2.RIGHT.rotated(deg_to_rad(SLOT_ANGLES[index])) * SLOT_RADIUS - Vector2(38, 38)
+
+func _object_position(index: int, object_size: Vector2) -> Vector2:
+	var slot_center := _slot_position(index) + Vector2(38, 38)
+	return slot_center - object_size / 2.0
 
 func _process(delta: float) -> void:
 	remaining = maxf(0, remaining - delta)
@@ -110,7 +119,7 @@ func _process(delta: float) -> void:
 	if dragging:
 		item.position = get_local_mouse_position() - item.size / 2
 	elif opened:
-		for index in range(items.size()): items[index].position = _slot_position(index)
+		for index in range(items.size()): items[index].position = _object_position(index, items[index].size)
 
 func _open(value: bool) -> void:
 	opened = value
@@ -119,7 +128,7 @@ func _open(value: bool) -> void:
 	for index in range(items.size()):
 		var icon := items[index]
 		icon.visible = textures[index] != null
-		icon.position = _slot_position(index)
+		icon.position = _object_position(index, icon.size)
 		icon.scale = Vector2.ONE * (0.5 if value else 1.0)
 		motion.tween_property(icon, "scale", Vector2.ONE if value else Vector2.ONE * 0.5, 0.28 if value else 0.18)
 	for index in range(slots.size()):
@@ -176,11 +185,23 @@ func _launch(sender: int, target: int, local_origin := Vector2.INF, object_id :=
 	var destination := _point(host.scores.get_child(target), Vector2(80, 128)) - projectile.size / 2
 	# Set the initial position before the first rendered frame.
 	projectile.position = origin
+	var sound: AudioStream = FAST_THROW if origin.distance_to(destination) <= SHORT_THROW_DISTANCE else LONG_THROW
+	var flight_duration := maxf(sound.get_length(), 0.1)
+	# Each projectile owns its flight sound, including simultaneous throws.
+	var flight_audio := AudioStreamPlayer.new()
+	flight_audio.stream = sound
+	get_node("/root/GameSettings").configure_sfx(flight_audio, -10.0)
+	projectile.add_child(flight_audio)
+	flight_audio.play()
 	var flight := create_tween()
 	flight.tween_method(func(progress: float):
 		projectile.position = origin.lerp(destination, progress) + Vector2(0, -120 * sin(progress * PI))
 		projectile.rotation = progress * TAU
-	, 0.0, 1.0, 0.6)
+	, 0.0, 1.0, flight_duration)
+	flight.tween_callback(func():
+		flight_audio.stop()
+		GameAudio.play(self, IMPACT, -10.0)
+	)
 	flight.tween_property(projectile, "scale", Vector2(1.3, 0.8), 0.12)
 	flight.tween_property(projectile, "scale", Vector2.ONE, 0.15)
 	flight.tween_interval(0.6)

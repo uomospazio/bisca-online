@@ -22,8 +22,8 @@ func run() -> void:
 	assert(throws.item.visible and throws.item.scale.is_equal_approx(Vector2.ONE))
 	assert(throws.slots.size() == 3)
 	assert(throws.items.size() == 3)
-	assert(not throws.items[1].visible and not throws.items[2].visible)
-	assert(throws.items[1].mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(throws.items[1].visible and not throws.items[2].visible)
+	assert(throws.items[1].mouse_filter == Control.MOUSE_FILTER_STOP)
 	for slot in throws.slots:
 		assert(slot.visible and slot.scale.is_equal_approx(Vector2.ONE))
 	var children: int = throws.get_child_count()

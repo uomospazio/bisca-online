@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djlugj7ubvh3y"
-valid=false
+uid="uid://caikhm4mh4ma1"
+path="res://.godot/imported/personaggio_menu.png-fdf3dcf5b085cf03057c712ee1b0d143.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
-source_file="res://docs/index.icon.png"
+source_file="res://scenes/balatro/resources/personaggio_menu.png"
+dest_files=["res://.godot/imported/personaggio_menu.png-fdf3dcf5b085cf03057c712ee1b0d143.ctex"]
 
 [params]
 

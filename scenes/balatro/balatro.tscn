@@ -8,7 +8,6 @@
 [ext_resource type="Script" uid="uid://cnaykygj3bkns" path="res://scenes/balatro/scripts/play_area.gd" id="11_play_area"]
 [ext_resource type="Script" uid="uid://be6nki3yjm3o2" path="res://scenes/balatro/scripts/deck_pile.gd" id="12_deck_pile"]
 [ext_resource type="Script" uid="uid://cobinrc51oow8" path="res://scenes/balatro/scripts/color_effects.gd" id="13_color_effects"]
-[ext_resource type="Script" uid="uid://cin7yrgwrb73d" path="res://scenes/balatro/scripts/lexispell_background.gd" id="14_lexispell_background"]
 
 [sub_resource type="Gradient" id="Gradient_tndhy"]
 colors = PackedColorArray(0, 0.45303297, 0.0589856, 1, 2.4065375e-07, 0.31568372, 0.21152392, 1)
@@ -88,7 +87,7 @@ offset_bottom = 178.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="GameBackground" type="ColorRect" parent="." unique_id=384927501]
+[node name="GameBackground" type="ColorRect" parent="." unique_id=184908841]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -96,8 +95,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.156863, 0.560784, 0.392157, 1)
-script = ExtResource("14_lexispell_background")
+color = Color(0.99215686, 0.99215686, 0.9882353, 1)
 
 [node name="Parallax" type="Control" parent="." unique_id=279740905]
 layout_mode = 1

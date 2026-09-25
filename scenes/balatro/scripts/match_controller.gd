@@ -144,12 +144,12 @@ func _ready() -> void:
 	voice.changed.connect(update_voice_icon)
 	update_voice_icon.call()
 	game_ui.visibility_changed.connect(func():
-		$GameBackground.set_in_game(game_ui.visible)
+		$GameBackground.visible = not game_ui.visible
 		voice_button.visible = online
 		if not game_ui.visible:
 			voice._call("closePanel")
 	)
-	$GameBackground.set_in_game(game_ui.visible)
+	$GameBackground.visible = not game_ui.visible
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
 	overlay.replay_requested.connect(func():

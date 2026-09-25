@@ -9,10 +9,15 @@ const RoundedSquareButton = preload("res://scenes/balatro/scripts/rounded_square
 # Layout del menu sulla viewport di progetto 1920x1080.
 # Modifica questi valori per spostare o ridimensionare gli elementi senza
 # dover intervenire sulla gerarchia dei contenitori.
-const TITLE_POSITION := Vector2(0, 120)
-const TITLE_SIZE := Vector2(1920, 280)
-const HOME_BUTTONS_POSITION := Vector2(730, 470)
-const HOME_BUTTONS_SIZE := Vector2(460, 456)
+# Layout HOME su base 1920 x 1080: UI a sinistra, personaggio a destra.
+const TITLE_POSITION := Vector2(55, 45)
+const TITLE_SIZE := Vector2(970, 285)
+const HOME_BUTTONS_POSITION := Vector2(70, 785)
+const HOME_BUTTONS_SIZE := Vector2(820, 204)
+# Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
+const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
+const HOME_CHARACTER_POSITION := Vector2(1000, 110)
+const HOME_CHARACTER_SIZE := Vector2(870, 860)
 const SETUP_ELEMENTS_POSITION := Vector2(640, 530)
 const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
 const MENU_BUTTON_HEIGHT := 96.0
@@ -107,24 +112,42 @@ func _ready() -> void:
 	menu_content.add_child(home_page)
 	home_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	home_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# SVG decorativo: figlio della HOME, quindi sparisce su altre pagine.
+	# ResourceLoader.exists evita di bloccare il menu finché non aggiungi il file.
+	if ResourceLoader.exists(HOME_CHARACTER_PATH):
+		var mascot := TextureRect.new()
+		mascot.name = "HomeCharacter"
+		mascot.texture = load(HOME_CHARACTER_PATH) as Texture2D
+		mascot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		mascot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		mascot.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		mascot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		home_page.add_child(mascot)
+		mascot.position = HOME_CHARACTER_POSITION
+		mascot.size = HOME_CHARACTER_SIZE
+	# I quattro pulsanti della HOME, su due righe.
+	var home_buttons := VBoxContainer.new()
+	home_page.add_child(home_buttons)
+	home_buttons.position = HOME_BUTTONS_POSITION
+	home_buttons.size = HOME_BUTTONS_SIZE
+	home_buttons.add_theme_constant_override("separation", 16)
 	var play_choices := HBoxContainer.new()
-	home_page.add_child(play_choices)
-	play_choices.position = Vector2(560, 820)
-	play_choices.size = Vector2(800, 96)
-	play_choices.add_theme_constant_override("separation", 48)
+	home_buttons.add_child(play_choices)
+	play_choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	play_choices.add_theme_constant_override("separation", 20)
 	_button(play_choices, "SINGLEPLAYER", show_setup).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(play_choices, "MULTIPLAYER", _show_network).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var settings_button := _button(home_page, "SETTINGS", _show_settings)
-	settings_button.position = Vector2(48, 156)
-	settings_button.size = Vector2(240, 96)
-	var info_button := _button(home_page, "INFO", _show_home_info)
-	info_button.position = Vector2(48, 40)
-	info_button.size = Vector2(240, 96)
+	var lower_choices := HBoxContainer.new()
+	home_buttons.add_child(lower_choices)
+	lower_choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	lower_choices.add_theme_constant_override("separation", 20)
+	_button(lower_choices, "SETTINGS", _show_settings).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(lower_choices, "INFO", _show_home_info).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
 	profile_button = TextureButton.new()
 	home_page.add_child(profile_button)
-	profile_button.position = Vector2(830, 450)
+	profile_button.position = Vector2(110, 390)
 	profile_button.size = Vector2(260, 260)
 	profile_button.ignore_texture_size = true
 	profile_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
@@ -150,7 +173,7 @@ func _ready() -> void:
 	_set_home_profile("")
 	deck_selector = preload("res://scenes/balatro/scripts/deck_selector.gd").new()
 	menu_content.add_child(deck_selector)
-	deck_selector.position = Vector2(1500, 420)
+	deck_selector.position = Vector2(515, 375)
 	deck_selector.size = Vector2(360, 368)
 	name_input = LineEdit.new()
 	name_input.virtual_keyboard_enabled = true
@@ -163,7 +186,7 @@ func _ready() -> void:
 	name_input.add_theme_font_size_override("font_size", 26)
 	_style_input(name_input, 26)
 	home_page.add_child(name_input)
-	name_input.position = Vector2(780, 680)
+	name_input.position = Vector2(60, 665)
 	name_input.size = Vector2(360, 64)
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	setup_page = VBoxContainer.new()

@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djlugj7ubvh3y"
-valid=false
+uid="uid://bl8wxxb6mil2m"
+path="res://.godot/imported/backgroundBisca.png-b7217a2767029a9857fd0f7be0e25b0a.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
-source_file="res://docs/index.icon.png"
+source_file="res://scenes/balatro/resources/backgroundBisca.png"
+dest_files=["res://.godot/imported/backgroundBisca.png-b7217a2767029a9857fd0f7be0e25b0a.ctex"]
 
 [params]
 

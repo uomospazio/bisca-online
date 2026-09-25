@@ -22,7 +22,7 @@ func setup(controller: Control) -> void:
 	var shade := ColorRect.new()
 	screen.add_child(shade)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.082353, 0.207843, 0.211765, 0.85)
+	shade.color = Color(0.133333, 0.121569, 0.168627, 0.85)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
 	actions = Control.new()
 	screen.add_child(actions)

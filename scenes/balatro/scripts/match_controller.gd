@@ -143,13 +143,27 @@ func _ready() -> void:
 		voice_button.icon = preload("res://scenes/balatro/trick_asset/ui_bisca/mic-on.svg") if mic_active else preload("res://scenes/balatro/trick_asset/ui_bisca/mic-off.svg")
 	voice.changed.connect(update_voice_icon)
 	update_voice_icon.call()
+	var menu_background := ShaderMaterial.new()
+	menu_background.shader = preload("res://scenes/balatro/shaders/menu_suits.gdshader")
+	for suit in ["denari", "coppe", "spade", "bastoni"]:
+		menu_background.set_shader_parameter(suit, load("res://scenes/balatro/resources/%s.png" % suit))
+	menu_background.set_shader_parameter("surface_size", $GameBackground.size)
+	var table_background := ShaderMaterial.new()
+	table_background.shader = preload("res://scenes/balatro/shaders/cartoon_felt.gdshader")
+	table_background.set_shader_parameter("surface_size", $GameBackground.size)
+	$GameBackground.resized.connect(func():
+		table_background.set_shader_parameter("surface_size", $GameBackground.size)
+		menu_background.set_shader_parameter("surface_size", $GameBackground.size)
+	)
 	game_ui.visibility_changed.connect(func():
-		$GameBackground.visible = not game_ui.visible
+		$GameBackground.show()
+		$GameBackground.material = table_background if game_ui.visible else menu_background
 		voice_button.visible = online
 		if not game_ui.visible:
 			voice._call("closePanel")
 	)
-	$GameBackground.visible = not game_ui.visible
+	$GameBackground.show()
+	$GameBackground.material = table_background if game_ui.visible else menu_background
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
 	overlay.replay_requested.connect(func():
@@ -270,8 +284,8 @@ func _label(parent: Node, text: String, font_size: int = 24) -> MixedLabel:
 	label.set_mixed_text(text)
 	label.add_theme_font_size_override("normal_font_size", font_size)
 	label.add_theme_font_override("normal_font", KIDS_FONT)
-	label.add_theme_color_override("default_color", Color("153536"))
-	label.add_theme_color_override("font_color", Color("153536"))
+	label.add_theme_color_override("default_color", Color("241f1d"))
+	label.add_theme_color_override("font_color", Color("241f1d"))
 	parent.add_child(label)
 	return label
 
@@ -301,7 +315,7 @@ func _build_ui() -> void:
 	turn_clock.z_index = 100
 	turn_clock.add_theme_font_override("font", KIDS_FONT)
 	turn_clock.add_theme_font_size_override("font_size", 28)
-	turn_clock.add_theme_color_override("font_color", Color("fff0cc"))
+	turn_clock.add_theme_color_override("font_color", Color("fdfdfb"))
 	turn_clock.hide()
 	status = _label(ui, "", 28)
 	status.position = Vector2(100, 8)
@@ -317,7 +331,7 @@ func _build_ui() -> void:
 	damage_shade = ColorRect.new()
 	ui.add_child(damage_shade)
 	damage_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	damage_shade.color = Color(0.082353, 0.207843, 0.211765, 0.65)
+	damage_shade.color = Color(0.133333, 0.121569, 0.168627, 0.65)
 	damage_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	damage_shade.z_index = 20
 	damage_shade.hide()
@@ -371,7 +385,7 @@ func _hold_button_in(text: String, callback: Callable, parent: Node) -> HoldButt
 	button.custom_minimum_size = Vector2(250, 90)
 	button.hold_duration = 0.75
 	button.base_color = BUTTON_PURPLE
-	button.fill_color = Color("347667")
+	button.fill_color = Color("6f5fa8")
 	button.confirm_progress_color = BUTTON_CYAN
 	button.font = KIDS_FONT
 	button.font_size = 24

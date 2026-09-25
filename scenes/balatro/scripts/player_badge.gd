@@ -6,9 +6,9 @@ const KIDS_FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 const COUNTER_FONT = KIDS_FONT
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 const HEART_TEXTURE = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/cuore.png")
-const NAME_TEXT_COLOR := Color("fff0cc")
-const NAME_OUTLINE_COLOR := Color("347667")
-const NAME_SHADOW_COLOR := Color("214f50")
+const NAME_TEXT_COLOR := Color("fdfdfb")
+const NAME_OUTLINE_COLOR := Color("6f5fa8")
+const NAME_SHADOW_COLOR := Color("2a2438")
 
 # Posizione nel riquadro del giocatore e scala di cuore e numero.
 const HEART_POSITION := Vector2(39, 89)
@@ -147,7 +147,7 @@ func _text(center: Vector2, value: String, font_size: int, color: Color = Color.
 	if custom_font:
 		position_value.y = center.y + (draw_font.get_ascent(font_size) - draw_font.get_descent(font_size)) / 2.0
 	if outlined:
-		draw_string_outline(draw_font, position_value, value, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color("fff0cc"))
+		draw_string_outline(draw_font, position_value, value, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color("fdfdfb"))
 		draw_string_outline(draw_font, position_value, value, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 1, color)
 	draw_string(draw_font, position_value, value, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
@@ -156,7 +156,7 @@ func _draw() -> void:
 		# Glowing frame behind the avatar, leaving the name outside the panel.
 		var frame := StyleBoxFlat.new()
 		frame.bg_color = Color(0.964706, 0.784314, 0.372549, 0.48)
-		frame.border_color = Color("fff0cc00")
+		frame.border_color = Color("fdfdfb00")
 		frame.set_border_width_all(5)
 		frame.set_corner_radius_all(68)
 		frame.shadow_color = Color(0.964706, 0.784314, 0.372549, 0.827)
@@ -165,7 +165,7 @@ func _draw() -> void:
 		draw_style_box(frame, Rect2(12, 60, 136, 136))
 	var avatar := Vector2(80, 128)
 	draw_circle(avatar, 59, Color.BLACK, true, -1, true)
-	draw_circle(avatar, 56, Color("e5e8d8"), true, -1, true)
+	draw_circle(avatar, 56, Color("efecfa"), true, -1, true)
 	if profile_texture:
 		draw_texture_rect(profile_texture, Rect2(avatar - Vector2(56, 56), Vector2(112, 112)), false)
 	var heart_transform := Transform2D(heart_rotation, heart_scale * HEART_SIZE, 0.0, HEART_POSITION)
@@ -180,13 +180,13 @@ func _draw() -> void:
 	var number_size := 20
 	var number_width := COUNTER_FONT.get_string_size(number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size).x
 	var baseline := heart_center + Vector2(-number_width / 2.0, (COUNTER_FONT.get_ascent(number_size) - COUNTER_FONT.get_descent(number_size)) / 2.0)
-	draw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size, Color("fff0cc"))
+	draw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size, Color("fdfdfb"))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var prediction_box := StyleBoxFlat.new()
-	prediction_box.bg_color = Color("214f50")
+	prediction_box.bg_color = Color("2a2438")
 	prediction_box.set_corner_radius_all(10)
 	var prediction_shadow := StyleBoxFlat.new()
-	prediction_shadow.bg_color = Color("153536")
+	prediction_shadow.bg_color = Color("241f1d")
 	prediction_shadow.set_corner_radius_all(10)
 	var counter_center := Vector2(125, 169)
 	var counter_transform := Transform2D(counter_rotation, counter_scale, 0.0, Vector2.ZERO)
@@ -194,10 +194,10 @@ func _draw() -> void:
 	draw_style_box(prediction_shadow, Rect2(94, 151, 68, 42))
 	draw_style_box(prediction_box, Rect2(91, 148, 68, 42))
 	if prediction >= 0:
-		_text(Vector2(125, 169), "/", 16, Color("fff0cc"), COUNTER_FONT, false)
-		_text(Vector2(143, 169), str(prediction), 24, Color("fff0cc"), KIDS_FONT, false)
+		_text(Vector2(125, 169), "/", 16, Color("fdfdfb"), COUNTER_FONT, false)
+		_text(Vector2(143, 169), str(prediction), 24, Color("fdfdfb"), KIDS_FONT, false)
 		if show_taken or taken > 0:
-			_text(Vector2(107, 169), str(taken), 24, Color("fff0cc"), KIDS_FONT, false)
+			_text(Vector2(107, 169), str(taken), 24, Color("fdfdfb"), KIDS_FONT, false)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var name_size := 27
 	while font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x > 152 and name_size > 14:

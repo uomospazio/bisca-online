@@ -1,0 +1,349 @@
+{
+  "description": "Palette before Dub Together-inspired recoloring. Original lines and mapping; only colors changed.",
+  "mapping": {
+    "153536": "241f1d",
+    "347667": "6f5fa8",
+    "214f50": "2a2438",
+    "fff0cc": "fdfdfb",
+    "e5e8d8": "efecfa",
+    "0.156863, 0.560784, 0.392157": "0.843137, 0.819608, 0.941176",
+    "0.117647, 0.376471, 0.286275": "0.654902, 0.603922, 0.807843",
+    "0.329412, 0.729412, 0.474510": "0.937255, 0.925490, 0.980392",
+    "0.345098, 0.435294, 0.4": "0.788235, 0.760784, 0.847059",
+    "0.760784, 0.792157, 0.733333": "0.435294, 0.415686, 0.501961",
+    "0.203922, 0.301961, 0.278431": "0.658824, 0.635294, 0.709804",
+    "0.082353, 0.207843, 0.211765": "0.133333, 0.121569, 0.168627"
+  },
+  "original_lines": [
+    [
+      "scenes/balatro/scripts/network_lobby.gd",
+      297,
+      "\t\t\t\tavatar.draw_circle(avatar.size / 2.0, 20, Color(\"e5e8d8\"), true, -1, true)"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      9,
+      "const NAME_TEXT_COLOR := Color(\"fff0cc\")"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      10,
+      "const NAME_OUTLINE_COLOR := Color(\"347667\")"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      11,
+      "const NAME_SHADOW_COLOR := Color(\"214f50\")"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      150,
+      "\t\tdraw_string_outline(draw_font, position_value, value, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(\"fff0cc\"))"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      159,
+      "\t\tframe.border_color = Color(\"fff0cc00\")"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      168,
+      "\tdraw_circle(avatar, 56, Color(\"e5e8d8\"), true, -1, true)"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      183,
+      "\tdraw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size, Color(\"fff0cc\"))"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      186,
+      "\tprediction_box.bg_color = Color(\"214f50\")"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      189,
+      "\tprediction_shadow.bg_color = Color(\"153536\")"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      197,
+      "\t\t_text(Vector2(125, 169), \"/\", 16, Color(\"fff0cc\"), COUNTER_FONT, false)"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      198,
+      "\t\t_text(Vector2(143, 169), str(prediction), 24, Color(\"fff0cc\"), KIDS_FONT, false)"
+    ],
+    [
+      "scenes/balatro/scripts/player_badge.gd",
+      200,
+      "\t\t\t_text(Vector2(107, 169), str(taken), 24, Color(\"fff0cc\"), KIDS_FONT, false)"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_background.gd",
+      16,
+      "\tcolor = Color(0.156863, 0.560784, 0.392157, 1)"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_background.gd",
+      20,
+      "\tstars.color = Color(0.329412, 0.729412, 0.474510, 1)"
+    ],
+    [
+      "scenes/balatro/scripts/mixed_label.gd",
+      9,
+      "\tadd_theme_color_override(\"default_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/mixed_label.gd",
+      17,
+      "\tadd_theme_color_override(\"default_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/pause_menu.gd",
+      25,
+      "\tshade.color = Color(0.082353, 0.207843, 0.211765, 0.85)"
+    ],
+    [
+      "scenes/balatro/scripts/game_overlay.gd",
+      58,
+      "\toverlay_shade.color = Color(0.082353, 0.207843, 0.211765, 0.55)"
+    ],
+    [
+      "scenes/balatro/scripts/game_overlay.gd",
+      268,
+      "\t\t\tportrait.draw_circle(portrait.size / 2.0, 59, Color(\"e5e8d8\"), true, -1, true)"
+    ],
+    [
+      "scenes/balatro/scripts/profile_picker.gd",
+      53,
+      "\tblank.fill(Color(\"e5e8d8\"))"
+    ],
+    [
+      "scenes/balatro/scripts/button_shadow.gd",
+      4,
+      "const SHADOW_COLOR := Color(\"153536\")"
+    ],
+    [
+      "scenes/balatro/scripts/match_controller.gd",
+      273,
+      "\tlabel.add_theme_color_override(\"default_color\", Color(\"153536\"))"
+    ],
+    [
+      "scenes/balatro/scripts/match_controller.gd",
+      274,
+      "\tlabel.add_theme_color_override(\"font_color\", Color(\"153536\"))"
+    ],
+    [
+      "scenes/balatro/scripts/match_controller.gd",
+      304,
+      "\tturn_clock.add_theme_color_override(\"font_color\", Color(\"fff0cc\"))"
+    ],
+    [
+      "scenes/balatro/scripts/match_controller.gd",
+      320,
+      "\tdamage_shade.color = Color(0.082353, 0.207843, 0.211765, 0.65)"
+    ],
+    [
+      "scenes/balatro/scripts/match_controller.gd",
+      374,
+      "\tbutton.fill_color = Color(\"347667\")"
+    ],
+    [
+      "scenes/balatro/scripts/profile_picker.js",
+      18,
+      "      root.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#153536bb;display:grid;place-items:center;padding:12px;box-sizing:border-box;touch-action:auto;';"
+    ],
+    [
+      "scenes/balatro/scripts/profile_picker.js",
+      20,
+      "        .bisca-profile{background:#fff0cc;color:#214f50;border:3px solid #347667;border-radius:22px;box-shadow:5px 6px #153536;padding:22px;box-sizing:border-box;width:min(520px,94vw);max-height:94dvh;overflow:auto;text-align:center;font:700 17px system-ui;touch-action:auto}"
+    ],
+    [
+      "scenes/balatro/scripts/profile_picker.js",
+      21,
+      "        .bisca-profile [hidden]{display:none!important}.bisca-profile h2{margin:0 0 8px;font-size:25px}.bisca-profile p{margin:10px 0}.bisca-profile button{font:inherit;border:2px solid transparent;border-radius:14px;background:#347667;color:#fff0cc;padding:12px 18px;cursor:pointer;box-shadow:3px 4px #153536;touch-action:manipulation}"
+    ],
+    [
+      "scenes/balatro/scripts/profile_picker.js",
+      22,
+      "        .bisca-profile button:hover{border-color:#fff0cc}.bisca-profile button:disabled{opacity:.5;cursor:default}.bisca-profile .photo{display:block;margin:14px auto;width:128px;height:128px;border-radius:50%;border:3px solid #153536;background:#e5e8d8;padding:0;overflow:hidden;color:#214f50;font-size:40px;box-shadow:none}.bisca-profile .photo img{width:100%;height:100%;object-fit:cover}.bisca-profile .choices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}.bisca-profile small{font-weight:400;display:block;margin:12px 0}.bisca-profile video{width:160px;height:160px;object-fit:cover;border-radius:50%}"
+    ],
+    [
+      "scenes/balatro/scripts/profile_picker.js",
+      44,
+      "        const ctx = canvas.getContext('2d'); ctx.fillStyle='#e5e8d8'; ctx.fillRect(0,0,192,192);"
+    ],
+    [
+      "scenes/balatro/scripts/loading_transition.gd",
+      36,
+      "\tmaterial.set_shader_parameter(\"base_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/loading_transition.gd",
+      58,
+      "\tcaption.add_theme_color_override(\"default_color\", Color(\"fff0cc\"))"
+    ],
+    [
+      "scenes/balatro/scripts/loading_transition.gd",
+      59,
+      "\tcaption.add_theme_color_override(\"font_outline_color\", Color(\"347667\"))"
+    ],
+    [
+      "scenes/balatro/scripts/loading_transition.gd",
+      61,
+      "\tcaption.add_theme_color_override(\"font_shadow_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      4,
+      "const NORMAL := Color(\"214f50\")"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      5,
+      "const HOVER := Color(\"347667\")"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      6,
+      "const TEXT := Color(\"fff0cc\")"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      7,
+      "const SHADOW := Color(\"153536\")"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      8,
+      "const DISABLED := Color(0.345098, 0.435294, 0.4)"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      9,
+      "const DISABLED_TEXT := Color(0.760784, 0.792157, 0.733333)"
+    ],
+    [
+      "scenes/balatro/scripts/lexispell_style.gd",
+      24,
+      "\t\tstyle.shadow_color = Color(0.203922, 0.301961, 0.278431) if color == DISABLED else SHADOW"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      168,
+      "\t\t\tprofile_button.draw_circle(Vector2(130, 130), 127, Color(\"e5e8d8\"), true, -1, true)"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      264,
+      "\t\t\tsingle_player_avatar.draw_circle(Vector2(33, 33), 32, Color(\"e5e8d8\"), true, -1, true)"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      390,
+      "\tlabel.add_theme_color_override(\"font_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      420,
+      "\t\touter.add_theme_color_override(\"font_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      421,
+      "\t\touter.add_theme_color_override(\"font_outline_color\", Color(\"fff0cc\"))"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      431,
+      "\t\tinner.add_theme_color_override(\"font_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      432,
+      "\t\tinner.add_theme_color_override(\"font_outline_color\", Color(\"fff0cc\"))"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      452,
+      "\tstyle.bg_color = Color(\"fff0cc\")"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      453,
+      "\tstyle.border_color = Color(\"214f50\")"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      461,
+      "\tinput.add_theme_color_override(\"font_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/main_menu.gd",
+      463,
+      "\tinput.add_theme_color_override(\"caret_color\", Color(\"214f50\"))"
+    ],
+    [
+      "scenes/balatro/scripts/card_info.gd",
+      19,
+      "\tshade.color = Color(0.082353, 0.207843, 0.211765, 0.75)"
+    ],
+    [
+      "scenes/balatro/scripts/voice_transport.js",
+      25,
+      "      root.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#153536aa;display:grid;place-items:center;padding:12px;box-sizing:border-box';"
+    ],
+    [
+      "scenes/balatro/scripts/voice_transport.js",
+      26,
+      "      root.innerHTML=`<section role=\"dialog\" aria-modal=\"true\" aria-label=\"Chat vocale\" style=\"box-sizing:border-box;width:min(480px,100%);max-height:90dvh;overflow:auto;background:#fff0cc;color:#214f50;border:3px solid #347667;border-radius:22px;padding:22px;font:600 16px system-ui\"><h2 style=\"margin-top:0\">CHAT VOCALE</h2><p>Premi ATTIVA AUDIO e consenti l'accesso nel browser. Anche i tuoi amici devono attivarla.</p><p data-status role=\"status\"></p><div data-actions style=\"display:flex;gap:10px;flex-wrap:wrap\"></div><div data-people></div><p style=\"font-size:13px\">La partita continua mentre questo pannello e' aperto. Chiudere il pannello non spegne il microfono.</p></section>`;"
+    ],
+    [
+      "scenes/balatro/scripts/voice_transport.js",
+      28,
+      "      const button=(text,action)=>{const b=document.createElement('button');b.textContent=text;b.style.cssText='border:2px solid #fff0cc;border-radius:14px;padding:12px;background:#347667;color:#153536;font:bold 15px system-ui;cursor:pointer';b.onclick=action;actions.appendChild(b);return b;};"
+    ],
+    [
+      "scenes/balatro/scripts/voice_transport.js",
+      55,
+      "        const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='100';slider.value=String((this.volumes.get(id)??1)*100);slider.style.cssText='display:block;width:100%;accent-color:#347667';slider.setAttribute('aria-label',`Volume ${person.name || 'giocatore'}`);"
+    ],
+    [
+      "scenes/balatro/visuals/settings_toggle_off.svg",
+      1,
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"70\" height=\"36\" viewBox=\"0 0 70 36\"><rect x=\"2\" y=\"3\" width=\"66\" height=\"30\" rx=\"12\" fill=\"#153536\"/><rect x=\"5\" y=\"5\" width=\"27\" height=\"26\" rx=\"9\" fill=\"#fff0cc\"/></svg>"
+    ],
+    [
+      "scenes/balatro/visuals/settings_knob.svg",
+      1,
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><circle cx=\"14\" cy=\"14\" r=\"11\" fill=\"#fff0cc\"/></svg>"
+    ],
+    [
+      "scenes/balatro/visuals/settings_knob_hover.svg",
+      1,
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 32 32\"><circle cx=\"16\" cy=\"16\" r=\"14\" fill=\"#fff0cc\" stroke=\"#347667\" stroke-width=\"3\"/></svg>"
+    ],
+    [
+      "scenes/balatro/visuals/settings_toggle_on.svg",
+      1,
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"70\" height=\"36\" viewBox=\"0 0 70 36\"><rect x=\"2\" y=\"3\" width=\"66\" height=\"30\" rx=\"12\" fill=\"#347667\"/><rect x=\"38\" y=\"5\" width=\"27\" height=\"26\" rx=\"9\" fill=\"#fff0cc\"/></svg>"
+    ],
+    [
+      "scenes/balatro/shaders/cartoon_felt.gdshader",
+      4,
+      "uniform vec4 base_color : source_color = vec4(0.156863, 0.560784, 0.392157, 1.0);"
+    ],
+    [
+      "scenes/balatro/shaders/cartoon_felt.gdshader",
+      5,
+      "uniform vec4 edge_color : source_color = vec4(0.117647, 0.376471, 0.286275, 1.0);"
+    ],
+    [
+      "scenes/balatro/shaders/cartoon_felt.gdshader",
+      6,
+      "uniform vec4 center_color : source_color = vec4(0.329412, 0.729412, 0.474510, 1.0);"
+    ]
+  ]
+}

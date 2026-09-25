@@ -47,6 +47,19 @@ func _run() -> void:
 	assert(client.latest.code == "TEST" and client.latest.people.size() == 1)
 	assert(server.rooms.TEST.people[0].token == "keep")
 	assert(server.rooms.TEST.people[0].avatar == "keep-photo")
+	client.send({"op": "rename", "name": "Nuovo nome"})
+	var photo := Image.create(32, 32, false, Image.FORMAT_RGB8)
+	photo.fill(Color.RED)
+	var encoded := Marshalls.raw_to_base64(photo.save_jpg_to_buffer())
+	client.send({"op": "profile", "avatar": encoded})
+	await create_timer(0.2).timeout
+	assert(client.latest.people[0].name == "Nuovo nome")
+	assert(server.rooms.TEST.people[0].avatar == encoded)
+	assert(client.avatar_for_slot(0) != null)
+	client.send({"op": "profile", "avatar": ""})
+	await create_timer(0.2).timeout
+	assert(server.rooms.TEST.people[0].avatar == "")
+	assert(client.avatar_for_slot(0) == null)
 	client.send({"op": "settings", "lives": 5, "starting_cards": 2, "bots": true, "bot_count": 2})
 	await create_timer(0.2).timeout
 	client.send({"op": "start"})

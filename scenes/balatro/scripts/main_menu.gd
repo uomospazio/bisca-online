@@ -16,8 +16,8 @@ const HOME_BUTTONS_POSITION := Vector2(70, 785)
 const HOME_BUTTONS_SIZE := Vector2(820, 204)
 # Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
 const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
-const HOME_CHARACTER_POSITION := Vector2(1000, 110)
-const HOME_CHARACTER_SIZE := Vector2(870, 860)
+const HOME_CHARACTER_POSITION := Vector2(700, 150)
+const HOME_CHARACTER_SIZE := Vector2(1320, 1310)
 const SETUP_ELEMENTS_POSITION := Vector2(640, 530)
 const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
 const MENU_BUTTON_HEIGHT := 96.0
@@ -33,11 +33,16 @@ signal start_requested(player_name: String, count: int)
 
 var name_input: LineEdit
 var home_page: Control
+var home_character: TextureRect
 var profile_picker: Node
 var profile_button: TextureButton
 var profile_avatar := ""
 var profile_texture: Texture2D
-var setup_page: VBoxContainer
+var setup_page: Control
+var profile_panel: Panel
+var single_player_name: Label
+var single_player_avatar: TextureRect
+var profile_name_timer: Timer
 var match_options: PanelContainer
 var bot_slider: Range
 var single_name_input: LineEdit
@@ -55,18 +60,21 @@ const PageTransition = preload("res://scenes/balatro/scripts/page_transition.gd"
 func _switch_page(next: Control, backwards := false) -> void:
 	var previous := active_page if is_instance_valid(active_page) else home_page
 	active_page = next
+	if is_instance_valid(home_character):
+		home_character.visible = next == home_page or (next == network_page and not network_page.session_controls.visible)
 	if is_instance_valid(deck_selector):
-		deck_selector.visible = next == home_page
+		profile_panel.visible = next == setup_page or (next == network_page and network_page.session_controls.visible)
 		deck_selector.reset_preview()
 	PageTransition.slide(self, previous, next, backwards)
 	if subtitle_slide and subtitle_slide.is_valid():
 		subtitle_slide.kill()
-	friends_subtitle.position.x = 0.0
+	var subtitle_x := TITLE_POSITION.x if next == network_page else 0.0
+	friends_subtitle.position.x = subtitle_x
 	if previous != next and friends_subtitle.visible:
-		friends_subtitle.position.x = get_viewport_rect().size.x * (-1.0 if backwards else 1.0)
+		friends_subtitle.position.x = subtitle_x + get_viewport_rect().size.x * (-1.0 if backwards else 1.0)
 		subtitle_slide = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 		subtitle_slide.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		subtitle_slide.tween_property(friends_subtitle, "position:x", 0.0, 0.35)
+		subtitle_slide.tween_property(friends_subtitle, "position:x", subtitle_x, 0.35)
 
 # Parallax del menu, uguale al movimento MouseOffset usato da Lexispell.
 const MENU_OFFSET_STRENGTH := 10.0
@@ -116,13 +124,14 @@ func _ready() -> void:
 	# ResourceLoader.exists evita di bloccare il menu finché non aggiungi il file.
 	if ResourceLoader.exists(HOME_CHARACTER_PATH):
 		var mascot := TextureRect.new()
+		home_character = mascot
 		mascot.name = "HomeCharacter"
 		mascot.texture = load(HOME_CHARACTER_PATH) as Texture2D
 		mascot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		mascot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		mascot.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		mascot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		home_page.add_child(mascot)
+		menu_content.add_child(mascot)
 		mascot.position = HOME_CHARACTER_POSITION
 		mascot.size = HOME_CHARACTER_SIZE
 	# I quattro pulsanti della HOME, su due righe.
@@ -131,13 +140,15 @@ func _ready() -> void:
 	home_buttons.position = HOME_BUTTONS_POSITION
 	home_buttons.size = HOME_BUTTONS_SIZE
 	home_buttons.add_theme_constant_override("separation", 16)
-	var play_choices := HBoxContainer.new()
+	home_buttons.position = Vector2(180, 385)
+	home_buttons.size = Vector2(640, 500)
+	var play_choices := VBoxContainer.new()
 	home_buttons.add_child(play_choices)
 	play_choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	play_choices.add_theme_constant_override("separation", 20)
 	_button(play_choices, "SINGLEPLAYER", show_setup).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(play_choices, "MULTIPLAYER", _show_network).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var lower_choices := HBoxContainer.new()
+	var lower_choices := VBoxContainer.new()
 	home_buttons.add_child(lower_choices)
 	lower_choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lower_choices.add_theme_constant_override("separation", 20)
@@ -154,7 +165,7 @@ func _ready() -> void:
 	profile_button.tooltip_text = "Scegli la foto profilo"
 	profile_button.draw.connect(func():
 		if profile_texture == null:
-			profile_button.draw_circle(Vector2(130, 130), 127, Color("e5e8d8"), true, -1, true)
+			profile_button.draw_circle(Vector2(130, 130), 127, Color("efecfa"), true, -1, true)
 		profile_button.draw_arc(Vector2(130, 130), 127, 0, TAU, 128, Color.BLACK, 5.0, true)
 	)
 	var camera_icon := TextureRect.new()
@@ -189,11 +200,10 @@ func _ready() -> void:
 	name_input.position = Vector2(60, 665)
 	name_input.size = Vector2(360, 64)
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	setup_page = VBoxContainer.new()
-	setup_page.add_theme_constant_override("separation", 18)
+	setup_page = Control.new()
 	menu_content.add_child(setup_page)
-	setup_page.position = SETUP_ELEMENTS_POSITION
-	setup_page.size = SETUP_ELEMENTS_SIZE
+	setup_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	setup_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	single_name_input = LineEdit.new()
 	single_name_input.virtual_keyboard_enabled = true
 	single_name_input.virtual_keyboard_show_on_focus = true
@@ -211,16 +221,97 @@ func _ready() -> void:
 	match_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	setup_page.add_child(match_options)
 	match_options.setup(self, false)
+	match_options.position = Vector2(90, 385)
+	match_options.size = Vector2(430, 510)
 	bot_slider = match_options.bot_count
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 24)
 	setup_page.add_child(buttons)
-	var back := _button(buttons, "Indietro", show_home)
-	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buttons.position = Vector2(1010, 900)
+	buttons.size = Vector2(800, 96)
+	var back := _button(setup_page, "Indietro", show_home)
+	back.position = Vector2(60, 960)
+	back.size = Vector2(260, 96)
 	var play := _button(buttons, "Gioca", _start)
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	setup_page.hide()
+	_build_mode_profile()
+	var participants := Panel.new()
+	setup_page.add_child(participants)
+	participants.position = Vector2(990, 140)
+	participants.size = Vector2(840, 720)
+	participants.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_TEXT, BUTTON_CYAN, 4))
+	var heading := Label.new()
+	participants.add_child(heading)
+	heading.text = "GIOCATORI"
+	heading.position = Vector2(30, 24)
+	heading.add_theme_font_override("font", KIDS_FONT)
+	heading.add_theme_font_size_override("font_size", 32)
+	heading.add_theme_color_override("font_color", BUTTON_PURPLE)
+	var slot := Panel.new()
+	participants.add_child(slot)
+	slot.position = Vector2(30, 90)
+	slot.size = Vector2(780, 90)
+	slot.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_PURPLE))
+	single_player_avatar = TextureRect.new()
+	slot.add_child(single_player_avatar)
+	single_player_avatar.position = Vector2(16, 12)
+	single_player_avatar.size = Vector2(66, 66)
+	single_player_avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	single_player_avatar.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	single_player_avatar.draw.connect(func():
+		if single_player_avatar.texture == null:
+			single_player_avatar.draw_circle(Vector2(33, 33), 32, Color("efecfa"), true, -1, true)
+	)
+	single_player_name = Label.new()
+	slot.add_child(single_player_name)
+	single_player_name.position = Vector2(104, 22)
+	single_player_name.add_theme_font_override("font", KIDS_FONT)
+	single_player_name.add_theme_font_size_override("font_size", 30)
+	single_player_name.add_theme_color_override("font_color", BUTTON_TEXT)
+	name_input.text_changed.connect(func(_value): _refresh_single_profile())
+	profile_name_timer = Timer.new()
+	profile_name_timer.one_shot = true
+	profile_name_timer.wait_time = 0.35
+	add_child(profile_name_timer)
+	profile_name_timer.timeout.connect(_send_profile_name)
+	name_input.text_changed.connect(func(_value): profile_name_timer.start())
+	name_input.focus_exited.connect(_send_profile_name)
+	name_input.text_submitted.connect(func(_value): _send_profile_name())
+	_refresh_single_profile()
 	_start_title_wave()
+
+func _build_mode_profile() -> void:
+	profile_panel = Panel.new()
+	menu_content.add_child(profile_panel)
+	profile_panel.position = Vector2(60, 140)
+	profile_panel.size = Vector2(870, 790)
+	profile_panel.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_TEXT, BUTTON_CYAN, 4))
+	profile_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_content.move_child(profile_panel, 0)
+	profile_button.reparent(profile_panel, false)
+	profile_button.position = Vector2(35, 25)
+	profile_button.scale = Vector2(0.5, 0.5)
+	name_input.reparent(profile_panel, false)
+	name_input.position = Vector2(190, 60)
+	name_input.size = Vector2(570, 64)
+	deck_selector.reparent(profile_panel, false)
+	deck_selector.position = Vector2(485, 270)
+	deck_selector.scale = Vector2(0.85, 0.85)
+	profile_panel.hide()
+
+func _refresh_single_profile() -> void:
+	if is_instance_valid(single_player_name):
+		single_player_name.text = chosen_name() + "   · TU"
+		single_player_avatar.texture = profile_texture
+		single_player_avatar.queue_redraw()
+	if is_instance_valid(network_page):
+		network_page.refresh_own_card()
+
+func _send_profile_name() -> void:
+	profile_name_timer.stop()
+	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
+		get_node("/root/NetworkSession").send({"op": "rename", "name": chosen_name()})
 
 func _set_home_profile(avatar: String) -> void:
 	profile_avatar = avatar
@@ -228,6 +319,9 @@ func _set_home_profile(avatar: String) -> void:
 	profile_button.texture_normal = profile_texture
 	profile_button.get_node("CameraIcon").visible = profile_texture == null
 	profile_button.queue_redraw()
+	_refresh_single_profile()
+	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
+		get_node("/root/NetworkSession").send({"op": "profile", "avatar": avatar})
 
 func _show_home_info() -> void:
 	var dialog := AcceptDialog.new()
@@ -276,9 +370,12 @@ func _show_settings() -> void:
 
 func _show_menu_title(with_friends: bool = false) -> void:
 	title.show()
+	if is_instance_valid(home_character):
+		home_character.show()
 	friends_subtitle.add_theme_font_size_override("font_size", 32)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
-	friends_subtitle.position = Vector2(0, 400)
+	friends_subtitle.position = Vector2(TITLE_POSITION.x, 335)
+	friends_subtitle.size.x = TITLE_SIZE.x
 	friends_subtitle.set_animated(with_friends)
 	friends_subtitle.add_theme_font_size_override("font_size", 56)
 	title.scale = Vector2.ONE
@@ -290,7 +387,7 @@ func _label(parent: Node, text: String, font_size: int) -> MixedLabel:
 	label.set_mixed_text(text)
 	label.add_theme_font_override("normal_font", KIDS_FONT)
 	label.add_theme_font_size_override("normal_font_size", font_size)
-	label.add_theme_color_override("font_color", Color("214f50"))
+	label.add_theme_color_override("font_color", Color("2a2438"))
 	parent.add_child(label)
 	return label
 
@@ -320,8 +417,8 @@ func _build_title(parent: Control) -> void:
 		outer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		outer.add_theme_font_override("font", title_font)
 		outer.add_theme_font_size_override("font_size", 296)
-		outer.add_theme_color_override("font_color", Color("214f50"))
-		outer.add_theme_color_override("font_outline_color", Color("fff0cc"))
+		outer.add_theme_color_override("font_color", Color("2a2438"))
+		outer.add_theme_color_override("font_outline_color", Color("fdfdfb"))
 		outer.add_theme_constant_override("outline_size", 20)
 		letter.add_child(outer)
 		var inner := Label.new()
@@ -331,8 +428,8 @@ func _build_title(parent: Control) -> void:
 		inner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		inner.add_theme_font_override("font", title_font)
 		inner.add_theme_font_size_override("font_size", 296)
-		inner.add_theme_color_override("font_color", Color("214f50"))
-		inner.add_theme_color_override("font_outline_color", Color("fff0cc"))
+		inner.add_theme_color_override("font_color", Color("2a2438"))
+		inner.add_theme_color_override("font_outline_color", Color("fdfdfb"))
 		inner.add_theme_constant_override("outline_size", 30)
 		letter.add_child(inner)
 		title_letters.append(letter)
@@ -352,8 +449,8 @@ func _start_title_wave() -> void:
 
 func _style_input(input: LineEdit, font_size: int) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("fff0cc")
-	style.border_color = Color("214f50")
+	style.bg_color = Color("fdfdfb")
+	style.border_color = Color("2a2438")
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(10)
 	style.content_margin_left = 16
@@ -361,9 +458,9 @@ func _style_input(input: LineEdit, font_size: int) -> void:
 	input.add_theme_stylebox_override("normal", style)
 	input.add_theme_font_override("font", KIDS_FONT)
 	input.add_theme_font_size_override("font_size", font_size)
-	input.add_theme_color_override("font_color", Color("214f50"))
+	input.add_theme_color_override("font_color", Color("2a2438"))
 	input.add_theme_color_override("font_placeholder_color", BUTTON_PURPLE)
-	input.add_theme_color_override("caret_color", Color("214f50"))
+	input.add_theme_color_override("caret_color", Color("2a2438"))
 
 func _button(parent: Node, text: String, callback: Callable) -> Button:
 	var button := RoundedSquareButton.new()
@@ -399,11 +496,16 @@ func chosen_name() -> String:
 	return "Giocatore" if value.is_empty() else value
 
 func show_setup() -> void:
+	profile_panel.reparent(menu_content, false)
+	menu_content.move_child(profile_panel, 0)
+	profile_panel.position = Vector2(60, 140)
 	_show_menu_title()
+	title.hide()
 	friends_subtitle.text = "SOLITARIA"
 	friends_subtitle.set_animated(true)
 	friends_subtitle.add_theme_font_size_override("font_size", 56)
-	friends_subtitle.position = Vector2(0, 400)
+	friends_subtitle.position = Vector2(0, 35)
+	friends_subtitle.size.x = 1920
 	friends_subtitle.show()
 	single_name_input.text = name_input.text
 	_switch_page(setup_page)

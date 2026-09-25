@@ -1,7 +1,7 @@
 class_name ButtonShadow
 extends Control
 
-const SHADOW_COLOR := Color("153536")
+const SHADOW_COLOR := Color("241f1d")
 const SHADOW_OFFSET := Vector2(5, 5)
 
 var target: Control

@@ -13,11 +13,11 @@ func set_in_game(value: bool) -> void:
 		# get_node("Stars").visible = not value
 
 func _ready() -> void:
-	color = Color(0.156863, 0.560784, 0.392157, 1)
+	color = Color(0.843137, 0.819608, 0.941176, 1)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var stars := ColorRect.new()
 	stars.name = "Stars"
-	stars.color = Color(0.329412, 0.729412, 0.474510, 1)
+	stars.color = Color(0.937255, 0.925490, 0.980392, 1)
 	stars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var pattern := ShaderMaterial.new()
 	pattern.shader = PATTERN_SHADER

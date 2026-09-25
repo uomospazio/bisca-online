@@ -50,7 +50,7 @@ func open(display_name: String) -> void:
 		dialog.canceled.connect(func(): selected.emit(""))
 	dialog.get_node("ProfileContent/ProfileName").text = display_name
 	var blank := Image.create(192, 192, false, Image.FORMAT_RGB8)
-	blank.fill(Color("e5e8d8"))
+	blank.fill(Color("efecfa"))
 	preview.texture_normal = AvatarData.circular_texture(Marshalls.raw_to_base64(blank.save_jpg_to_buffer()))
 	dialog.popup_centered(Vector2i(460, 400))
 

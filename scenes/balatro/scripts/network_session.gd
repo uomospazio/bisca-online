@@ -415,6 +415,14 @@ func request(command: Dictionary) -> void:
 		room.people[slot]["voice_active"] = active
 		_broadcast(room)
 		return
+	if op == "rename":
+		if room.stage != "lobby":
+			return
+		var display_name := str(command.get("name", "")).strip_edges().substr(0, 16)
+		if not display_name.is_empty():
+			room.people[slot]["name"] = display_name
+			_broadcast(room)
+		return
 	if op == "profile":
 		var person: Dictionary = room.people[slot]
 		if not command.get("avatar", "") is String:
@@ -424,7 +432,7 @@ func request(command: Dictionary) -> void:
 			_reject(peer, "Foto troppo grande")
 			return
 		var now := Time.get_ticks_msec()
-		if now - int(person.get("avatar_updated_at", -2000)) < 1500:
+		if room.stage != "lobby" and now - int(person.get("avatar_updated_at", -2000)) < 1500:
 			return
 		person["avatar_updated_at"] = now
 		if not encoded.is_empty() and AvatarData.decode(encoded) == null:

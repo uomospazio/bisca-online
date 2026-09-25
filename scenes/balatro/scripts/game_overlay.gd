@@ -55,7 +55,7 @@ func _ready() -> void:
 	overlay_shade = ColorRect.new()
 	add_child(overlay_shade)
 	overlay_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_shade.color = Color(0.082353, 0.207843, 0.211765, 0.55)
+	overlay_shade.color = Color(0.133333, 0.121569, 0.168627, 0.55)
 	overlay_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner_center = CenterContainer.new()
 	add_child(banner_center)
@@ -265,7 +265,7 @@ func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictiona
 	portrait.draw.connect(func():
 		portrait.draw_arc(portrait.size / 2.0, 62, 0, TAU, 96, LexispellStyle.NORMAL, 3, true)
 		if portrait.texture == null:
-			portrait.draw_circle(portrait.size / 2.0, 59, Color("e5e8d8"), true, -1, true)
+			portrait.draw_circle(portrait.size / 2.0, 59, Color("efecfa"), true, -1, true)
 	)
 	victory_details.add_child(portrait)
 	if not stats.is_empty():

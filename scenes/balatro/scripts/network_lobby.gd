@@ -29,19 +29,16 @@ func setup(owner_menu: Control) -> void:
 	menu = owner_menu
 	net = get_node("/root/NetworkSession")
 	profile_picker = menu.profile_picker
-	profile_picker.selected.connect(func(avatar):
-		if net.room_code == profile_room and not profile_room.is_empty():
-			net.send({"op": "profile", "avatar": avatar})
-	)
 	net.avatars_changed.connect(_update_lobby_photos)
 	net.connection_lost.connect(profile_picker.close)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entry = VBoxContainer.new()
 	add_child(entry)
-	entry.position = Vector2(640, 530)
+	entry.position = Vector2(180, 460)
 	entry.size = Vector2(640, 200)
 	entry.add_theme_constant_override("separation", 24)
-	var choices := HBoxContainer.new()
+	var choices := VBoxContainer.new()
 	entry.add_child(choices)
 	choices.add_theme_constant_override("separation", 24)
 	var create: Button = menu._button(choices, "CREA LOBBY", func(): net.connect_room(net.endpoint, {"op": "create", "name": menu.chosen_name(), "capacity": 8}))
@@ -51,7 +48,7 @@ func setup(owner_menu: Control) -> void:
 	join.add_theme_font_size_override("font_size", 22)
 	controls = VBoxContainer.new()
 	add_child(controls)
-	controls.position = Vector2(640, 500)
+	controls.position = Vector2(180, 460)
 	controls.size = Vector2(640, 400)
 	controls.add_theme_constant_override("separation", 16)
 	address = LineEdit.new()
@@ -84,14 +81,15 @@ func setup(owner_menu: Control) -> void:
 	session_controls = Control.new()
 	add_child(session_controls)
 	session_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	session_controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	code_button = menu._button(session_controls, "CODICE PARTITA", func():
 		DisplayServer.clipboard_set(code_button.get_meta("room_code", ""))
 		copied_code = str(code_button.get_meta("room_code", ""))
 		info.text = "Codice copiato negli appunti"
 	)
-	code_button.position = Vector2(260, 130)
-	code_button.custom_minimum_size = Vector2(420, 120)
-	code_button.size = Vector2(420, 120)
+	code_button.position = Vector2(90, 310)
+	code_button.custom_minimum_size = Vector2(420, 80)
+	code_button.size = Vector2(420, 80)
 
 	# Testo del codice separato dal Button, così può fare il tween da solo.
 	code_button.text = ""
@@ -99,13 +97,13 @@ func setup(owner_menu: Control) -> void:
 
 	code_label = Label.new()
 	code_button.add_child(code_label)
-	code_label.position = Vector2(+50, 4)
-	code_label.size = code_button.size
+	code_label.position = Vector2(85, 0)
+	code_label.size = Vector2(320, 80)
 	code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	code_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	code_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	code_label.add_theme_font_override("font", menu.KIDS_FONT)
-	code_label.add_theme_font_size_override("font_size", 54)
+	code_label.add_theme_font_size_override("font_size", 38)
 	code_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 	code_label.pivot_offset = code_label.size / 2.0
 
@@ -116,8 +114,8 @@ func setup(owner_menu: Control) -> void:
 	copy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	copy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	copy_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	copy_icon.position = Vector2(25, 15)
-	copy_icon.size = Vector2(96, 96)
+	copy_icon.position = Vector2(20, 12)
+	copy_icon.size = Vector2(56, 56)
 	copy_icon.pivot_offset = copy_icon.size / 2.0
 	copy_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -142,16 +140,16 @@ func setup(owner_menu: Control) -> void:
 	
 	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	session_controls.add_child(lobby_options)
-	lobby_options.position = Vector2(260, 300)
-	lobby_options.size = Vector2(430, 580)
+	lobby_options.position = Vector2(90, 405)
+	lobby_options.size = Vector2(430, 490)
 	lobby_options.setup(menu, true)
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.value_changed.connect(func(_value): _send_options())
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	var participant_panel := PanelContainer.new()
 	session_controls.add_child(participant_panel)
-	participant_panel.position = Vector2(920, 130)
-	participant_panel.size = Vector2(620, 820)
+	participant_panel.position = Vector2(990, 140)
+	participant_panel.size = Vector2(840, 790)
 	var panel_style = menu._menu_button_style(menu.BUTTON_TEXT, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
@@ -189,7 +187,7 @@ func setup(owner_menu: Control) -> void:
 	info.add_theme_font_size_override("font_size", 24)
 	var back_row := VBoxContainer.new()
 	add_child(back_row)
-	back_row.position = Vector2(50, 940)
+	back_row.position = Vector2(60, 960)
 	back_row.size.x = 260
 	menu._button(back_row, "Indietro", _back)
 	net.updated.connect(_update)
@@ -197,6 +195,7 @@ func setup(owner_menu: Control) -> void:
 	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)
 
 func open() -> void:
+	menu.profile_panel.hide()
 	show()
 	entry.show()
 	controls.hide()
@@ -218,7 +217,10 @@ func _back() -> void:
 	if controls.visible or session_controls.visible:
 		var previous: Control = session_controls if session_controls.visible else controls
 		if session_controls.visible:
+			menu._send_profile_name()
 			net.leave()
+			profile_room = ""
+		menu.profile_panel.hide()
 		info.text = ""
 		menu._show_menu_title(true)
 		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, previous, entry, true)
@@ -234,7 +236,13 @@ func _update(state: Dictionary) -> void:
 		profile_room = str(state.code)
 		net.send.call_deferred({"op": "profile", "avatar": menu.profile_avatar})
 	if not session_controls.visible:
+		menu.profile_panel.reparent(session_controls, false)
+		session_controls.move_child(menu.profile_panel, 0)
+		menu.profile_panel.position = Vector2(60, 140)
+		menu.profile_panel.show()
 		menu.title.hide()
+		if is_instance_valid(menu.home_character):
+			menu.home_character.hide()
 		menu.friends_subtitle.hide()
 		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, entry if entry.visible else controls, session_controls)
 	start_button.disabled = state.you != 0
@@ -249,7 +257,7 @@ func _update(state: Dictionary) -> void:
 		child.queue_free()
 	for index in range(8):
 		var row := PanelContainer.new()
-		row.custom_minimum_size = Vector2(590, 82)
+		row.custom_minimum_size = Vector2(780, 78)
 		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		row.clip_contents = true
 		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
@@ -286,12 +294,14 @@ func _update(state: Dictionary) -> void:
 		avatar.texture = net.avatar_for_slot(index)
 		avatar.draw.connect(func():
 			if avatar.texture == null:
-				avatar.draw_circle(avatar.size / 2.0, 20, Color("e5e8d8"), true, -1, true)
+				avatar.draw_circle(avatar.size / 2.0, 20, Color("efecfa"), true, -1, true)
 		)
 		line.add_child(avatar)
 		row.set_meta("avatar_view", avatar)
 		row.set_meta("slot", index)
+		row.set_meta("own_card", index == int(state.you))
 		var name_button := Button.new()
+		row.set_meta("name_view", name_button)
 		name_button.text = str(p.name) + ("  · OFFLINE" if not p.connected else "")
 		name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -393,7 +403,19 @@ func _update(state: Dictionary) -> void:
 		line.add_child(remove)
 		players_box.add_child(row)
 	info.text = "In attesa dei giocatori…"
+	refresh_own_card()
 	_update_voice_buttons()
+
+func refresh_own_card() -> void:
+	if not is_instance_valid(players_box):
+		return
+	for row in players_box.get_children():
+		if not row.get_meta("own_card", false):
+			continue
+		row.get_meta("name_view").text = menu.chosen_name()
+		var avatar: TextureRect = row.get_meta("avatar_view")
+		avatar.texture = menu.profile_texture
+		avatar.queue_redraw()
 
 func _style_player_slot(style: StyleBoxFlat) -> void:
 	style.set_corner_radius_all(12)
@@ -503,3 +525,4 @@ func _update_lobby_photos() -> void:
 	for row in players_box.get_children():
 		if row.has_meta("avatar_view"):
 			row.get_meta("avatar_view").texture = net.avatar_for_slot(int(row.get_meta("slot")))
+	refresh_own_card()

@@ -1,7 +1,14 @@
 extends Node
 
 signal changed
-const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "tooltips": true, "fullscreen": false, "deck_back": 1}
+const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0}
+const FRONT_FOLDERS := ["res://scenes/balatro/trick_asset/mazzo_2/briscola/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_big/Deck/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_color/Deck/"]
+
+func front_texture(colour: int = 3, number: int = 5, index: int = -1) -> Texture2D:
+	var chosen := int(values.deck_front) if index < 0 else index
+	var suits := ["Bastoni", "Spade", "Coppe", "Denari"]
+	var ranks := ["Ace", "2", "3", "4", "5", "6", "7", "Jack", "Queen", "King"]
+	return load(FRONT_FOLDERS[clampi(chosen, 0, FRONT_FOLDERS.size() - 1)] + "Suit=%s, Rank=%s, Front _=Yes.png" % [suits[colour], ranks[number - 1]])
 
 func back_texture(index: int = -1) -> Texture2D:
 	var chosen := int(values.deck_back) if index < 0 else index
@@ -35,6 +42,8 @@ func load_preferences() -> void:
 		var value: Variant = config.get_value("settings", key, DEFAULTS[key])
 		if key == "deck_back" and (value is int or value is float):
 			values[key] = clampi(int(value), 1, 12)
+		elif key == "deck_front" and (value is int or value is float):
+			values[key] = clampi(int(value), 0, FRONT_FOLDERS.size() - 1)
 		elif key in ["main", "effects"]:
 			if value is float or value is int:
 				values[key] = clampf(float(value), 0.0, 100.0)
@@ -47,6 +56,8 @@ func set_value(key: String, value: Variant) -> void:
 	values[key] = clampf(float(value), 0.0, 100.0) if key in ["main", "effects"] else bool(value)
 	if key == "deck_back":
 		values[key] = clampi(int(value), 1, 12)
+	if key == "deck_front":
+		values[key] = clampi(int(value), 0, FRONT_FOLDERS.size() - 1)
 	apply()
 	changed.emit()
 	if save_timer:

@@ -105,7 +105,7 @@ func _process(delta: float) -> void:
 	if host == null or host.scores.get_child_count() == 0:
 		return
 	var own: Control = host.scores.get_child(0)
-	menu_button.visible = own.is_visible_in_tree() and not own.eliminated
+	menu_button.visible = own.is_visible_in_tree()
 	# Keep the menu and its slots at the table seat while badges move to center.
 	if not host.damage_shade.visible:
 		menu_button.position = _point(own, Vector2(155, 65))
@@ -152,7 +152,7 @@ func _input(event: InputEvent) -> void:
 		var target := -1
 		for index in range(1, host.scores.get_child_count()):
 			var badge: Control = host.scores.get_child(index)
-			if badge.is_visible_in_tree() and not badge.eliminated and badge.get_local_mouse_position().distance_to(Vector2(80, 128)) <= 70:
+			if badge.is_visible_in_tree() and badge.get_local_mouse_position().distance_to(Vector2(80, 128)) <= 70:
 				target = index
 				break
 		if target >= 0 and remaining <= 0:

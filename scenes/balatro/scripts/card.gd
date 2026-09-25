@@ -44,6 +44,9 @@ func set_card_data(value: CardData) -> void:
 
 func _apply_card_data() -> void:
 	card_texture.texture = BACK if face_down else data.texture
+	var settings := get_node_or_null("/root/GameSettings")
+	if not face_down and settings:
+		card_texture.texture = settings.front_texture(data.colour, data.number)
 	set_holo(holo_active)
 	tooltip_text = "" if face_down else data.display_name
 

@@ -9,6 +9,12 @@ var edit_button: Button
 var editing_controls: Array[Control] = []
 var selected := 1
 var switching := false
+var selected_front := 0
+var showing_front := false
+var flip_button: Button
+var flip_tween: Tween
+var controls_tween: Tween
+var flipping := false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -48,8 +54,11 @@ func _ready() -> void:
 		)
 	)
 
+	flip_button = _button(Vector2(60, 294), Vector2(240, 54), "", _flip)
+	flip_button.text = "FRONT"
+	editing_controls.append(flip_button)
 	var confirm := _button(
-		Vector2(60, 304),
+		Vector2(60, 364),
 		Vector2(240, 64),
 		"",
 		_confirm
@@ -100,6 +109,15 @@ func _button(
 
 
 func reset_preview() -> void:
+	if flip_tween and flip_tween.is_valid():
+		flip_tween.kill()
+	if controls_tween and controls_tween.is_valid():
+		controls_tween.kill()
+	flipping = false
+	showing_front = false
+	preview.scale = Vector2.ONE
+	flip_button.text = "FRONT"
+	selected_front = int(get_node("/root/GameSettings").values.deck_front)
 	selected = int(get_node("/root/GameSettings").values.deck_back)
 	preview.texture = get_node("/root/GameSettings").back_texture(selected)
 	_edit(false, false)
@@ -139,6 +157,7 @@ func _animate_control_swap(
 	incoming: Array[Control]
 ) -> void:
 	var tween := create_tween()
+	controls_tween = tween
 
 	# Prepara i controlli che stanno sparendo.
 	for control in outgoing:
@@ -205,11 +224,41 @@ func _animate_control_swap(
 
 
 func _cycle(direction: int) -> void:
+	if flipping or switching:
+		return
+	if showing_front:
+		selected_front = wrapi(selected_front + direction, 0, get_node("/root/GameSettings").FRONT_FOLDERS.size())
+		_update_texture()
+		return
 	selected = wrapi(selected - 1 + direction, 0, 12) + 1
 	preview.texture = get_node("/root/GameSettings").back_texture(selected)
 
+func _update_texture() -> void:
+	var settings = get_node("/root/GameSettings")
+	preview.texture = settings.front_texture(3, 5, selected_front) if showing_front else settings.back_texture(selected)
+
+func _flip() -> void:
+	if switching or flipping:
+		return
+	flipping = true
+	flip_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	flip_tween.tween_property(preview, "scale:x", 0.0, 0.16)
+	flip_tween.tween_callback(func():
+		showing_front = not showing_front
+		flip_button.text = "BACK" if showing_front else "FRONT"
+		_update_texture()
+	)
+	flip_tween.tween_property(preview, "scale:x", 1.0, 0.16)
+	flip_tween.tween_callback(func(): flipping = false)
+
 
 func _confirm() -> void:
+	if switching or flipping:
+		return
 	get_node("/root/GameSettings").set_value("deck_back", selected)
+	get_node("/root/GameSettings").set_value("deck_front", selected_front)
 	get_node("/root/GameSettings").save_preferences()
+	if showing_front:
+		_flip()
+		await flip_tween.finished
 	_edit(false)

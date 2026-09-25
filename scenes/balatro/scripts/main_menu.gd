@@ -38,6 +38,7 @@ var bot_slider: Range
 var single_name_input: LineEdit
 var title: Control
 var friends_subtitle: Label
+var subtitle_slide: Tween
 var title_letters: Array[Control] = []
 var network_page: Control
 var menu_content: Control
@@ -53,6 +54,14 @@ func _switch_page(next: Control, backwards := false) -> void:
 		deck_selector.visible = next == home_page
 		deck_selector.reset_preview()
 	PageTransition.slide(self, previous, next, backwards)
+	if subtitle_slide and subtitle_slide.is_valid():
+		subtitle_slide.kill()
+	friends_subtitle.position.x = 0.0
+	if previous != next and friends_subtitle.visible:
+		friends_subtitle.position.x = get_viewport_rect().size.x * (-1.0 if backwards else 1.0)
+		subtitle_slide = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		subtitle_slide.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		subtitle_slide.tween_property(friends_subtitle, "position:x", 0.0, 0.35)
 
 # Parallax del menu, uguale al movimento MouseOffset usato da Lexispell.
 const MENU_OFFSET_STRENGTH := 10.0

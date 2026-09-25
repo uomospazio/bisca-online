@@ -447,6 +447,22 @@ func request(command: Dictionary) -> void:
 		room.bot_count = clampi(int(command.get("bot_count", 2)), 1, 7)
 		_broadcast(room)
 		return
+	if op == "return_lobby":
+		if room.rules == null or room.rules.phase != "finished" or room.stage != "turn":
+			return
+		# Return the whole group to the same room, keeping identities and photos.
+		# Bots are created again from the editable lobby settings on the next start.
+		for i in range(room.people.size() - 1, -1, -1):
+			if room.people[i].bot:
+				room.people.remove_at(i)
+		for i in range(room.people.size()):
+			if members.has(room.people[i].peer):
+				members[room.people[i].peer].slot = i
+		room.rules = null
+		room.stage = "lobby"
+		room.deadline = 0
+		_broadcast(room)
+		return
 	if op == "kick":
 		if slot != 0 or room.rules != null:
 			_reject(peer, "Solo il creatore può rimuovere giocatori")

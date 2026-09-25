@@ -43,7 +43,7 @@ func start(count: int, seed_value: int = -1, seating: Array = []) -> bool:
 		rng.seed = seed_value
 	players.clear()
 	for id in range(count):
-		players.append({"id": id, "lives": initial_lives, "active": true, "hand": [], "bid": -1, "taken": 0})
+		players.append({"id": id, "lives": initial_lives, "active": true, "hand": [], "bid": -1, "taken": 0, "exact_predictions": 0, "rounds_played": 0, "total_taken": 0})
 	round_number = 0
 	starter = rng.randi_range(0, count - 1)
 	winner = -1
@@ -193,6 +193,9 @@ func _score_round() -> void:
 		var declared: int = int(p.bid)
 		var taken: int = int(p.taken)
 		var loss := absi(declared - taken)
+		p["rounds_played"] = int(p.get("rounds_played", 0)) + 1
+		p["total_taken"] = int(p.get("total_taken", 0)) + taken
+		p["exact_predictions"] = int(p.get("exact_predictions", 0)) + (1 if loss == 0 else 0)
 		var previous_lives: int = p.lives
 		p.lives = maxi(0, int(p.lives) - loss)
 		p.active = p.lives > 0

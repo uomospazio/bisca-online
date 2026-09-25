@@ -160,6 +160,10 @@ func _ready() -> void:
 			_start(player_count)
 	)
 	overlay.menu_requested.connect(_show_menu)
+	overlay.lobby_requested.connect(func():
+		if online:
+			online_match.action({"op": "return_lobby"})
+	)
 	overlay.prediction_question_started.connect(func():
 		if rules.hand_size > 1:
 			_hide_predicted_players()
@@ -176,7 +180,23 @@ func _ready() -> void:
 	net.avatars_changed.connect(_refresh_profile_photos)
 	online_match.setup(self, net)
 	net.updated.connect(func(state):
-		if state.stage != "lobby":
+		if state.stage == "lobby" and online:
+			online = false
+			online_match.queue.clear()
+			online_match.round_seen = -1
+			online_match.damage_seen = -1
+			online_match.trick_seen = ""
+			online_match.joker_seen_round = -1
+			last_turn_sound = ""
+			presented_damage_round = -1
+			busy = false
+			overlay.hide()
+			game_ui.hide()
+			$Parallax.hide()
+			menu.show()
+			menu.network_page.show()
+			menu.network_page._update(state)
+		elif state.stage != "lobby":
 			if not online:
 				_clear(scores)
 				pile.place_home()
@@ -625,6 +645,11 @@ func _refresh() -> void:
 		status.set_mixed_text("%s\nSei eliminato: puoi seguire la partita" % status.text)
 	hand.allow_play = rules.phase == "play" and rules.hand_size > 1 and rules.current == 0 and not busy and pending_joker == null
 
+func _show_victory() -> void:
+	var winner_id: int = rules.winner
+	var avatar: Texture2D = scores.get_child(winner_id).profile_texture
+	overlay.show_victory(_name_of(winner_id), avatar, rules.players[winner_id], online, not online or online_match.local_id == 0)
+
 func _play_turn_sound() -> void:
 	if rules.current != 0 or not rules.phase in ["prediction", "play"]:
 		return
@@ -943,7 +968,7 @@ func _drive() -> void:
 		if rules.phase == "finished":
 			busy = false
 			_refresh()
-			overlay.show_victory(_name_of(rules.winner))
+			_show_victory()
 			return
 		if rules.current == 0 and rules.phase == "prediction":
 			_play_turn_sound()

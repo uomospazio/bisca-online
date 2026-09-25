@@ -12,6 +12,7 @@ const BUTTON_TEXT := LexispellStyle.TEXT
 
 signal replay_requested
 signal menu_requested
+signal lobby_requested
 signal prediction_banner_cleared
 signal prediction_question_started
 
@@ -24,6 +25,7 @@ var subtitle: MixedLabel
 var buttons: HBoxContainer
 var wide_prediction_banner := false
 var panel_style: StyleBoxFlat
+var victory_details: VBoxContainer
 
 func _update_banner_width() -> void:
 	panel.custom_minimum_size.x = size.x / 1.5 if wide_prediction_banner else 1280.0 / 1.5
@@ -31,6 +33,8 @@ func _update_banner_width() -> void:
 		prediction_title.custom_minimum_size.x = maxf(1.0, size.x - 96.0)
 
 func _set_wide_prediction_banner(enabled: bool) -> void:
+	if is_instance_valid(victory_details):
+		victory_details.hide()
 	wide_prediction_banner = enabled
 	_update_banner_width()
 	if enabled:
@@ -110,7 +114,7 @@ func _ready() -> void:
 	column.add_child(buttons)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 24)
-	for caption in ["Rigioca", "Torna al menu"]:
+	for caption in ["Rigioca", "Torna alla lobby", "Torna alla home"]:
 		var button := RoundedSquareButton.new()
 		buttons.add_child(button)
 		button.text = caption.to_upper()
@@ -126,6 +130,8 @@ func _ready() -> void:
 		button.add_theme_color_override("font_disabled_color", LexispellStyle.DISABLED_TEXT)
 		if caption == "Rigioca":
 			button.pressed.connect(func(): hide(); replay_requested.emit())
+		elif caption == "Torna alla lobby":
+			button.pressed.connect(func(): lobby_requested.emit())
 		else:
 			button.pressed.connect(func(): hide(); menu_requested.emit())
 	hide()
@@ -222,7 +228,7 @@ func announce_joker(high: bool) -> void:
 	hide()
 	modulate.a = 1.0
 
-func show_victory(player_name: String) -> void:
+func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictionary = {}, multiplayer_game := false, is_host := true) -> void:
 	preload("res://scenes/balatro/scripts/game_audio.gd").play(self, preload("res://scenes/balatro/scripts/game_audio.gd").VICTORY)
 	_set_wide_prediction_banner(false)
 	title.add_theme_color_override("default_color", LexispellStyle.NORMAL)
@@ -232,6 +238,46 @@ func show_victory(player_name: String) -> void:
 	title.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 	title.set_mixed_text(player_name.to_upper())
 	subtitle.set_mixed_text("HA VINTO LA PARTITA!")
+	if is_instance_valid(victory_details):
+		victory_details.get_parent().remove_child(victory_details)
+		victory_details.queue_free()
+	victory_details = VBoxContainer.new()
+	victory_details.add_theme_constant_override("separation", 12)
+	var column := title.get_parent()
+	column.add_child(victory_details)
+	column.move_child(victory_details, 0)
+	var crown := TextureRect.new()
+	crown.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/crown.svg")
+	crown.custom_minimum_size = Vector2(64, 44)
+	crown.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	crown.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	crown.modulate = LexispellStyle.NORMAL
+	victory_details.add_child(crown)
+	var portrait := TextureRect.new()
+	portrait.custom_minimum_size = Vector2(128, 128)
+	portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	portrait.texture = avatar
+	portrait.draw.connect(func():
+		portrait.draw_arc(portrait.size / 2.0, 62, 0, TAU, 96, LexispellStyle.NORMAL, 3, true)
+		if portrait.texture == null:
+			portrait.draw_circle(portrait.size / 2.0, 59, Color("e5e8d8"), true, -1, true)
+	)
+	victory_details.add_child(portrait)
+	if not stats.is_empty():
+		var summary := Label.new()
+		summary.text = "PREDIZIONI ESATTE  %d / %d\nPRESE TOTALI  %d" % [stats.get("exact_predictions", 0), stats.get("rounds_played", 0), stats.get("total_taken", 0)]
+		summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		summary.add_theme_font_override("font", KIDS_FONT)
+		summary.add_theme_font_size_override("font_size", 24)
+		summary.add_theme_color_override("font_color", LexispellStyle.NORMAL)
+		victory_details.add_child(summary)
 	buttons.show()
+	buttons.get_child(0).visible = not multiplayer_game or is_host
+	buttons.get_child(1).visible = multiplayer_game
 	modulate.a = 1.0
 	show()

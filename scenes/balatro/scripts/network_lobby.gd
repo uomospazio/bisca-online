@@ -255,12 +255,14 @@ func _update(state: Dictionary) -> void:
 		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
 		row_style.shadow_size = 0
 		row_style.shadow_offset = Vector2.ZERO
+		_style_player_slot(row_style)
 		row.add_theme_stylebox_override("panel", row_style)
 
 		if index >= state.people.size():
 			var empty_style = menu._menu_button_style(menu.LexispellStyle.DISABLED)
 			empty_style.shadow_size = 0
 			empty_style.shadow_offset = Vector2.ZERO
+			_style_player_slot(empty_style)
 			row.add_theme_stylebox_override("panel", empty_style)
 			var empty := Label.new()
 			empty.text = "EMPTY"
@@ -299,10 +301,44 @@ func _update(state: Dictionary) -> void:
 		name_button.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 		name_button.flat = true
 		line.add_child(name_button)
+		if index == 0:
+			var crown := TextureRect.new()
+			crown.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/crown.svg")
+			crown.custom_minimum_size = Vector2(30, 30)
+			crown.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			crown.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			crown.tooltip_text = "Creatore della lobby"
+			line.add_child(crown)
+		if index == int(state.you):
+			var self_badge := PanelContainer.new()
+			self_badge.custom_minimum_size = Vector2(44, 44)
+			self_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			self_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var badge_style := StyleBoxFlat.new()
+			badge_style.bg_color = menu.LexispellStyle.HOVER
+			badge_style.set_corner_radius_all(99)
+			badge_style.corner_detail = 16
+			badge_style.set_border_width_all(2)
+			badge_style.border_color = menu.LexispellStyle.SHADOW
+			self_badge.add_theme_stylebox_override("panel", badge_style)
+			var self_label := Label.new()
+			self_label.text = "TU"
+			self_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			self_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			self_label.add_theme_font_override("font", menu.KIDS_FONT)
+			self_label.add_theme_font_size_override("font_size", 16)
+			self_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+			self_badge.add_child(self_label)
+			line.add_child(self_badge)
 		var voice = get_node("/root/VoiceChat")
 		var voice_id := str(p.get("voice_id", ""))
 		var speaker := Button.new()
 		line.add_child(speaker)
+		if index == int(state.you):
+			# Keep the TU badge last, after the microphone control.
+			line.move_child(speaker, line.get_child_count() - 2)
 		speaker.custom_minimum_size = Vector2(56, 50)
 		speaker.flat = true
 		speaker.icon = null
@@ -335,12 +371,20 @@ func _update(state: Dictionary) -> void:
 		var remove := Button.new()
 		RoundedSquareButton.ButtonAudio.attach(remove)
 		remove.text = "×"
-		remove.custom_minimum_size = Vector2(64, 50)
+		remove.custom_minimum_size = Vector2(44, 44)
+		remove.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		remove.add_theme_font_override("font", menu.KIDS_FONT)
 		remove.add_theme_font_size_override("font_size", 30)
 		for state_color in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			remove.add_theme_color_override(state_color, menu.BUTTON_TEXT)
-		remove.flat = true
+		for skin_state in ["normal", "hover", "pressed", "focus"]:
+			var remove_style := StyleBoxFlat.new()
+			remove_style.bg_color = menu.LexispellStyle.NORMAL if skin_state == "pressed" else menu.LexispellStyle.HOVER
+			remove_style.set_corner_radius_all(99)
+			remove_style.corner_detail = 16
+			remove_style.set_border_width_all(2)
+			remove_style.border_color = menu.BUTTON_TEXT if skin_state in ["hover", "focus"] else menu.LexispellStyle.SHADOW
+			remove.add_theme_stylebox_override(skin_state, remove_style)
 		# Only the lobby creator sees removal controls, never on their own row.
 		if state.you == 0 and index > 0:
 			remove.pressed.connect(func(): net.send({"op": "kick", "slot": index}))
@@ -350,6 +394,16 @@ func _update(state: Dictionary) -> void:
 		players_box.add_child(row)
 	info.text = "In attesa dei giocatori…"
 	_update_voice_buttons()
+
+func _style_player_slot(style: StyleBoxFlat) -> void:
+	style.set_corner_radius_all(12)
+	style.corner_detail = 16
+	style.set_border_width_all(2)
+	style.border_color = menu.LexispellStyle.SHADOW
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
 
 func _update_voice_buttons() -> void:
 	if players_box == null:

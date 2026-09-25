@@ -10,6 +10,7 @@ var restart_button: Button
 var continue_button: Button
 var notice: Label
 var paused_singleplayer := false
+var confirmation: Control
 
 func setup(controller: Control) -> void:
 	host = controller
@@ -55,8 +56,8 @@ func setup(controller: Control) -> void:
 	buttons.add_theme_constant_override("separation", 24)
 	continue_button = host.menu._button(buttons, "CONTINUE", close)
 	host.menu._button(buttons, "SETTINGS", _show_settings)
-	restart_button = host.menu._button(buttons, "RESTART", func(): _leave(true))
-	var quit_button: Button = host.menu._button(buttons, "QUIT", func(): _leave(false))
+	restart_button = host.menu._button(buttons, "RESTART", func(): _confirm_leave(true))
+	var quit_button: Button = host.menu._button(buttons, "QUIT", func(): _confirm_leave(false))
 	quit_button.add_theme_stylebox_override("normal", Style.button_style(Color(0.909804, 0.364706, 0.407843)))
 	hide()
 
@@ -80,6 +81,7 @@ func open() -> void:
 	continue_button.grab_focus_silent()
 
 func close() -> void:
+	_cancel_confirmation()
 	if screen.has_meta("page_transition_cleanup"):
 		screen.get_meta("page_transition_cleanup").call()
 	hide()
@@ -97,6 +99,47 @@ func _show_settings() -> void:
 func _show_actions() -> void:
 	preload("res://scenes/balatro/scripts/page_transition.gd").slide(screen, settings_page, actions, true)
 
+func _cancel_confirmation() -> void:
+	if is_instance_valid(confirmation):
+		confirmation.hide()
+		confirmation.queue_free()
+	confirmation = null
+	if is_instance_valid(actions):
+		actions.show()
+		continue_button.grab_focus_silent()
+
+func _confirm_leave(restart: bool) -> void:
+	if is_instance_valid(confirmation):
+		return
+	actions.hide()
+	confirmation = CenterContainer.new()
+	screen.add_child(confirmation)
+	confirmation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var box := PanelContainer.new()
+	confirmation.add_child(box)
+	var skin := Style.button_style(Style.TEXT, Style.HOVER, 4)
+	skin.content_margin_left = 40
+	skin.content_margin_right = 40
+	skin.content_margin_top = 32
+	skin.content_margin_bottom = 32
+	box.add_theme_stylebox_override("panel", skin)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 28)
+	box.add_child(column)
+	var question := Label.new()
+	question.text = "RIAVVIARE LA PARTITA?" if restart else "ABBANDONARE LA PARTITA?"
+	question.add_theme_font_override("font", FONT)
+	question.add_theme_font_size_override("font_size", 32)
+	question.add_theme_color_override("font_color", Style.NORMAL)
+	question.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(question)
+	var choices := HBoxContainer.new()
+	choices.add_theme_constant_override("separation", 24)
+	column.add_child(choices)
+	var cancel: Button = host.menu._button(choices, "ANNULLA", _cancel_confirmation)
+	host.menu._button(choices, "RESTART" if restart else "QUIT", func(): _leave(restart))
+	cancel.grab_focus_silent()
+
 func _leave(restart: bool) -> void:
 	close()
 	if host.online:
@@ -109,7 +152,9 @@ func _leave(restart: bool) -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		if visible:
-			if is_instance_valid(settings_page) and settings_page.visible:
+			if is_instance_valid(confirmation):
+				_cancel_confirmation()
+			elif is_instance_valid(settings_page) and settings_page.visible:
 				_show_actions()
 			else:
 				close()

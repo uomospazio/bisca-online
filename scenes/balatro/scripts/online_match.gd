@@ -172,7 +172,7 @@ func _apply(value: Dictionary) -> void:
 	if value.stage == "turn":
 		host._play_turn_sound()
 	if value.phase == "finished" and value.stage == "turn":
-		host.overlay.show_victory(host._name_of(host.rules.winner))
+		host._show_victory()
 	elif value.phase == "prediction" and host.rules.current == 0 and value.stage == "turn":
 		await host.overlay.announce_turn(true, value.hand_size == 1)
 	else:

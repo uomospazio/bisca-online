@@ -12,6 +12,8 @@ root = pathlib.Path(__file__).resolve().parents[1]
 target = pathlib.Path(sys.argv[1]).resolve()
 target.mkdir(parents=True, exist_ok=False)
 pending = ["project.godot", "icon.png", "scenes/balatro/balatro.tscn"]
+pending += ["scenes/balatro/trick_asset/cover_verticale.png", "scenes/balatro/trick_asset/cover_orizzontale.png",
+            "addons/web_covers/plugin.cfg", "addons/web_covers/plugin.gd"]
 pending += [str(p.relative_to(root)) for p in (root / "scenes/balatro/scripts").glob("*.gd")]
 # Deck filenames are constructed at runtime rather than written as resource paths.
 pending += [str(p.relative_to(root)) for p in (root / "scenes/balatro/trick_asset/mazzo_2/briscola").glob("*.png")]

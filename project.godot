@@ -48,6 +48,10 @@ window/stretch/mode="canvas_items"
 
 movie_writer/movie_file="result.avi"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/web_covers/plugin.cfg")
+
 [gui]
 
 theme/custom="res://scenes/balatro/fonts/lexispell_theme.tres"

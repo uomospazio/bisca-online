@@ -91,6 +91,12 @@ var font: Font = KIDS_FONT
 var configured := false
 var counter_tween: Tween
 var name_idle_time := 0.0
+# Cache limitata al nome corrente: nessun accumulo quando i giocatori cambiano.
+var cached_name := ""
+var cached_font: Font
+var cached_name_size := 27
+var cached_name_width := 0.0
+var cached_character_widths := PackedFloat32Array()
 var counter_scale := Vector2.ONE:
 	set(value):
 		counter_scale = value
@@ -120,7 +126,8 @@ func _init() -> void:
 
 func _process(delta: float) -> void:
 	name_idle_time += delta
-	queue_redraw()
+	if is_visible_in_tree():
+		queue_redraw()
 
 func configure(display_name: String, remaining_lives: int, bid: int, tricks: int, current: bool, out: bool, display_tricks: bool = false) -> void:
 	var counter_changed := configured and ((bid >= 0 and bid != prediction) or tricks > taken)
@@ -199,19 +206,30 @@ func _draw() -> void:
 		if show_taken or taken > 0:
 			_text(Vector2(107, 169), str(taken), 24, Color("fdfdfb"), KIDS_FONT, false)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
-	var name_size := 27
-	while font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x > 152 and name_size > 14:
-		name_size -= 1
-	_draw_idle_name(player_name, name_size)
+	_update_name_metrics()
+	_draw_idle_name(player_name, cached_name_size)
+
+func _update_name_metrics() -> void:
+	if cached_name == player_name and cached_font == font:
+		return
+	cached_name = player_name
+	cached_font = font
+	cached_name_size = 27
+	while font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, cached_name_size).x > 152 and cached_name_size > 14:
+		cached_name_size -= 1
+	cached_name_width = font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, cached_name_size).x
+	cached_character_widths.clear()
+	for character in player_name:
+		cached_character_widths.append(font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, cached_name_size).x)
 
 func _draw_idle_name(value: String, font_size: int) -> void:
-	var total_width := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var total_width := cached_name_width
 	var cursor_x := 80.0 - total_width / 2.0
 	var ascent := font.get_ascent(font_size)
 	var descent := font.get_descent(font_size)
 	for index in value.length():
 		var character := value.substr(index, 1)
-		var character_width := font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var character_width := cached_character_widths[index]
 		var phase := name_idle_time * 4.0 + float(index) * 0.55
 		var bob := sin(phase) * 2.5
 		var tilt := deg_to_rad(sin(phase + 0.7) * 1.4)

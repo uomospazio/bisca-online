@@ -140,6 +140,7 @@ func _overlay_button_style(color: Color, border_color: Color = Color.TRANSPARENT
 	return LexispellStyle.button_style(color, border_color, border_width)
 
 func announce_turn(prediction: bool, single_card: bool = false) -> void:
+	z_index = 0
 	preload("res://scenes/balatro/scripts/game_audio.gd").play(self, preload("res://scenes/balatro/scripts/game_audio.gd").NOTICE)
 	_set_wide_prediction_banner(prediction)
 	_set_animated_title("E' IL TUO TURNO!")
@@ -208,6 +209,7 @@ func dismiss_prediction_turn() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func announce_joker(high: bool) -> void:
+	z_index = 0
 	preload("res://scenes/balatro/scripts/game_audio.gd").play(self, preload("res://scenes/balatro/scripts/game_audio.gd").SWIPE)
 	_set_wide_prediction_banner(true)
 	_set_animated_title("LA PIU' ALTA!" if high else "LA PIU' BASSA!")
@@ -229,6 +231,10 @@ func announce_joker(high: bool) -> void:
 	modulate.a = 1.0
 
 func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictionary = {}, multiplayer_game := false, is_host := true) -> void:
+	# La schermata finale deve coprire anche i profili sollevati dai tween
+	# e i pulsanti del tavolo (z=200), senza alterare i livelli delle predizioni.
+	z_index = 1000
+	overlay_shade.show()
 	preload("res://scenes/balatro/scripts/game_audio.gd").play(self, preload("res://scenes/balatro/scripts/game_audio.gd").VICTORY)
 	_set_wide_prediction_banner(false)
 	title.add_theme_color_override("default_color", LexispellStyle.NORMAL)

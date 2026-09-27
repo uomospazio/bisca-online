@@ -33,6 +33,12 @@ signal start_requested(player_name: String, count: int)
 
 var name_input: LineEdit
 var home_page: Control
+var home_intro_buttons: Array[Button] = []
+var home_intro: Tween
+# Tempi dell'ingresso pulsanti di Dub Together (pop con leggero rimbalzo).
+const HOME_INTRO_DELAY := 0.4
+const HOME_INTRO_STAGGER := 0.1
+const HOME_INTRO_DURATION := 0.38
 var home_character: TextureRect
 var profile_picker: Node
 var profile_button: TextureButton
@@ -58,6 +64,7 @@ var deck_selector: Control
 const PageTransition = preload("res://scenes/balatro/scripts/page_transition.gd")
 
 func _switch_page(next: Control, backwards := false) -> void:
+	_stop_home_intro()
 	var previous := active_page if is_instance_valid(active_page) else home_page
 	active_page = next
 	if is_instance_valid(home_character):
@@ -66,6 +73,8 @@ func _switch_page(next: Control, backwards := false) -> void:
 		profile_panel.visible = next == setup_page or (next == network_page and network_page.session_controls.visible)
 		deck_selector.reset_preview()
 	PageTransition.slide(self, previous, next, backwards)
+	if next == home_page:
+		_play_home_intro()
 	if subtitle_slide and subtitle_slide.is_valid():
 		subtitle_slide.kill()
 	var subtitle_x := TITLE_POSITION.x if next == network_page else 0.0
@@ -154,6 +163,20 @@ func _ready() -> void:
 	lower_choices.add_theme_constant_override("separation", 20)
 	_button(lower_choices, "SETTINGS", _show_settings).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(lower_choices, "INFO", _show_home_info).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for column in [play_choices, lower_choices]:
+		for button in column.get_children():
+			# I Container ripristinano la scala dei figli durante il layout.
+			# Il wrapper riceve il layout; il pulsante interno può animarsi.
+			var slot := Control.new()
+			slot.custom_minimum_size = button.custom_minimum_size
+			slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			column.remove_child(button)
+			column.add_child(slot)
+			slot.add_child(button)
+			button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			home_intro_buttons.append(button)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
 	profile_button = TextureButton.new()
@@ -280,6 +303,38 @@ func _ready() -> void:
 	name_input.text_submitted.connect(func(_value): _send_profile_name())
 	_refresh_single_profile()
 	_start_title_wave()
+	_play_home_intro()
+
+func _stop_home_intro() -> void:
+	if home_intro and home_intro.is_valid():
+		home_intro.kill()
+	for button in home_intro_buttons:
+		button.scale = Vector2.ONE
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		button.focus_mode = Control.FOCUS_ALL
+		button.hover_animate = true
+
+func _play_home_intro() -> void:
+	_stop_home_intro()
+	home_intro = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).set_parallel(true)
+	for index in home_intro_buttons.size():
+		var button = home_intro_buttons[index]
+		if button.hover_tween and button.hover_tween.is_valid():
+			button.hover_tween.kill()
+		button.rotation = 0.0
+		button.pivot_offset = button.size / 2.0
+		button.hover_animate = false
+		button.release_focus()
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.focus_mode = Control.FOCUS_NONE
+		button.scale = Vector2.ZERO
+		var delay := HOME_INTRO_DELAY + index * HOME_INTRO_STAGGER
+		home_intro.tween_property(button, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		home_intro.tween_callback(func():
+			button.mouse_filter = Control.MOUSE_FILTER_STOP
+			button.focus_mode = Control.FOCUS_ALL
+			button.hover_animate = true
+		).set_delay(delay + HOME_INTRO_DURATION)
 
 func _build_mode_profile() -> void:
 	profile_panel = Panel.new()
@@ -337,6 +392,9 @@ func _show_home_info() -> void:
 	dialog.popup_centered(Vector2i(1000, 360))
 
 func _process(delta: float) -> void:
+	# La partita nasconde il menu: non serve calcolare il suo parallax.
+	if not is_visible_in_tree():
+		return
 	if not is_instance_valid(menu_content) or not menu_content.is_inside_tree():
 		return
 	var center := get_viewport_rect().size / 2.0

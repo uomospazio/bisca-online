@@ -19,8 +19,9 @@ func run() -> void:
 	await create_timer(0.5).timeout
 	assert(not menu.profile_panel.visible)
 	menu.network_page.profile_room = "ABC123"
-	menu.network_page._update({"stage": "lobby", "code": "ABC123", "you": 0,
-		"people": [{"name": "TEST", "connected": true, "bot": false}], "options": {}})
+	var lobby_state := {"stage": "lobby", "code": "ABC123", "you": 0,
+		"people": [{"name": "TEST", "connected": true, "bot": false}], "options": {}}
+	menu.network_page._update(lobby_state)
 	await create_timer(0.5).timeout
 	assert(menu.profile_panel.is_visible_in_tree())
 	assert(menu.network_page.players_box.get_child_count() == 8)
@@ -30,6 +31,15 @@ func run() -> void:
 	menu.profile_texture = ImageTexture.create_from_image(photo)
 	menu._refresh_single_profile()
 	var own_card = menu.network_page.players_box.get_child(0)
+	var original_id: int = own_card.get_instance_id()
+	lobby_state.options = {"lives": 4}
+	menu.network_page._update(lobby_state)
+	assert(menu.network_page.players_box.get_child(0).get_instance_id() == original_id, "Settings must reuse player cards")
+	assert(menu.network_page.lobby_options.lives.value == 4)
+	lobby_state.people[0]["voice_active"] = true
+	menu.network_page._update(lobby_state)
+	own_card = menu.network_page.players_box.get_child(0)
+	assert(own_card.get_instance_id() != original_id, "Changed player state must update cards")
 	assert(own_card.get_meta("name_view").text == "NUOVO")
 	assert(own_card.get_meta("avatar_view").texture == menu.profile_texture)
 	menu.network_page._update_lobby_photos()

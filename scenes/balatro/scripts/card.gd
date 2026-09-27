@@ -78,7 +78,14 @@ var tween_handle: Tween
 
 var last_mouse_pos: Vector2
 var mouse_velocity: Vector2
-var following_mouse: bool = false
+# Solo il trascinamento richiede aggiornamenti per-frame. I tween di hover,
+# distribuzione e lancio funzionano indipendentemente da _process.
+var following_mouse: bool = false:
+	set(value):
+		following_mouse = value
+		set_process(value)
+		if is_node_ready():
+			shadow.visible = value
 var last_pos: Vector2
 var velocity: Vector2
 var resting_z_index: int
@@ -91,6 +98,8 @@ var played_scale: float = 0.95
 @onready var shadow = $Shadow
 
 func _ready() -> void:
+	set_process(following_mouse)
+	shadow.visible = following_mouse
 	# Convert to radians because lerp_angle is using that
 	angle_x_max = deg_to_rad(angle_x_max)
 	angle_y_max = deg_to_rad(angle_y_max)

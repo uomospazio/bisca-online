@@ -24,6 +24,8 @@ var join_button: Button
 var rejoin_button: Button
 var profile_picker: Node
 var profile_room := ""
+var rendered_people: Array = []
+var rendered_self := -1
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
@@ -252,6 +254,14 @@ func _update(state: Dictionary) -> void:
 	code_button.set_meta("room_code", state.code)
 	players_label.text = "PLAYERS %d/8" % min(8, state.people.size())
 	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
+	# Le opzioni stanza cambiano spesso senza modificare gli slot. In quel caso
+	# conserviamo nodi, focus e tween invece di ricreare otto card.
+	if rendered_self == int(state.you) and rendered_people == state.people:
+		refresh_own_card()
+		_update_voice_buttons()
+		return
+	rendered_people = state.people.duplicate(true)
+	rendered_self = int(state.you)
 	for child in players_box.get_children():
 		players_box.remove_child(child)
 		child.queue_free()
@@ -490,6 +500,9 @@ func _set_voice_icon_tween(icon: TextureRect, icon_name: String) -> void:
 
 
 func _set_voice_icon(icon: TextureRect, icon_name: String) -> void:
+	if str(icon.get_meta("current_icon", "")) == icon_name:
+		return
+	icon.set_meta("current_icon", icon_name)
 	icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
 
 

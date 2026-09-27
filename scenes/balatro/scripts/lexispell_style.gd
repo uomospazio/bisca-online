@@ -1,12 +1,14 @@
 extends RefCounted
 
 # Palette and StyleBox geometry from Lexispell/rounded_square_btn.tscn.
-const NORMAL := Color("2a2438")
-const HOVER := Color("6f5fa8")
-const TEXT := Color("fdfdfb")
-const SHADOW := Color("241f1d")
-const DISABLED := Color(0.788235, 0.760784, 0.847059)
-const DISABLED_TEXT := Color(0.435294, 0.415686, 0.501961)
+const NORMAL := Color("38315a")
+const HOVER := Color("7a68b8")
+const TEXT := Color("f3effe")
+const PANEL := Color("2c2647")
+const MUTED_TEXT := Color("a79fc4")
+const SHADOW := Color("0c0918")
+const DISABLED := Color("2a2440")
+const DISABLED_TEXT := Color("a79fc4")
 
 static func button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

@@ -117,7 +117,7 @@ func _confirm_leave(restart: bool) -> void:
 	confirmation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var box := PanelContainer.new()
 	confirmation.add_child(box)
-	var skin := Style.button_style(Style.TEXT, Style.HOVER, 4)
+	var skin := Style.button_style(Style.PANEL, Style.HOVER, 4)
 	skin.content_margin_left = 40
 	skin.content_margin_right = 40
 	skin.content_margin_top = 32
@@ -130,7 +130,7 @@ func _confirm_leave(restart: bool) -> void:
 	question.text = "RIAVVIARE LA PARTITA?" if restart else "ABBANDONARE LA PARTITA?"
 	question.add_theme_font_override("font", FONT)
 	question.add_theme_font_size_override("font_size", 32)
-	question.add_theme_color_override("font_color", Style.NORMAL)
+	question.add_theme_color_override("font_color", Style.TEXT)
 	question.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(question)
 	var choices := HBoxContainer.new()

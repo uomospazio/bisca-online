@@ -6,8 +6,8 @@ uniform sampler2D coppe : filter_linear_mipmap;
 uniform sampler2D spade : filter_linear_mipmap;
 uniform sampler2D bastoni : filter_linear_mipmap;
 uniform vec2 surface_size = vec2(1920.0, 1080.0);
-uniform vec4 paper : source_color = vec4(0.992157, 0.992157, 0.984314, 1.0); // Dub Together PAPER: #FDFDFB.
-uniform float ink_opacity = 0.075;
+uniform vec4 paper : source_color = vec4(0.090196, 0.074510, 0.141176, 1.0); // Dub Together dark PAPER: #171324.
+uniform float ink_opacity = 0.05;
 
 float random_value(vec2 cell) {
 	return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
@@ -30,5 +30,5 @@ void fragment() {
 	else if (kind < 3.0) { symbol = texture(spade, sample_uv); }
 	else { symbol = texture(bastoni, sample_uv); }
 	float mask = step(0.0, sample_uv.x) * step(sample_uv.x, 1.0) * step(0.0, sample_uv.y) * step(sample_uv.y, 1.0);
-	COLOR = vec4(mix(paper.rgb, vec3(0.133, 0.122, 0.169), symbol.a * mask * ink_opacity), 1.0);
+	COLOR = vec4(mix(paper.rgb, vec3(1.0), symbol.a * mask * ink_opacity), 1.0);
 }

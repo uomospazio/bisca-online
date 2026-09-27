@@ -65,7 +65,7 @@ func _ready() -> void:
 	panel.custom_minimum_size = Vector2(1280 / 1.5, 300)
 	resized.connect(_update_banner_width)
 	panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = LexispellStyle.TEXT
+	panel_style.bg_color = LexispellStyle.PANEL
 	panel_style.border_color = LexispellStyle.NORMAL
 	panel_style.set_border_width_all(5)
 	panel_style.set_corner_radius_all(24)
@@ -108,8 +108,8 @@ func _ready() -> void:
 	subtitle.custom_minimum_size.y = 48
 	subtitle.add_theme_font_override("normal_font", KIDS_FONT)
 	subtitle.add_theme_font_size_override("normal_font_size", 30)
-	subtitle.add_theme_color_override("font_color", LexispellStyle.NORMAL)
-	subtitle.add_theme_color_override("default_color", LexispellStyle.NORMAL)
+	subtitle.add_theme_color_override("font_color", LexispellStyle.TEXT)
+	subtitle.add_theme_color_override("default_color", LexispellStyle.TEXT)
 	buttons = HBoxContainer.new()
 	column.add_child(buttons)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -237,8 +237,8 @@ func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictiona
 	overlay_shade.show()
 	preload("res://scenes/balatro/scripts/game_audio.gd").play(self, preload("res://scenes/balatro/scripts/game_audio.gd").VICTORY)
 	_set_wide_prediction_banner(false)
-	title.add_theme_color_override("default_color", LexispellStyle.NORMAL)
-	title.add_theme_color_override("font_color", LexispellStyle.NORMAL)
+	title.add_theme_color_override("default_color", LexispellStyle.TEXT)
+	title.add_theme_color_override("font_color", LexispellStyle.TEXT)
 	title.add_theme_constant_override("outline_size", 0)
 	title.add_theme_constant_override("shadow_outline_size", 0)
 	title.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
@@ -259,7 +259,7 @@ func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictiona
 	crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	crown.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	crown.modulate = LexispellStyle.NORMAL
+	crown.modulate = LexispellStyle.TEXT
 	victory_details.add_child(crown)
 	var portrait := TextureRect.new()
 	portrait.custom_minimum_size = Vector2(128, 128)
@@ -280,7 +280,7 @@ func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictiona
 		summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		summary.add_theme_font_override("font", KIDS_FONT)
 		summary.add_theme_font_size_override("font_size", 24)
-		summary.add_theme_color_override("font_color", LexispellStyle.NORMAL)
+		summary.add_theme_color_override("font_color", LexispellStyle.TEXT)
 		victory_details.add_child(summary)
 	buttons.show()
 	buttons.get_child(0).visible = not multiplayer_game or is_host

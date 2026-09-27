@@ -30,7 +30,7 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	add_child(panel)
 	panel.position = Vector2(530, 280)
 	panel.size = Vector2(860, 520)
-	var skin := Style.button_style(Style.TEXT, Style.HOVER, 4)
+	var skin := Style.button_style(Style.PANEL, Style.HOVER, 4)
 	skin.content_margin_left = 36
 	skin.content_margin_right = 36
 	skin.content_margin_top = 28
@@ -76,7 +76,7 @@ func _label(text: String, font_size: int = 26) -> Label:
 	label.text = text
 	label.add_theme_font_override("font", FONT)
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", Style.NORMAL)
+	label.add_theme_color_override("font_color", Style.TEXT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	return label
 
@@ -137,7 +137,7 @@ func _add_toggle(parent: Control, title: String, key: String) -> void:
 	toggle.add_theme_icon_override("checked", preload("res://scenes/balatro/visuals/settings_toggle_on.svg"))
 	toggle.add_theme_icon_override("unchecked", preload("res://scenes/balatro/visuals/settings_toggle_off.svg"))
 	toggle.custom_minimum_size = Vector2(110, 48)
-	toggle.add_theme_color_override("font_color", Style.NORMAL)
+	toggle.add_theme_color_override("font_color", Style.TEXT)
 	row.add_child(toggle)
 	Audio.attach(toggle)
 	toggles[key] = toggle

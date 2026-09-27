@@ -152,7 +152,7 @@ func setup(owner_menu: Control) -> void:
 	session_controls.add_child(participant_panel)
 	participant_panel.position = Vector2(990, 140)
 	participant_panel.size = Vector2(840, 790)
-	var panel_style = menu._menu_button_style(menu.BUTTON_TEXT, menu.BUTTON_CYAN, 4)
+	var panel_style = menu._menu_button_style(menu.LexispellStyle.PANEL, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
 	panel_style.content_margin_top = 24
@@ -169,7 +169,7 @@ func setup(owner_menu: Control) -> void:
 	players_label.custom_minimum_size.y = 42
 	players_label.add_theme_font_override("font", menu.KIDS_FONT)
 	players_label.add_theme_font_size_override("font_size", 28)
-	players_label.add_theme_color_override("font_color", menu.BUTTON_PURPLE)
+	players_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 	participant_content.add_child(players_label)
 
 	players_box = VBoxContainer.new()

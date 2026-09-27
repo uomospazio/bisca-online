@@ -263,14 +263,14 @@ func _ready() -> void:
 	setup_page.add_child(participants)
 	participants.position = Vector2(990, 140)
 	participants.size = Vector2(840, 720)
-	participants.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_TEXT, BUTTON_CYAN, 4))
+	participants.add_theme_stylebox_override("panel", _menu_button_style(LexispellStyle.PANEL, BUTTON_CYAN, 4))
 	var heading := Label.new()
 	participants.add_child(heading)
 	heading.text = "GIOCATORI"
 	heading.position = Vector2(30, 24)
 	heading.add_theme_font_override("font", KIDS_FONT)
 	heading.add_theme_font_size_override("font_size", 32)
-	heading.add_theme_color_override("font_color", BUTTON_PURPLE)
+	heading.add_theme_color_override("font_color", BUTTON_TEXT)
 	var slot := Panel.new()
 	participants.add_child(slot)
 	slot.position = Vector2(30, 90)
@@ -341,7 +341,7 @@ func _build_mode_profile() -> void:
 	menu_content.add_child(profile_panel)
 	profile_panel.position = Vector2(60, 140)
 	profile_panel.size = Vector2(870, 790)
-	profile_panel.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_TEXT, BUTTON_CYAN, 4))
+	profile_panel.add_theme_stylebox_override("panel", _menu_button_style(LexispellStyle.PANEL, BUTTON_CYAN, 4))
 	profile_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu_content.move_child(profile_panel, 0)
 	profile_button.reparent(profile_panel, false)
@@ -385,8 +385,8 @@ func _show_home_info() -> void:
 	dialog.dialog_text = "SEMI: DENARI > COPPE > SPADE > BASTONI\nSTESSO SEME: VINCE IL NUMERO PIU' ALTO (1–10)\n\nJOLLY: ASSO DI DENARI\nPIU' ALTA: BATTE TUTTI. PIU' BASSA: PERDE CONTRO TUTTI.\n\nDICHIARA LE PRESE CHE FARAI: SE SBAGLI PERDI UNA VITA."
 	dialog.get_label().add_theme_font_override("font", KIDS_FONT)
 	dialog.get_label().add_theme_font_size_override("font_size", 24)
-	dialog.get_label().add_theme_color_override("font_color", BUTTON_PURPLE)
-	dialog.add_theme_stylebox_override("panel", _menu_button_style(BUTTON_TEXT))
+	dialog.get_label().add_theme_color_override("font_color", BUTTON_TEXT)
+	dialog.add_theme_stylebox_override("panel", _menu_button_style(LexispellStyle.PANEL))
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2i(1000, 360))
@@ -445,7 +445,7 @@ func _label(parent: Node, text: String, font_size: int) -> MixedLabel:
 	label.set_mixed_text(text)
 	label.add_theme_font_override("normal_font", KIDS_FONT)
 	label.add_theme_font_size_override("normal_font_size", font_size)
-	label.add_theme_color_override("font_color", Color("2a2438"))
+	label.add_theme_color_override("font_color", LexispellStyle.TEXT)
 	parent.add_child(label)
 	return label
 
@@ -475,8 +475,8 @@ func _build_title(parent: Control) -> void:
 		outer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		outer.add_theme_font_override("font", title_font)
 		outer.add_theme_font_size_override("font_size", 296)
-		outer.add_theme_color_override("font_color", Color("2a2438"))
-		outer.add_theme_color_override("font_outline_color", Color("fdfdfb"))
+		outer.add_theme_color_override("font_color", LexispellStyle.TEXT)
+		outer.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
 		outer.add_theme_constant_override("outline_size", 20)
 		letter.add_child(outer)
 		var inner := Label.new()
@@ -486,8 +486,8 @@ func _build_title(parent: Control) -> void:
 		inner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		inner.add_theme_font_override("font", title_font)
 		inner.add_theme_font_size_override("font_size", 296)
-		inner.add_theme_color_override("font_color", Color("2a2438"))
-		inner.add_theme_color_override("font_outline_color", Color("fdfdfb"))
+		inner.add_theme_color_override("font_color", LexispellStyle.TEXT)
+		inner.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
 		inner.add_theme_constant_override("outline_size", 30)
 		letter.add_child(inner)
 		title_letters.append(letter)
@@ -507,18 +507,21 @@ func _start_title_wave() -> void:
 
 func _style_input(input: LineEdit, font_size: int) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("fdfdfb")
+	style.bg_color = LexispellStyle.PANEL
 	style.border_color = Color("2a2438")
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(10)
 	style.content_margin_left = 16
 	style.content_margin_right = 16
 	input.add_theme_stylebox_override("normal", style)
+	var focus_style := style.duplicate()
+	focus_style.border_color = LexispellStyle.HOVER
+	input.add_theme_stylebox_override("focus", focus_style)
 	input.add_theme_font_override("font", KIDS_FONT)
 	input.add_theme_font_size_override("font_size", font_size)
-	input.add_theme_color_override("font_color", Color("2a2438"))
-	input.add_theme_color_override("font_placeholder_color", BUTTON_PURPLE)
-	input.add_theme_color_override("caret_color", Color("2a2438"))
+	input.add_theme_color_override("font_color", LexispellStyle.TEXT)
+	input.add_theme_color_override("font_placeholder_color", LexispellStyle.MUTED_TEXT)
+	input.add_theme_color_override("caret_color", LexispellStyle.TEXT)
 
 func _button(parent: Node, text: String, callback: Callable) -> Button:
 	var button := RoundedSquareButton.new()

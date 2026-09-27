@@ -10,7 +10,7 @@ var bot_count: Stepper
 var fill_bots: CheckButton
 
 func setup(menu: Control, multiplayer_game: bool) -> void:
-	var panel_style := Style.button_style(Style.TEXT, Style.HOVER, 4)
+	var panel_style := Style.button_style(Style.PANEL, Style.HOVER, 4)
 	panel_style.set_corner_radius_all(20)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
@@ -24,7 +24,7 @@ func setup(menu: Control, multiplayer_game: bool) -> void:
 	heading.text = "IMPOSTAZIONI PARTITA"
 	heading.add_theme_font_override("font", menu.KIDS_FONT)
 	heading.add_theme_font_size_override("font_size", 24)
-	heading.add_theme_color_override("font_color", Style.NORMAL)
+	heading.add_theme_color_override("font_color", Style.TEXT)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(heading)
 	lives = _stepper(menu, "VITE INIZIALI", 1, 10, 3)
@@ -33,7 +33,7 @@ func setup(menu: Control, multiplayer_game: bool) -> void:
 		fill_bots = CheckButton.new()
 		fill_bots.text = "RIEMPI CON BOT"
 		fill_bots.add_theme_font_override("font", menu.KIDS_FONT)
-		fill_bots.add_theme_color_override("font_color", Style.NORMAL)
+		fill_bots.add_theme_color_override("font_color", Style.TEXT)
 		fill_bots.add_theme_font_size_override("font_size", 24)
 		fill_bots.add_theme_icon_override("checked", preload("res://scenes/balatro/visuals/settings_toggle_on.svg"))
 		fill_bots.add_theme_icon_override("unchecked", preload("res://scenes/balatro/visuals/settings_toggle_off.svg"))
@@ -57,7 +57,7 @@ func _stepper(menu: Control, caption: String, minimum: int, maximum: int, initia
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_override("font", menu.KIDS_FONT)
 	label.add_theme_font_size_override("font_size", 22)
-	label.add_theme_color_override("font_color", Style.NORMAL)
+	label.add_theme_color_override("font_color", Style.TEXT)
 	row.add_child(label)
 	var selector := Stepper.new()
 	selector.min_value = minimum

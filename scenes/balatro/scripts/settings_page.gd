@@ -57,6 +57,15 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	var footer := _label("LE MODIFICHE VENGONO SALVATE AUTOMATICAMENTE", 18)
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rows.add_child(footer)
+	var account_button: Button = menu._button(rows, "ACCOUNT", func():
+		var account_panel := preload("res://scenes/balatro/scripts/account_panel.gd").new()
+		add_child(account_panel)
+		account_panel.setup(menu)
+	)
+	account_button.custom_minimum_size = Vector2(0, 64)
+	# Cambiare identita' durante una partita interromperebbe l'associazione al profilo.
+	account_button.disabled = back_action.is_valid()
+	account_button.tooltip_text = "Gestisci l'account dai Settings del menu principale."
 	if multiplayer_settings:
 		_build_voice_settings(rows, menu)
 	var buttons := HBoxContainer.new()

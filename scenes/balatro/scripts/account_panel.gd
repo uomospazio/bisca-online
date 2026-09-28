@@ -1,0 +1,157 @@
+extends Control
+## UI account distinta dal profilo temporaneo delle lobby.
+const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
+const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
+var account: Node
+var menu: Control
+var rows: VBoxContainer
+var notice: Label
+var address: LineEdit
+var password: LineEdit
+var confirmation: CheckBox
+var buttons: Array[Button] = []
+var working := false
+var mode := ""
+
+func setup(host: Control) -> void:
+	menu = host
+	account = get_node("/root/AccountSession")
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	z_index = 100
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.85)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(shade)
+	var panel := PanelContainer.new()
+	add_child(panel)
+	panel.position = Vector2(460, 120)
+	panel.size = Vector2(1000, 840)
+	var skin := Style.button_style(Style.PANEL, Style.HOVER, 4)
+	for edge in ["left", "right", "top", "bottom"]:
+		skin.set("content_margin_" + edge, 28.0)
+	panel.add_theme_stylebox_override("panel", skin)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	rows = VBoxContainer.new()
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.add_theme_constant_override("separation", 16)
+	scroll.add_child(rows)
+	account.changed.connect(_account_changed)
+	get_node("/root/AccountProfile").changed.connect(_account_changed)
+	_show("home")
+
+func _account_changed() -> void:
+	if not working and mode == "home":
+		_show("home")
+
+func _text(value: String, size_value := 24) -> Label:
+	var label := Label.new()
+	label.text = value
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_size_override("font_size", size_value)
+	label.add_theme_color_override("font_color", Style.TEXT)
+	rows.add_child(label)
+	return label
+
+func _field(placeholder: String, secret := false) -> LineEdit:
+	var field := LineEdit.new()
+	field.placeholder_text = placeholder
+	field.secret = secret
+	field.custom_minimum_size.y = 60
+	field.max_length = 254
+	field.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_PASSWORD if secret else LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
+	field.add_theme_font_size_override("font_size", 28)
+	field.add_theme_color_override("font_color", Color("f3effe"))
+	field.add_theme_color_override("font_placeholder_color", Color("aaa3be"))
+	field.add_theme_stylebox_override("normal", Style.button_style(Style.NORMAL))
+	field.add_theme_stylebox_override("focus", Style.button_style(Style.NORMAL, Style.HOVER, 3))
+	rows.add_child(field)
+	return field
+
+func _button(text: String, action: Callable) -> Button:
+	var button: Button = menu._button(rows, text, action)
+	button.custom_minimum_size = Vector2(0, 60)
+	buttons.append(button)
+	return button
+
+func _show(next: String) -> void:
+	mode = next
+	for child in rows.get_children():
+		rows.remove_child(child)
+		child.queue_free()
+	buttons.clear()
+	_text("ACCOUNT", 44)
+	if mode == "home":
+		_text("OSPITE - SOLO SU QUESTO DISPOSITIVO" if account.anonymous else "EMAIL: " + account.email)
+		var cloud := get_node("/root/AccountProfile")
+		_text("SALVATAGGIO MAZZO: " + ("IN ATTESA / OFFLINE" if not account.is_authenticated() or not cloud.last_error.is_empty() or cloud._pending or not cloud._loaded else "SINCRONIZZATO"), 20)
+		_text("Nome e foto della lobby rimangono separati. Qui salvi e recuperi l'account.", 20)
+		if not account.password_ready:
+			_button("SALVA I TUOI PROGRESSI", func(): _show("password" if account.email_verified else "link"))
+		if not account.pending_email.is_empty():
+			_button("HO CONFERMATO L'EMAIL", func(): _show("verify"))
+		_button("ACCEDI A UN ACCOUNT", func(): _show("login"))
+		_button("RICONTROLLA CONNESSIONE", account.connect_account)
+		if not account.anonymous and account.password_ready:
+			_button("ESCI DALL'ACCOUNT", func(): _show("logout"))
+	elif mode == "link":
+		_text("Collega la tua email all'ospite: il profilo e il mazzo rimangono gli stessi.")
+		address = _field("Email")
+		address.text = account.pending_email
+		_button("INVIA EMAIL DI CONFERMA", func(): _run("link"))
+	elif mode == "verify":
+		_text("Apri l'email inviata a " + account.pending_email + ". Premi il link di conferma, poi torna qui senza chiudere o cancellare i dati di BISCA.")
+		_text("Dopo la conferma potrai scegliere la password. Controlla anche lo spam.", 20)
+		_button("HO CONFERMATO L'EMAIL", func(): _run("verify"))
+		_button("INVIA DI NUOVO / CAMBIA EMAIL", func(): _show("link"))
+	elif mode == "password":
+		_text("Email verificata. Scegli una password di almeno 8 caratteri per recuperare questo account.")
+		password = _field("Password", true)
+		_button("SALVA PASSWORD", func(): _run("password"))
+	elif mode == "login":
+		_text("Accedi al profilo esistente. I dati dell'ospite NON vengono uniti. Se vuoi conservarlo, collega prima la sua email.")
+		address = _field("Email")
+		password = _field("Password", true)
+		confirmation = CheckBox.new()
+		confirmation.text = "Confermo il cambio di account"
+		confirmation.add_theme_font_size_override("font_size", 26)
+		rows.add_child(confirmation)
+		_button("ACCEDI", func(): _run("login"))
+	elif mode == "logout":
+		_text("Uscire da questo account? I dati cloud restano salvati. Verra' creato un nuovo ospite; per recuperare questo profilo serviranno email e password.")
+		_button("CONFERMA USCITA", func(): _run("logout"))
+	notice = _text("", 22)
+	_button("CHIUDI" if mode == "home" else "INDIETRO", func():
+		if mode == "home": queue_free()
+		else: _show("home")
+	)
+
+func _run(action: String) -> void:
+	if working:
+		return
+	if action in ["link", "login"] and (not "@" in address.text or address.text.strip_edges().is_empty()):
+		notice.text = "Inserisci un indirizzo email valido."
+		return
+	if action == "login" and not confirmation.button_pressed:
+		notice.text = "Conferma il cambio account prima di accedere."
+		return
+	working = true
+	for button in buttons: button.disabled = true
+	notice.text = "ATTENDI..."
+	var result: Dictionary
+	match action:
+		"link": result = await account.link_email(address.text)
+		"verify": result = await account.check_email_confirmation()
+		"password": result = await account.set_password(password.text)
+		"login": result = await account.sign_in(address.text, password.text)
+		"logout": result = await account.sign_out()
+	if is_instance_valid(password): password.clear()
+	working = false
+	if not result.ok:
+		for button in buttons: button.disabled = false
+		notice.text = result.get("message", "Operazione non riuscita.")
+		return
+	_show("verify" if action == "link" else ("password" if action == "verify" else "home"))
+	notice.text = "Email inviata. Apri il link di conferma." if action == "link" else "Operazione completata."

@@ -67,6 +67,12 @@ func _ready() -> void:
 	editing_controls.append(confirm)
 
 	reset_preview()
+	var cloud := get_node_or_null("/root/AccountProfile")
+	if cloud:
+		cloud.preferences_loaded.connect(func():
+			if edit_button.visible and not switching and not flipping:
+				reset_preview()
+		)
 
 
 func _button(

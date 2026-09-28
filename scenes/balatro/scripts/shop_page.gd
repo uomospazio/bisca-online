@@ -13,7 +13,7 @@ const ITEMS_SIZE := Vector2(1560, 900)
 
 # Distanza che il dito deve percorrere prima che il gesto
 # venga considerato uno scroll.
-const SCROLL_DEADZONE := 5
+const TAP_MOVE_THRESHOLD := 18.0
 
 var manager: Node
 var status: Label
@@ -21,6 +21,15 @@ var grid: GridContainer
 var reload_button: Button
 var menu_owner: Control
 var coins_amount: Label
+var shop_scroll: ScrollContainer
+
+# Aree cliccabili degli articoli. Gestite globalmente così lo ScrollContainer
+# resta libero di ricevere e gestire gli swipe su mobile.
+var item_previews: Dictionary = {}
+var touch_item_id := ""
+var touch_start_position := Vector2.ZERO
+var touch_start_scroll := 0
+var touch_dragged := false
 
 var intro_controls: Array[Control] = []
 var intro_tween: Tween
@@ -86,21 +95,15 @@ func setup(menu: Control) -> void:
 	# SCROLL SHOP
 	# ---------------------------------------------------------
 
-	var scroll := ScrollContainer.new()
+	shop_scroll = ScrollContainer.new()
 
-	add_child(scroll)
+	add_child(shop_scroll)
 
-	scroll.position = ITEMS_POSITION
-	scroll.size = ITEMS_SIZE
+	shop_scroll.position = ITEMS_POSITION
+	shop_scroll.size = ITEMS_SIZE
 
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-
-	# IMPORTANTE PER MOBILE:
-	# sotto questa distanza viene considerato un tap;
-	# superata questa distanza lo ScrollContainer prende
-	# il controllo del gesto.
-	scroll.scroll_deadzone = SCROLL_DEADZONE
+	shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	shop_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 
 
 	# ---------------------------------------------------------
@@ -121,7 +124,7 @@ func setup(menu: Control) -> void:
 		20
 	)
 
-	scroll.add_child(grid)
+	shop_scroll.add_child(grid)
 
 
 	# ---------------------------------------------------------
@@ -210,6 +213,67 @@ func setup(menu: Control) -> void:
 	result_dialog = AcceptDialog.new()
 
 	add_child(result_dialog)
+
+
+func _input(event: InputEvent) -> void:
+	# TOUCH MOBILE
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			touch_item_id = _item_at_position(event.position)
+			touch_start_position = event.position
+			touch_start_scroll = shop_scroll.scroll_vertical if shop_scroll else 0
+			touch_dragged = false
+		else:
+			var released_item := _item_at_position(event.position)
+			var scroll_changed := false
+
+			if shop_scroll:
+				scroll_changed = abs(shop_scroll.scroll_vertical - touch_start_scroll) > 1
+
+			if (
+				not touch_item_id.is_empty()
+				and released_item == touch_item_id
+				and not touch_dragged
+				and not scroll_changed
+			):
+				_ask_purchase(touch_item_id)
+
+			touch_item_id = ""
+			touch_dragged = false
+
+	elif event is InputEventScreenDrag:
+		if (
+			not touch_item_id.is_empty()
+			and event.position.distance_to(touch_start_position) > TAP_MOVE_THRESHOLD
+		):
+			touch_dragged = true
+
+	# MOUSE DESKTOP
+	# Su dispositivi touch ignoriamo gli eventi mouse emulati dal dito.
+	elif event is InputEventMouseButton:
+		if DisplayServer.is_touchscreen_available():
+			return
+
+		if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			var item_id := _item_at_position(event.position)
+			if not item_id.is_empty():
+				_ask_purchase(item_id)
+
+
+func _item_at_position(viewport_position: Vector2) -> String:
+	for item_id in item_previews:
+		var preview: Control = item_previews[item_id]
+
+		if not is_instance_valid(preview):
+			continue
+
+		if not preview.is_visible_in_tree():
+			continue
+
+		if preview.get_global_rect().has_point(viewport_position):
+			return str(item_id)
+
+	return ""
 
 
 func _ask_purchase(item_id: String) -> void:
@@ -419,6 +483,8 @@ func _update() -> void:
 	# PULIZIA GRIGLIA
 	# ---------------------------------------------------------
 
+	item_previews.clear()
+
 	for child in grid.get_children():
 		grid.remove_child(child)
 		child.queue_free()
@@ -517,57 +583,12 @@ func _update() -> void:
 			# AREA CLICCABILE
 			# -------------------------------------------------
 
-			var buy := Button.new()
+			# Nessun Button invisibile sopra la carta: in questo modo
+			# lo ScrollContainer riceve sempre il trascinamento.
+			preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-			buy.flat = true
-
-			buy.focus_mode = (
-				Control.FOCUS_NONE
-			)
-
-			buy.mouse_default_cursor_shape = (
-				Control.CURSOR_POINTING_HAND
-			)
-
-			buy.tooltip_text = "Acquista"
-
-
-			buy.disabled = (
-				manager.owns_item(item.id)
-				or not item.is_available
-			)
-
-
-			# IMPORTANTE:
-			#
-			# BUTTON_RELEASE:
-			# non esegue l'acquisto quando il dito
-			# tocca lo schermo.
-			#
-			# Se inizia uno scroll, ScrollContainer
-			# può prendere il controllo del gesto.
-			buy.action_mode = (
-				BaseButton.ACTION_MODE_BUTTON_RELEASE
-			)
-
-			buy.mouse_filter = (
-				Control.MOUSE_FILTER_STOP
-			)
-
-
-			preview.add_child(buy)
-
-
-			buy.set_anchors_and_offsets_preset(
-				Control.PRESET_FULL_RECT
-			)
-
-
-			buy.pressed.connect(
-				_ask_purchase.bind(
-					str(item.id)
-				)
-			)
+			if not manager.owns_item(item.id) and item.is_available:
+				item_previews[str(item.id)] = preview
 
 
 		# -----------------------------------------------------

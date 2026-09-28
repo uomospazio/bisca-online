@@ -193,7 +193,8 @@ func _send(
 	if err != OK:
 		return {
 			"ok": false,
-			"code": 0
+			"code": 0,
+			"data": null
 		}
 
 	var response: Array = await _http.request_completed
@@ -205,6 +206,15 @@ func _send(
 			"data": null
 		}
 
+	# Supabase può restituire una risposta HTTP valida senza body,
+	# ad esempio dopo un PATCH riuscito.
+	var response_body: PackedByteArray = response[3]
+	var response_text: String = response_body.get_string_from_utf8()
+	var parsed_data: Variant = null
+
+	if not response_text.strip_edges().is_empty():
+		parsed_data = JSON.parse_string(response_text)
+
 	return {
 		"ok":
 			response[0] == HTTPRequest.RESULT_SUCCESS
@@ -212,11 +222,7 @@ func _send(
 			and response[1] < 300,
 
 		"code": response[1],
-
-		"data":
-			JSON.parse_string(
-				response[3].get_string_from_utf8()
-			)
+		"data": parsed_data
 	}
 
 func sync() -> void:
@@ -228,9 +234,7 @@ func sync() -> void:
 	var path := "?id=eq." + str(_account.user_id)
 
 	if not _loaded:
-
-		# MODIFICA:
-		# Recuperiamo anche il public_id dell'account.
+		# Recupera il profilo, incluso l'ID BISCA pubblico.
 		var result := await _send(
 			HTTPClient.METHOD_GET,
 			path + "&select=id,username,public_id,deck_back,deck_front"
@@ -241,7 +245,6 @@ func sync() -> void:
 			return
 
 		if result.data.is_empty():
-
 			var initial := _deck()
 			initial.id = _account.user_id
 
@@ -257,9 +260,6 @@ func sync() -> void:
 
 			# Rileggi anche quando un altro client ha creato
 			# la riga nel frattempo.
-			#
-			# MODIFICA:
-			# Recuperiamo anche public_id.
 			result = await _send(
 				HTTPClient.METHOD_GET,
 				path + "&select=id,username,public_id,deck_back,deck_front"

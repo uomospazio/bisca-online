@@ -10,7 +10,7 @@ const ITEMS_POSITION := Vector2(180, 180)
 const ITEMS_SIZE := Vector2(1560, 900)
 
 # Movimento minimo del dito prima di considerare il gesto uno scroll.
-const TOUCH_DRAG_THRESHOLD := 5.0
+const TOUCH_DRAG_THRESHOLD := 18.0
 
 var manager: Node
 var status: Label
@@ -195,11 +195,12 @@ func _label(text: String, font_size := 22) -> Label:
 #
 # MOBILE:
 # - appoggio + rilascio senza movimento = tap
-# - movimento superiore alla soglia = scroll
+# - trascinamento = scroll
 #
 # DESKTOP:
-# - click sinistro = acquisto
+# - click sinistro al rilascio = acquisto
 func _item_touch_input(event: InputEvent, item_id: String) -> void:
+	# TOUCH MOBILE
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			touch_tracking = true
@@ -208,6 +209,7 @@ func _item_touch_input(event: InputEvent, item_id: String) -> void:
 			touch_item_id = item_id
 
 		else:
+			# Acquista SOLO al rilascio e SOLO se non abbiamo trascinato.
 			if (
 				touch_tracking
 				and not touch_dragged
@@ -219,6 +221,7 @@ func _item_touch_input(event: InputEvent, item_id: String) -> void:
 			touch_dragged = false
 			touch_item_id = ""
 
+	# MOVIMENTO TOUCH
 	elif event is InputEventScreenDrag:
 		if (
 			touch_tracking
@@ -226,11 +229,18 @@ func _item_touch_input(event: InputEvent, item_id: String) -> void:
 		):
 			touch_dragged = true
 
+	# MOUSE DESKTOP
 	elif event is InputEventMouseButton:
-		# Mantiene il comportamento desktop.
+		# Su mobile Godot può generare anche eventi mouse
+		# a partire dallo stesso touch.
+		# Ignoriamo quelli emulati.
+		if event.device == -1:
+			return
+
+		# Desktop: attiva solo al rilascio del click.
 		if (
 			event.button_index == MOUSE_BUTTON_LEFT
-			and event.pressed
+			and not event.pressed
 		):
 			_ask_purchase(item_id)
 
@@ -320,14 +330,14 @@ func _update() -> void:
 				"/root/GameSettings"
 			).back_texture(item.asset_id)
 
-			# PASS permette alla preview di ricevere il tap senza
-			# impedire allo ScrollContainer di gestire lo swipe.
+			# PASS permette alla carta di ricevere l'input,
+			# lasciando comunque lo ScrollContainer gestire lo swipe.
 			preview.mouse_filter = Control.MOUSE_FILTER_PASS
 			preview.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 			rows.add_child(preview)
 
-			# Solo gli oggetti acquistabili ricevono il tap.
+			# Solo gli oggetti acquistabili ricevono l'input.
 			if (
 				not manager.owns_item(item.id)
 				and item.is_available
@@ -342,6 +352,7 @@ func _update() -> void:
 
 		var center := CenterContainer.new()
 		footer.add_child(center)
+
 		center.set_anchors_and_offsets_preset(
 			Control.PRESET_FULL_RECT
 		)

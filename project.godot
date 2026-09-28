@@ -28,12 +28,12 @@ driver/enable_input=true
 
 [autoload]
 
-AccountSession="*res://scenes/balatro/scripts/account_session.gd"
 GameSettings="*res://scenes/balatro/scripts/game_settings.gd"
-AccountProfile="*res://scenes/balatro/scripts/account_profile.gd"
-ShopManager="*res://scenes/balatro/scripts/shop_manager.gd"
 NetworkSession="*res://scenes/balatro/scripts/network_session.gd"
 VoiceChat="*res://scenes/balatro/scripts/voice_chat.gd"
+AccountSession="*res://scenes/balatro/scripts/account_session.gd"
+AccountProfile="*res://scenes/balatro/scripts/account_profile.gd"
+ShopManager="*res://scenes/balatro/scripts/shop_manager.gd"
 
 [bisca]
 
@@ -58,6 +58,10 @@ enabled=PackedStringArray("res://addons/web_covers/plugin.cfg")
 [gui]
 
 theme/custom="res://scenes/balatro/fonts/lexispell_theme.tres"
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=false
 
 [rendering]
 

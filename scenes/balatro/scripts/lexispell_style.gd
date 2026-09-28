@@ -10,10 +10,18 @@ const SHADOW := Color("0c0918")
 const DISABLED := Color("2a2440")
 const DISABLED_TEXT := Color("a79fc4")
 
-static func button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
+# Passa l'altezza del pulsante come quarto parametro per ottenere
+# un radius pari a metà dell'altezza. Se omessa, mantiene radius 22.
+static func button_style(
+	color: Color,
+	border_color: Color = Color.TRANSPARENT,
+	border_width: int = 0,
+	button_height: float = 0.0
+) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
-	style.set_corner_radius_all(22)
+	var radius := int(button_height / 2.0) if button_height > 0.0 else 22
+	style.set_corner_radius_all(radius)
 	style.corner_detail = 12
 	style.anti_aliasing_size = 0.285
 	if border_width == 2:

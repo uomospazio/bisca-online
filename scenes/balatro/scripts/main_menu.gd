@@ -10,17 +10,53 @@ const RoundedSquareButton = preload("res://scenes/balatro/scripts/rounded_square
 # Modifica questi valori per spostare o ridimensionare gli elementi senza
 # dover intervenire sulla gerarchia dei contenitori.
 # Layout HOME su base 1920 x 1080: UI a sinistra, personaggio a destra.
-const TITLE_POSITION := Vector2(55, 45)
-const TITLE_SIZE := Vector2(970, 285)
+# Posizione e rotazione INDIPENDENTI dei pulsanti principali.
+# Le coordinate sono rispetto alla viewport di progetto 1920x1080.
+const PLAY_BUTTON_SIZE := Vector2(440, 108)
+const SINGLE_BUTTON_POSITION := Vector2(300, 450)
+const SINGLE_BUTTON_ROTATION := 0.0 # Gradi: es. -5 inclina verso sinistra.
+const MULTI_BUTTON_POSITION := Vector2(300, 600)
+const MULTI_BUTTON_ROTATION := 0.0 # Gradi: es. 5 inclina verso destra.
+const TITLE_SIZE := Vector2(970, 230)
+const TITLE_BUTTON_GAP := 50.0 # Distanza fra riquadro BISCA e Singleplayer
+const TITLE_POSITION := Vector2(55, SINGLE_BUTTON_POSITION.y - TITLE_SIZE.y - TITLE_BUTTON_GAP)
 const HOME_BUTTONS_POSITION := Vector2(70, 785)
 const HOME_BUTTONS_SIZE := Vector2(820, 204)
 # Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
 const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
-const HOME_CHARACTER_POSITION := Vector2(700, 150)
+const HOME_CHARACTER_POSITION := Vector2(600, 150)
 const HOME_CHARACTER_SIZE := Vector2(1320, 1310)
 const SETUP_ELEMENTS_POSITION := Vector2(640, 530)
 const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
 const MENU_BUTTON_HEIGHT := 96.0
+const ROUND_BUTTON_SIZE := 96.0
+const ROUND_ICON_SIZE := 54.0
+# Icona e testo centrati insieme nei pulsanti principali.
+const PLAY_ICON_SIZE := 54.0
+const PLAY_ICON_TEXT_SPACING := 12.0
+# SETTINGS, INFO e SHOP in colonna, in alto a destra (viewport 1920x1080).
+const ROUND_BUTTONS_RIGHT_MARGIN := 40.0
+const ROUND_BUTTONS_TOP_MARGIN := 160.0
+const ROUND_BUTTONS_SPACING := 20.0
+# Selettore delle carte nella HOME: sotto MULTIPLAYER, leggermente a destra.
+const HOME_DECK_POSITION := Vector2(1520, 600)
+const HOME_DECK_SCALE := 1.0
+# Foto profilo e campo nome nella HOME, sotto MULTIPLAYER.
+# La foto usa una scala ridotta: il pulsante originale misura 260x260.
+const HOME_PROFILE_POSITION := Vector2(120, 720)
+const HOME_PROFILE_SCALE := 0.8
+const HOME_NAME_POSITION := Vector2(270, 780)
+const HOME_NAME_SIZE := Vector2(650, 148)
+const HOME_NAME_TEXT_SHIFT := 20.0 # Pixel verso destra per testo e placeholder, solo HOME
+# CONTATORE MONETE: in alto a destra, sopra Settings.
+# La posizione e' relativa al bordo destro della viewport.
+const COINS_RIGHT_MARGIN := 40.0
+const COINS_TOP_MARGIN := 32.0
+const COINS_SIZE := Vector2(320, 96) # larghezza totale e altezza del contatore
+const COINS_BAR_HEIGHT := 72.0
+const COINS_ICON_SIZE := 96.0 # grandezza di coin.png, senza sfondo circolare
+const COINS_FONT_SIZE := 36
+const COINS_ICON_PATH := "res://scenes/balatro/trick_asset/ui_bisca/coin.svg"
 const LexispellStyle = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const BUTTON_PURPLE := LexispellStyle.NORMAL
 const BUTTON_PURPLE_PRESSED := LexispellStyle.NORMAL
@@ -33,6 +69,7 @@ signal start_requested(player_name: String, count: int)
 
 var name_input: LineEdit
 var home_page: Control
+var coins_label: Label
 var home_intro_buttons: Array[Button] = []
 var home_intro: Tween
 # Tempi dell'ingresso pulsanti di Dub Together (pop con leggero rimbalzo).
@@ -69,7 +106,17 @@ func _switch_page(next: Control, backwards := false) -> void:
 	active_page = next
 	if is_instance_valid(home_character):
 		home_character.visible = next == home_page or (next == network_page and not network_page.session_controls.visible)
+	# Foto e nome seguono la HOME o il pannello di configurazione.
+	if is_instance_valid(profile_button) and is_instance_valid(name_input):
+		if next == home_page:
+			_place_profile_home()
+		elif next == setup_page or (next == network_page and network_page.session_controls.visible):
+			_place_profile_in_panel()
 	if is_instance_valid(deck_selector):
+		if next == home_page:
+			_place_deck_selector_home()
+		elif next == setup_page or (next == network_page and network_page.session_controls.visible):
+			_place_deck_selector_profile()
 		profile_panel.visible = next == setup_page or (next == network_page and network_page.session_controls.visible)
 		deck_selector.reset_preview()
 	PageTransition.slide(self, previous, next, backwards)
@@ -143,40 +190,50 @@ func _ready() -> void:
 		menu_content.add_child(mascot)
 		mascot.position = HOME_CHARACTER_POSITION
 		mascot.size = HOME_CHARACTER_SIZE
-	# I quattro pulsanti della HOME, su due righe.
-	var home_buttons := VBoxContainer.new()
-	home_page.add_child(home_buttons)
-	home_buttons.position = HOME_BUTTONS_POSITION
-	home_buttons.size = HOME_BUTTONS_SIZE
-	home_buttons.add_theme_constant_override("separation", 16)
-	home_buttons.position = Vector2(180, 385)
-	home_buttons.size = Vector2(640, 500)
-	var play_choices := VBoxContainer.new()
-	home_buttons.add_child(play_choices)
-	play_choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	play_choices.add_theme_constant_override("separation", 20)
-	_button(play_choices, "SINGLEPLAYER", show_setup).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_button(play_choices, "MULTIPLAYER", _show_network).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var lower_choices := VBoxContainer.new()
-	home_buttons.add_child(lower_choices)
-	lower_choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lower_choices.add_theme_constant_override("separation", 20)
-	_button(lower_choices, "SETTINGS", _show_settings).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_button(lower_choices, "INFO", _show_home_info).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for column in [play_choices, lower_choices]:
-		for button in column.get_children():
-			# I Container ripristinano la scala dei figli durante il layout.
-			# Il wrapper riceve il layout; il pulsante interno può animarsi.
-			var slot := Control.new()
-			slot.custom_minimum_size = button.custom_minimum_size
-			slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			column.remove_child(button)
-			column.add_child(slot)
-			slot.add_child(button)
-			button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			home_intro_buttons.append(button)
+	# Mantieni i pulsanti della HOME sopra il disegno decorativo.
+	menu_content.move_child(home_page, menu_content.get_child_count() - 1)
+	# I due pulsanti sono indipendenti: coordinate e rotazione separate.
+	var single := _button(home_page, "SINGLEPLAYER", show_setup)
+	single.position = SINGLE_BUTTON_POSITION
+	single.size = PLAY_BUTTON_SIZE
+	single.pivot_offset = PLAY_BUTTON_SIZE / 2.0
+	single.rotation_degrees = SINGLE_BUTTON_ROTATION
+	_add_button_icon(single, "res://scenes/balatro/trick_asset/ui_bisca/single.svg")
+	_set_play_button_radius(single)
+
+	var multi := _button(home_page, "MULTIPLAYER", _show_network)
+	multi.position = MULTI_BUTTON_POSITION
+	multi.size = PLAY_BUTTON_SIZE
+	multi.pivot_offset = PLAY_BUTTON_SIZE / 2.0
+	multi.rotation_degrees = MULTI_BUTTON_ROTATION
+	_add_button_icon(multi, "res://scenes/balatro/trick_asset/ui_bisca/multi.svg")
+	_set_play_button_radius(multi)
+
+	# Contatore monete non cliccabile, sopra il pulsante Shop.
+	_build_coin_counter(home_page)
+
+	# Pulsanti circolari indipendenti in alto a destra: SHOP, SETTINGS, INFO.
+	var round_buttons := Control.new()
+	home_page.add_child(round_buttons)
+	round_buttons.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	round_buttons.offset_left = -ROUND_BUTTON_SIZE - ROUND_BUTTONS_RIGHT_MARGIN
+	round_buttons.offset_top = ROUND_BUTTONS_TOP_MARGIN
+	round_buttons.offset_right = -ROUND_BUTTONS_RIGHT_MARGIN
+	round_buttons.offset_bottom = ROUND_BUTTONS_TOP_MARGIN + ROUND_BUTTON_SIZE * 3.0 + ROUND_BUTTONS_SPACING * 2.0
+	var shop := _round_icon_button(round_buttons, "shop.svg", "Shop", _shop_placeholder)
+	shop.position = Vector2.ZERO
+	shop.size = Vector2.ONE * ROUND_BUTTON_SIZE
+	var settings := _round_icon_button(round_buttons, "setting.svg", "Settings", _show_settings)
+	settings.position = Vector2(0, ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING)
+	settings.size = Vector2.ONE * ROUND_BUTTON_SIZE
+	var info := _round_icon_button(round_buttons, "info.svg", "Info", _show_home_info)
+	info.position = Vector2(0, (ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING) * 2.0)
+	info.size = Vector2.ONE * ROUND_BUTTON_SIZE
+
+	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
+	# Control separati: nessun Container forza le loro dimensioni.
+	for button in [single, multi, shop, settings, info]:
+		home_intro_buttons.append(button)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
 	profile_button = TextureButton.new()
@@ -188,7 +245,7 @@ func _ready() -> void:
 	profile_button.tooltip_text = "Scegli la foto profilo"
 	profile_button.draw.connect(func():
 		if profile_texture == null:
-			profile_button.draw_circle(Vector2(130, 130), 127, Color("efecfa"), true, -1, true)
+			profile_button.draw_circle(Vector2(130, 130), 127, LexispellStyle.MUTED_TEXT, true, -1, true)
 		profile_button.draw_arc(Vector2(130, 130), 127, 0, TAU, 128, Color.BLACK, 5.0, true)
 	)
 	var camera_icon := TextureRect.new()
@@ -217,8 +274,8 @@ func _ready() -> void:
 	name_input.custom_minimum_size.x = 360
 	name_input.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	name_input.custom_minimum_size.y = 58
-	name_input.add_theme_font_size_override("font_size", 26)
-	_style_input(name_input, 26)
+	name_input.add_theme_font_size_override("font_size", 46)
+	_style_input(name_input, 46)
 	home_page.add_child(name_input)
 	name_input.position = Vector2(60, 665)
 	name_input.size = Vector2(360, 64)
@@ -235,7 +292,7 @@ func _ready() -> void:
 	single_name_input.custom_minimum_size.x = 520
 	single_name_input.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	single_name_input.custom_minimum_size.y = 72
-	_style_input(single_name_input, 28)
+	_style_input(single_name_input, 36)
 	setup_page.add_child(single_name_input)
 	single_name_input.hide()
 	single_name_input.text_changed.connect(func(value):
@@ -259,6 +316,8 @@ func _ready() -> void:
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	setup_page.hide()
 	_build_mode_profile()
+	_place_profile_home() # Foto e nome visibili sotto Multiplayer già all'avvio.
+	_place_deck_selector_home() # Visibile già al primo avvio della HOME.
 	var participants := Panel.new()
 	setup_page.add_child(participants)
 	participants.position = Vector2(990, 140)
@@ -313,6 +372,18 @@ func _stop_home_intro() -> void:
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
 		button.focus_mode = Control.FOCUS_ALL
 		button.hover_animate = true
+	# Ripristina anche i tre elementi aggiunti all'animazione HOME.
+	# Le scale del profilo e del mazzo devono restare quelle configurate.
+	if is_instance_valid(profile_button) and profile_button.get_parent() == home_page:
+		profile_button.scale = Vector2.ONE * HOME_PROFILE_SCALE
+		profile_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		profile_button.focus_mode = Control.FOCUS_ALL
+	if is_instance_valid(name_input) and name_input.get_parent() == home_page:
+		name_input.scale = Vector2.ONE
+		name_input.mouse_filter = Control.MOUSE_FILTER_STOP
+		name_input.focus_mode = Control.FOCUS_ALL
+	if is_instance_valid(deck_selector) and deck_selector.get_parent() == home_page:
+		deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
 
 func _play_home_intro() -> void:
 	_stop_home_intro()
@@ -321,7 +392,7 @@ func _play_home_intro() -> void:
 		var button = home_intro_buttons[index]
 		if button.hover_tween and button.hover_tween.is_valid():
 			button.hover_tween.kill()
-		button.rotation = 0.0
+		# Non azzerare la rotazione: Singleplayer e Multiplayer la mantengono.
 		button.pivot_offset = button.size / 2.0
 		button.hover_animate = false
 		button.release_focus()
@@ -336,6 +407,33 @@ func _play_home_intro() -> void:
 			button.hover_animate = true
 		).set_delay(delay + HOME_INTRO_DURATION)
 
+	# Foto, nome e selettore mazzo entrano con lo stesso effetto pop,
+	# dopo i pulsanti (con leggero ritardo fra loro).
+	var home_extras: Array[Control] = [profile_button, name_input, deck_selector]
+	for index in home_extras.size():
+		var control: Control = home_extras[index]
+		if control.get_parent() != home_page:
+			continue
+		var final_scale := Vector2.ONE
+		if control == profile_button:
+			final_scale = Vector2.ONE * HOME_PROFILE_SCALE
+		elif control == deck_selector:
+			final_scale = Vector2.ONE * HOME_DECK_SCALE
+		control.pivot_offset = control.size / 2.0
+		# Evita interazioni premature mentre l'elemento appare.
+		if control == profile_button or control == name_input:
+			control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			control.focus_mode = Control.FOCUS_NONE
+		control.scale = Vector2.ZERO
+		var delay := HOME_INTRO_DELAY + (home_intro_buttons.size() + index) * HOME_INTRO_STAGGER
+		home_intro.tween_property(control, "scale", final_scale, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if control == profile_button or control == name_input:
+			home_intro.tween_callback(func():
+				if is_instance_valid(control):
+					control.mouse_filter = Control.MOUSE_FILTER_STOP
+					control.focus_mode = Control.FOCUS_ALL
+			).set_delay(delay + HOME_INTRO_DURATION)
+
 func _build_mode_profile() -> void:
 	profile_panel = Panel.new()
 	menu_content.add_child(profile_panel)
@@ -344,16 +442,51 @@ func _build_mode_profile() -> void:
 	profile_panel.add_theme_stylebox_override("panel", _menu_button_style(LexispellStyle.PANEL, BUTTON_CYAN, 4))
 	profile_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu_content.move_child(profile_panel, 0)
-	profile_button.reparent(profile_panel, false)
+	_place_profile_in_panel()
+	_place_deck_selector_profile()
+	profile_panel.hide()
+
+# Stessi controlli, riposizionati senza duplicarli.
+func _place_profile_home() -> void:
+	if profile_button.get_parent() != home_page:
+		profile_button.reparent(home_page, false)
+	profile_button.position = HOME_PROFILE_POSITION
+	profile_button.scale = Vector2.ONE * HOME_PROFILE_SCALE
+	if name_input.get_parent() != home_page:
+		name_input.reparent(home_page, false)
+	name_input.position = HOME_NAME_POSITION
+	name_input.size = HOME_NAME_SIZE
+	_set_name_text_shift(true)
+	# Foto sopra il campo nome anche quando i due elementi si sovrappongono.
+	profile_button.z_index = 1
+	home_page.move_child(profile_button, home_page.get_child_count() - 1)
+
+func _place_profile_in_panel() -> void:
+	if profile_button.get_parent() != profile_panel:
+		profile_button.reparent(profile_panel, false)
 	profile_button.position = Vector2(35, 25)
 	profile_button.scale = Vector2(0.5, 0.5)
-	name_input.reparent(profile_panel, false)
+	if name_input.get_parent() != profile_panel:
+		name_input.reparent(profile_panel, false)
 	name_input.position = Vector2(190, 60)
 	name_input.size = Vector2(570, 64)
-	deck_selector.reparent(profile_panel, false)
+	_set_name_text_shift(false)
+	# Mantiene la stessa priorita anche nel pannello di configurazione.
+	profile_button.z_index = 1
+	profile_panel.move_child(profile_button, profile_panel.get_child_count() - 1)
+
+# Il selettore viene spostato tra HOME e pannello partita senza duplicarlo.
+func _place_deck_selector_home() -> void:
+	if deck_selector.get_parent() != home_page:
+		deck_selector.reparent(home_page, false)
+	deck_selector.position = HOME_DECK_POSITION
+	deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
+
+func _place_deck_selector_profile() -> void:
+	if deck_selector.get_parent() != profile_panel:
+		deck_selector.reparent(profile_panel, false)
 	deck_selector.position = Vector2(485, 270)
 	deck_selector.scale = Vector2(0.85, 0.85)
-	profile_panel.hide()
 
 func _refresh_single_profile() -> void:
 	if is_instance_valid(single_player_name):
@@ -417,6 +550,11 @@ func _show_network() -> void:
 	network_page.open()
 	_switch_page(network_page)
 
+# SHOP resta cliccabile, ma per ora non apre nessuna pagina.
+func _shop_placeholder() -> void:
+	pass
+
+
 func _show_settings() -> void:
 	title.hide()
 	friends_subtitle.hide()
@@ -458,14 +596,14 @@ func _build_title(parent: Control) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	title.add_child(center)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", -4)
+	row.add_theme_constant_override("separation", -8)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(row)
 	var title_font := KIDS_FONT
 	for character in "BISCA":
 		var letter := Control.new()
 		var width := title_font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, 196).x
-		letter.custom_minimum_size = Vector2(width + 34, 264)
+		letter.custom_minimum_size = Vector2(width + 14, 230)
 		letter.pivot_offset = letter.custom_minimum_size / 2.0
 		row.add_child(letter)
 		var outer := Label.new()
@@ -474,7 +612,7 @@ func _build_title(parent: Control) -> void:
 		outer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		outer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		outer.add_theme_font_override("font", title_font)
-		outer.add_theme_font_size_override("font_size", 296)
+		outer.add_theme_font_size_override("font_size", 196)
 		outer.add_theme_color_override("font_color", LexispellStyle.TEXT)
 		outer.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
 		outer.add_theme_constant_override("outline_size", 20)
@@ -485,7 +623,7 @@ func _build_title(parent: Control) -> void:
 		inner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		inner.add_theme_font_override("font", title_font)
-		inner.add_theme_font_size_override("font_size", 296)
+		inner.add_theme_font_size_override("font_size", 196)
 		inner.add_theme_color_override("font_color", LexispellStyle.TEXT)
 		inner.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
 		inner.add_theme_constant_override("outline_size", 30)
@@ -505,12 +643,27 @@ func _start_title_wave() -> void:
 			wave.tween_property(letter, "scale", Vector2.ONE, 0.16)
 			wave.parallel().tween_property(letter, "rotation", 0.0, 0.16)
 
+# Sposta soltanto il testo di nome e placeholder senza spostare il box.
+# Con allineamento CENTER, 2 pixel di margine sinistro producono circa
+# 1 pixel di spostamento del centro del testo verso destra.
+# Nel pannello partita ripristina il centramento normale.
+func _set_name_text_shift(in_home: bool) -> void:
+	var shift := HOME_NAME_TEXT_SHIFT if in_home else 0.0
+	for state in ["normal", "focus"]:
+		var base := name_input.get_theme_stylebox(state)
+		if base is StyleBoxFlat:
+			var modified := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+			modified.content_margin_left = 16.0 + shift * 2.0
+			modified.content_margin_right = 16.0
+			name_input.add_theme_stylebox_override(state, modified)
+
 func _style_input(input: LineEdit, font_size: int) -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = LexispellStyle.PANEL
 	style.border_color = Color("2a2438")
 	style.set_border_width_all(2)
-	style.set_corner_radius_all(10)
+	# Il campo nome HOME e profilo ha estremita a capsula (raggio = altezza / 2).
+	style.set_corner_radius_all(int(HOME_NAME_SIZE.y / 2.0) if input == name_input else 10)
 	style.content_margin_left = 16
 	style.content_margin_right = 16
 	input.add_theme_stylebox_override("normal", style)
@@ -528,7 +681,7 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.text = text.to_upper()
 	button.custom_minimum_size.y = MENU_BUTTON_HEIGHT
 	button.add_theme_font_override("font", KIDS_FONT)
-	button.add_theme_font_size_override("font_size", 28)
+	button.add_theme_font_size_override("font_size", 36)
 	button.add_theme_stylebox_override("normal", _menu_button_style(BUTTON_PURPLE))
 	button.add_theme_stylebox_override("hover", _menu_button_style(BUTTON_CYAN, BUTTON_TEXT, 6))
 	button.add_theme_stylebox_override("pressed", _menu_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2))
@@ -540,6 +693,155 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	parent.add_child(button)
 	button.pressed.connect(callback)
 	return button
+
+# SOLO per SINGLEPLAYER / MULTIPLAYER: estremità a capsula.
+# Il radius segue automaticamente metà dell'altezza impostata in PLAY_BUTTON_SIZE.
+func _set_play_button_radius(button: Button) -> void:
+	var radius := int(PLAY_BUTTON_SIZE.y / 2.0)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(radius)
+			button.add_theme_stylebox_override(state, style)
+
+
+# Pulsanti tondi SETTINGS / INFO / SHOP: stessi stili e animazioni degli altri pulsanti.
+func _round_icon_button(parent: Node, filename: String, tooltip: String, callback: Callable) -> Button:
+	var button := _button(parent, "", callback)
+	button.custom_minimum_size = Vector2(ROUND_BUTTON_SIZE, ROUND_BUTTON_SIZE)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.tooltip_text = tooltip
+	# Raggio pari a metà lato: pulsante perfettamente circolare.
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var color := BUTTON_CYAN if state in ["hover", "focus"] else BUTTON_DISABLED if state == "disabled" else BUTTON_PURPLE
+		var style := _menu_button_style(color)
+		style.set_corner_radius_all(int(ROUND_BUTTON_SIZE / 2.0))
+		button.add_theme_stylebox_override(state, style)
+	var path := "res://scenes/balatro/trick_asset/ui_bisca/" + filename
+	if ResourceLoader.exists(path):
+		var icon := TextureRect.new()
+		icon.texture = load(path) as Texture2D
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(icon)
+		icon.set_anchors_preset(Control.PRESET_CENTER)
+		var half := ROUND_ICON_SIZE / 2.0
+		icon.offset_left = -half
+		icon.offset_top = -half
+		icon.offset_right = half
+		icon.offset_bottom = half
+	else:
+		push_warning("Icona pulsante non trovata: " + path)
+	return button
+
+
+# Icona e testo sono un unico gruppo, centrato nel pulsante.
+# Il contenitore segue automaticamente scala, pop e hover del pulsante.
+func _add_button_icon(button: Button, path: String) -> void:
+	if not ResourceLoader.exists(path):
+		push_warning("Icona del pulsante non trovata: " + path)
+		return
+
+	var caption := button.text
+	button.text = "" # Evita che il testo predefinito venga centrato da solo.
+
+	var center := CenterContainer.new()
+	center.name = "CenteredIconAndText"
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var content := HBoxContainer.new()
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", int(PLAY_ICON_TEXT_SPACING))
+	center.add_child(content)
+
+	var icon := TextureRect.new()
+	icon.texture = load(path) as Texture2D
+	icon.custom_minimum_size = Vector2.ONE * PLAY_ICON_SIZE
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(icon)
+
+	var caption_label := Label.new()
+	caption_label.text = caption
+	caption_label.add_theme_font_override("font", KIDS_FONT)
+	caption_label.add_theme_font_size_override("font_size", 36)
+	caption_label.add_theme_color_override("font_color", BUTTON_TEXT)
+	caption_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	caption_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(caption_label)
+
+# Aspetto del contatore: barra a capsula + coin.png direttamente sovrapposta.
+# Tutti i componenti ignorano il mouse: nessuna interazione/click.
+func _build_coin_counter(parent: Control) -> void:
+	var counter := Control.new()
+	counter.name = "CoinsCounter"
+	counter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(counter)
+	counter.anchor_left = 1.0
+	counter.anchor_right = 1.0
+	counter.anchor_top = 0.0
+	counter.anchor_bottom = 0.0
+	counter.offset_left = -COINS_RIGHT_MARGIN - COINS_SIZE.x
+	counter.offset_right = -COINS_RIGHT_MARGIN
+	counter.offset_top = COINS_TOP_MARGIN
+	counter.offset_bottom = COINS_TOP_MARGIN + COINS_SIZE.y
+
+	var bar := Panel.new()
+	bar.name = "CoinBar"
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	counter.add_child(bar)
+	bar.position = Vector2(COINS_ICON_SIZE * 0.45, (COINS_SIZE.y - COINS_BAR_HEIGHT) / 2.0)
+	bar.size = Vector2(COINS_SIZE.x - bar.position.x, COINS_BAR_HEIGHT)
+	var bar_style := _menu_button_style(BUTTON_PURPLE)
+	bar_style.set_corner_radius_all(int(COINS_BAR_HEIGHT / 2.0))
+	bar.add_theme_stylebox_override("panel", bar_style)
+
+	# Il numero e' centrato nella parte di barra libera a destra dell'icona.
+	coins_label = Label.new()
+	coins_label.name = "CoinsAmount"
+	coins_label.text = "0"
+	coins_label.position = Vector2(COINS_ICON_SIZE + 3.0, 0.0)
+	coins_label.size = Vector2(COINS_SIZE.x - COINS_ICON_SIZE - 6.0, COINS_BAR_HEIGHT)
+	coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	coins_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	coins_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	coins_label.add_theme_font_override("font", KIDS_FONT)
+	coins_label.add_theme_font_size_override("font_size", COINS_FONT_SIZE)
+	coins_label.add_theme_color_override("font_color", BUTTON_TEXT)
+	bar.add_child(coins_label)
+	# Le coordinate del Label sono locali al Panel: sottrai l'offset della barra.
+	coins_label.position.x -= bar.position.x
+
+	# L'immagine della moneta e' direttamente sovrapposta al lato sinistro
+	# della barra: nessun pulsante o medaglione circolare dietro.
+	if ResourceLoader.exists(COINS_ICON_PATH):
+		var coin_icon := TextureRect.new()
+		coin_icon.name = "CoinIcon"
+		coin_icon.texture = load(COINS_ICON_PATH) as Texture2D
+		coin_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		coin_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		coin_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		coin_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		counter.add_child(coin_icon)
+		coin_icon.position = Vector2(0.0, (COINS_SIZE.y - COINS_ICON_SIZE) / 2.0)
+		coin_icon.size = Vector2.ONE * COINS_ICON_SIZE
+	else:
+		push_warning("Immagine delle monete non trovata: " + COINS_ICON_PATH)
+
+# Da collegare in seguito ai dati delle monete del giocatore.
+func set_coins_amount(amount: int) -> void:
+	if is_instance_valid(coins_label):
+		coins_label.text = str(maxi(amount, 0))
+
 
 func _menu_button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
 	return LexispellStyle.button_style(color, border_color, border_width)

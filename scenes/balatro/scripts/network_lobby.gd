@@ -1,5 +1,14 @@
 extends Control
 
+# Altezza delle tessere giocatore; radius automaticamente pari a Y / 2.
+const PLAYER_SLOT_HEIGHT := 78.0
+# Larghezze indipendenti: lascia almeno 48 px fra box e tessere per i margini.
+const PLAYER_SLOT_WIDTH := 600.0
+const PLAYERS_PANEL_WIDTH := 660.0
+# Spaziatura e dimensioni degli elementi centrati nel pulsante codice.
+const LOBBY_CODE_ICON_SIZE := 96.0
+const LOBBY_CODE_ICON_GAP := 16
+
 var menu: Control
 var net: Node
 var address: LineEdit
@@ -105,37 +114,46 @@ func setup(owner_menu: Control) -> void:
 		copied_code = str(code_button.get_meta("room_code", ""))
 		info.text = "Codice copiato negli appunti"
 	)
-	code_button.position = Vector2(90, 310)
-	code_button.custom_minimum_size = Vector2(420, 80)
-	code_button.size = Vector2(420, 80)
+	code_button.position = Vector2(1050, 145)
+	code_button.custom_minimum_size = Vector2(540, 200)
+	code_button.size = Vector2(540, 200)
 
-	# Testo del codice separato dal Button, così può fare il tween da solo.
+	# Icona e codice formano un unico gruppo centrato automaticamente nel Button.
+	# Il gruppo si ricentra anche quando cambia il testo (codice stanza).
 	code_button.text = ""
 	code_button.icon = null
+	var code_center := CenterContainer.new()
+	code_center.name = "CodeCenter"
+	code_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	code_button.add_child(code_center)
+	code_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var code_row := HBoxContainer.new()
+	code_row.name = "CodeRow"
+	code_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	code_row.add_theme_constant_override("separation", LOBBY_CODE_ICON_GAP)
+	code_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	code_center.add_child(code_row)
+
+	copy_icon = TextureRect.new()
+	code_row.add_child(copy_icon)
+	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/copy.svg")
+	copy_icon.custom_minimum_size = Vector2.ONE * LOBBY_CODE_ICON_SIZE
+	copy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	copy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	copy_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	copy_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	code_label = Label.new()
-	code_button.add_child(code_label)
-	code_label.position = Vector2(85, 0)
-	code_label.size = Vector2(320, 80)
+	code_row.add_child(code_label)
 	code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	code_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	code_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	code_label.add_theme_font_override("font", menu.KIDS_FONT)
-	code_label.add_theme_font_size_override("font_size", 38)
+	code_label.add_theme_font_size_override("font_size", 84)
 	code_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	code_label.pivot_offset = code_label.size / 2.0
-
-	# Copy come figlia del code_button: segue hover/rotazione del bottone.
-	copy_icon = TextureRect.new()
-	code_button.add_child(copy_icon)
-	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/copy.svg")
-	copy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	copy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	copy_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	copy_icon.position = Vector2(20, 12)
-	copy_icon.size = Vector2(56, 56)
-	copy_icon.pivot_offset = copy_icon.size / 2.0
-	copy_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Il pivot segue le dimensioni calcolate dal contenitore, per il tween.
+	code_label.resized.connect(func(): code_label.pivot_offset = code_label.size / 2.0)
+	copy_icon.resized.connect(func(): copy_icon.pivot_offset = copy_icon.size / 2.0)
 
 	# Al click tweenano SOLO testo e copy, non il bottone.
 	code_button.pressed.connect(func():
@@ -158,21 +176,21 @@ func setup(owner_menu: Control) -> void:
 	
 	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	session_controls.add_child(lobby_options)
-	lobby_options.position = Vector2(90, 405)
-	lobby_options.size = Vector2(430, 490)
+	lobby_options.position = Vector2(1050, 370)
+	lobby_options.size = Vector2(540, 561)
 	lobby_options.setup(menu, true)
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.value_changed.connect(func(_value): _send_options())
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	var participant_panel := PanelContainer.new()
 	session_controls.add_child(participant_panel)
-	participant_panel.position = Vector2(990, 140)
-	participant_panel.size = Vector2(840, 790)
+	participant_panel.position = Vector2(350, 140)
+	participant_panel.size = Vector2(PLAYERS_PANEL_WIDTH, 790)
 	var panel_style = menu._menu_button_style(menu.LexispellStyle.PANEL, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
 	panel_style.content_margin_right = 24
 	panel_style.content_margin_top = 24
-	panel_style.content_margin_bottom = 24
+	panel_style.content_margin_bottom = 32
 	participant_panel.add_theme_stylebox_override("panel", panel_style)
 	var participant_content := VBoxContainer.new()
 	participant_content.add_theme_constant_override("separation", 14)
@@ -192,9 +210,16 @@ func setup(owner_menu: Control) -> void:
 	players_box.add_theme_constant_override("separation", 8)
 	participant_content.add_child(players_box)
 	start_button = menu._button(session_controls, "PLAY", func(): net.send({"op": "start"}))
-	start_button.position = Vector2(1600, 940)
+	start_button.position = Vector2(1300, 800)
 	start_button.size = Vector2(260, 80)
 	start_button.custom_minimum_size.y = 80
+	# PLAY a capsula: radius = meta della sua altezza (Y/2).
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := start_button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(int(start_button.size.y / 2.0))
+			start_button.add_theme_stylebox_override(state, style)
 	_set_icon(start_button, "play")
 	session_controls.hide()
 	info = Label.new()
@@ -203,6 +228,7 @@ func setup(owner_menu: Control) -> void:
 	info.size = Vector2(920, 40)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_size_override("font_size", 24)
+	info.add_theme_color_override("font_color", Color("f3effe"))
 	var back_row := VBoxContainer.new()
 	add_child(back_row)
 	back_row.position = Vector2(40, 40)
@@ -318,12 +344,9 @@ func _update(state: Dictionary) -> void:
 		net.send.call_deferred({"op": "profile", "avatar": menu.profile_avatar})
 	if not session_controls.visible:
 		menu.hide_network_entry_extras()
-		menu.profile_panel.reparent(session_controls, false)
-		session_controls.move_child(menu.profile_panel, 0)
-		menu.profile_panel.position = Vector2(60, 140)
-		menu._place_profile_in_panel()
-		menu._place_deck_selector_profile()
-		menu.profile_panel.show()
+		# Foto, campo nome e deck selector restano nella HOME:
+		# non vengono più spostati nella schermata della lobby.
+		menu.profile_panel.hide()
 		menu.title.hide()
 		if is_instance_valid(menu.home_character):
 			menu.home_character.hide()
@@ -349,7 +372,7 @@ func _update(state: Dictionary) -> void:
 		child.queue_free()
 	for index in range(8):
 		var row := PanelContainer.new()
-		row.custom_minimum_size = Vector2(780, 78)
+		row.custom_minimum_size = Vector2(PLAYER_SLOT_WIDTH, PLAYER_SLOT_HEIGHT)
 		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		row.clip_contents = true
 		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
@@ -510,7 +533,7 @@ func refresh_own_card() -> void:
 		avatar.queue_redraw()
 
 func _style_player_slot(style: StyleBoxFlat) -> void:
-	style.set_corner_radius_all(12)
+	style.set_corner_radius_all(int(PLAYER_SLOT_HEIGHT / 2.0))
 	style.corner_detail = 16
 	style.set_border_width_all(2)
 	style.border_color = menu.LexispellStyle.SHADOW

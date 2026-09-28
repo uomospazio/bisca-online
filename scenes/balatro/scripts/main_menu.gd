@@ -358,7 +358,7 @@ func _ready() -> void:
 	buttons.position = Vector2(1290, 760)
 	buttons.size = Vector2(260, 96)
 	var back := _button(setup_page, "Indietro", show_home)
-	back.position = Vector2(60, 960)
+	back.position = Vector2(40, 40)
 	back.size = Vector2(260, 96)
 	var play := _button(buttons, "Gioca", _start)
 	solo_buttons = [back, play]

@@ -1,5 +1,6 @@
 extends Control
 ## UI account distinta dal profilo temporaneo delle lobby.
+
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 
@@ -17,6 +18,7 @@ var mode := ""
 func setup(host: Control) -> void:
 	menu = host
 	account = get_node("/root/AccountSession")
+
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	z_index = 100
 
@@ -27,13 +29,26 @@ func setup(host: Control) -> void:
 
 	var panel := PanelContainer.new()
 	add_child(panel)
+
 	panel.position = Vector2(460, 120)
 	panel.size = Vector2(1000, 840)
 
-	var skin := Style.button_style(Style.PANEL, Style.HOVER, 4)
+	var skin := Style.button_style(
+		Style.PANEL,
+		Style.HOVER,
+		4
+	)
+
 	for edge in ["left", "right", "top", "bottom"]:
-		skin.set("content_margin_" + edge, 28.0)
-	panel.add_theme_stylebox_override("panel", skin)
+		skin.set(
+			"content_margin_" + edge,
+			28.0
+		)
+
+	panel.add_theme_stylebox_override(
+		"panel",
+		skin
+	)
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -41,47 +56,155 @@ func setup(host: Control) -> void:
 
 	rows = VBoxContainer.new()
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 16)
+	rows.add_theme_constant_override(
+		"separation",
+		16
+	)
+
 	scroll.add_child(rows)
 
 	account.changed.connect(_account_changed)
-	get_node("/root/AccountProfile").changed.connect(_account_changed)
+
+	var cloud := get_node("/root/AccountProfile")
+	cloud.changed.connect(_account_changed)
+
 	_show("home")
+
 
 func _account_changed() -> void:
 	if not working and mode == "home":
 		_show("home")
 
-func _text(value: String, size_value := 24) -> Label:
+
+# Ricontrolla sia la sessione Supabase sia il profilo cloud.
+func _reconnect() -> void:
+	if working:
+		return
+
+	working = true
+
+	for button in buttons:
+		button.disabled = true
+
+	if is_instance_valid(notice):
+		notice.text = "SINCRONIZZAZIONE..."
+
+	await account.connect_account()
+
+	var cloud := get_node("/root/AccountProfile")
+
+	# Forziamo una nuova lettura del profilo dal cloud.
+	cloud._loaded = false
+
+	await cloud.sync()
+
+	working = false
+
+	_show("home")
+
+
+func _text(
+	value: String,
+	size_value := 24
+) -> Label:
+
 	var label := Label.new()
+
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_override("font", FONT)
-	label.add_theme_font_size_override("font_size", size_value)
-	label.add_theme_color_override("font_color", Style.TEXT)
+
+	label.add_theme_font_override(
+		"font",
+		FONT
+	)
+
+	label.add_theme_font_size_override(
+		"font_size",
+		size_value
+	)
+
+	label.add_theme_color_override(
+		"font_color",
+		Style.TEXT
+	)
+
 	rows.add_child(label)
+
 	return label
 
-func _field(placeholder: String, secret := false) -> LineEdit:
+
+func _field(
+	placeholder: String,
+	secret := false
+) -> LineEdit:
+
 	var field := LineEdit.new()
+
 	field.placeholder_text = placeholder
 	field.secret = secret
 	field.custom_minimum_size.y = 60
 	field.max_length = 254
-	field.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_PASSWORD if secret else LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
-	field.add_theme_font_size_override("font_size", 28)
-	field.add_theme_color_override("font_color", Color("f3effe"))
-	field.add_theme_color_override("font_placeholder_color", Color("aaa3be"))
-	field.add_theme_stylebox_override("normal", Style.button_style(Style.NORMAL))
-	field.add_theme_stylebox_override("focus", Style.button_style(Style.NORMAL, Style.HOVER, 3))
+
+	field.virtual_keyboard_type = (
+		LineEdit.KEYBOARD_TYPE_PASSWORD
+		if secret
+		else LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
+	)
+
+	field.add_theme_font_size_override(
+		"font_size",
+		28
+	)
+
+	field.add_theme_color_override(
+		"font_color",
+		Color("f3effe")
+	)
+
+	field.add_theme_color_override(
+		"font_placeholder_color",
+		Color("aaa3be")
+	)
+
+	field.add_theme_stylebox_override(
+		"normal",
+		Style.button_style(Style.NORMAL)
+	)
+
+	field.add_theme_stylebox_override(
+		"focus",
+		Style.button_style(
+			Style.NORMAL,
+			Style.HOVER,
+			3
+		)
+	)
+
 	rows.add_child(field)
+
 	return field
 
-func _button(text: String, action: Callable) -> Button:
-	var button: Button = menu._button(rows, text, action)
-	button.custom_minimum_size = Vector2(0, 60)
+
+func _button(
+	text: String,
+	action: Callable
+) -> Button:
+
+	var button: Button = menu._button(
+		rows,
+		text,
+		action
+	)
+
+	button.custom_minimum_size = Vector2(
+		0,
+		60
+	)
+
 	buttons.append(button)
+
 	return button
+
 
 func _show(next: String) -> void:
 	mode = next
@@ -91,9 +214,11 @@ func _show(next: String) -> void:
 		child.queue_free()
 
 	buttons.clear()
+
 	_text("ACCOUNT", 44)
 
 	if mode == "home":
+
 		_text(
 			"OSPITE - SOLO SU QUESTO DISPOSITIVO"
 			if account.anonymous
@@ -102,20 +227,35 @@ func _show(next: String) -> void:
 
 		var cloud := get_node("/root/AccountProfile")
 
-		# ID BISCA pubblico, ad esempio #7P33XD.
+		# ID BISCA pubblico.
+		# Esempio: #7P33XD
 		if cloud.profile.has("public_id"):
-			var public_id := str(cloud.profile.get("public_id", ""))
-			if not public_id.is_empty() and public_id != "<null>":
-				_text("ID BISCA: #" + public_id, 24)
+			var public_id := str(
+				cloud.profile.get(
+					"public_id",
+					""
+				)
+			)
+
+			if (
+				not public_id.is_empty()
+				and public_id != "<null>"
+			):
+				_text(
+					"ID BISCA: #" + public_id,
+					24
+				)
 
 		_text(
 			"SALVATAGGIO MAZZO: " +
 			(
 				"IN ATTESA / OFFLINE"
-				if not account.is_authenticated()
-				or not cloud.last_error.is_empty()
-				or cloud._pending
-				or not cloud._loaded
+				if (
+					not account.is_authenticated()
+					or not cloud.last_error.is_empty()
+					or cloud._pending
+					or not cloud._loaded
+				)
 				else "SINCRONIZZATO"
 			),
 			20
@@ -129,46 +269,67 @@ func _show(next: String) -> void:
 		if not account.password_ready:
 			_button(
 				"SALVA I TUOI PROGRESSI",
-				func(): _show("password" if account.email_verified else "link")
+				func():
+					_show(
+						"password"
+						if account.email_verified
+						else "link"
+					)
 			)
 
 		if not account.pending_email.is_empty():
 			_button(
 				"HO CONFERMATO L'EMAIL",
-				func(): _show("verify")
+				func():
+					_show("verify")
 			)
 
 		_button(
 			"ACCEDI A UN ACCOUNT",
-			func(): _show("login")
+			func():
+				_show("login")
 		)
 
+		# Ora questo pulsante aggiorna sia la sessione
+		# sia AccountProfile.
 		_button(
 			"RICONTROLLA CONNESSIONE",
-			account.connect_account
+			_reconnect
 		)
 
-		if not account.anonymous and account.password_ready:
+		if (
+			not account.anonymous
+			and account.password_ready
+		):
 			_button(
 				"ESCI DALL'ACCOUNT",
-				func(): _show("logout")
+				func():
+					_show("logout")
 			)
 
+
 	elif mode == "link":
-		_text("Collega la tua email all'ospite: il profilo e il mazzo rimangono gli stessi.")
+
+		_text(
+			"Collega la tua email all'ospite: il profilo e il mazzo rimangono gli stessi."
+		)
 
 		address = _field("Email")
 		address.text = account.pending_email
 
 		_button(
 			"INVIA EMAIL DI CONFERMA",
-			func(): _run("link")
+			func():
+				_run("link")
 		)
 
+
 	elif mode == "verify":
+
 		_text(
-			"Apri l'email inviata a " + account.pending_email +
-			". Premi il link di conferma, poi torna qui senza chiudere o cancellare i dati di BISCA."
+			"Apri l'email inviata a "
+			+ account.pending_email
+			+ ". Premi il link di conferma, poi torna qui senza chiudere o cancellare i dati di BISCA."
 		)
 
 		_text(
@@ -178,58 +339,93 @@ func _show(next: String) -> void:
 
 		_button(
 			"HO CONFERMATO L'EMAIL",
-			func(): _run("verify")
+			func():
+				_run("verify")
 		)
 
 		_button(
 			"INVIA DI NUOVO / CAMBIA EMAIL",
-			func(): _show("link")
+			func():
+				_show("link")
 		)
 
+
 	elif mode == "password":
+
 		_text(
 			"Email verificata. Scegli una password di almeno 8 caratteri per recuperare questo account."
 		)
 
-		password = _field("Password", true)
+		password = _field(
+			"Password",
+			true
+		)
 
 		_button(
 			"SALVA PASSWORD",
-			func(): _run("password")
+			func():
+				_run("password")
 		)
 
+
 	elif mode == "login":
+
 		_text(
 			"Accedi al profilo esistente. I dati dell'ospite NON vengono uniti. Se vuoi conservarlo, collega prima la sua email."
 		)
 
 		address = _field("Email")
-		password = _field("Password", true)
+
+		password = _field(
+			"Password",
+			true
+		)
 
 		confirmation = CheckBox.new()
-		confirmation.text = "Confermo il cambio di account"
-		confirmation.add_theme_font_size_override("font_size", 26)
-		rows.add_child(confirmation)
+
+		confirmation.text = (
+			"Confermo il cambio di account"
+		)
+
+		confirmation.add_theme_font_size_override(
+			"font_size",
+			26
+		)
+
+		rows.add_child(
+			confirmation
+		)
 
 		_button(
 			"ACCEDI",
-			func(): _run("login")
+			func():
+				_run("login")
 		)
 
+
 	elif mode == "logout":
+
 		_text(
 			"Uscire da questo account? I dati cloud restano salvati. Verra' creato un nuovo ospite; per recuperare questo profilo serviranno email e password."
 		)
 
 		_button(
 			"CONFERMA USCITA",
-			func(): _run("logout")
+			func():
+				_run("logout")
 		)
 
-	notice = _text("", 22)
+
+	notice = _text(
+		"",
+		22
+	)
 
 	_button(
-		"CHIUDI" if mode == "home" else "INDIETRO",
+		"CHIUDI"
+		if mode == "home"
+		else "INDIETRO",
+
 		func():
 			if mode == "home":
 				queue_free()
@@ -237,16 +433,30 @@ func _show(next: String) -> void:
 				_show("home")
 	)
 
+
 func _run(action: String) -> void:
 	if working:
 		return
 
-	if action in ["link", "login"] and (not "@" in address.text or address.text.strip_edges().is_empty()):
-		notice.text = "Inserisci un indirizzo email valido."
+	if (
+		action in ["link", "login"]
+		and (
+			not "@" in address.text
+			or address.text.strip_edges().is_empty()
+		)
+	):
+		notice.text = (
+			"Inserisci un indirizzo email valido."
+		)
 		return
 
-	if action == "login" and not confirmation.button_pressed:
-		notice.text = "Conferma il cambio account prima di accedere."
+	if (
+		action == "login"
+		and not confirmation.button_pressed
+	):
+		notice.text = (
+			"Conferma il cambio account prima di accedere."
+		)
 		return
 
 	working = true
@@ -259,14 +469,26 @@ func _run(action: String) -> void:
 	var result: Dictionary
 
 	match action:
+
 		"link":
-			result = await account.link_email(address.text)
+			result = await account.link_email(
+				address.text
+			)
+
 		"verify":
 			result = await account.check_email_confirmation()
+
 		"password":
-			result = await account.set_password(password.text)
+			result = await account.set_password(
+				password.text
+			)
+
 		"login":
-			result = await account.sign_in(address.text, password.text)
+			result = await account.sign_in(
+				address.text,
+				password.text
+			)
+
 		"logout":
 			result = await account.sign_out()
 
@@ -276,6 +498,7 @@ func _run(action: String) -> void:
 	working = false
 
 	if not result.ok:
+
 		for button in buttons:
 			button.disabled = false
 
@@ -283,12 +506,17 @@ func _run(action: String) -> void:
 			"message",
 			"Operazione non riuscita."
 		)
+
 		return
 
 	_show(
 		"verify"
 		if action == "link"
-		else ("password" if action == "verify" else "home")
+		else (
+			"password"
+			if action == "verify"
+			else "home"
+		)
 	)
 
 	notice.text = (

@@ -612,10 +612,41 @@ func _set_voice_icon(icon: TextureRect, icon_name: String) -> void:
 
 
 func _set_icon(button: Button, icon_name: String) -> void:
-	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
-	button.expand_icon = true
-	button.add_theme_constant_override("icon_max_width", 56)
-	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	# Centra icona e testo PLAY come un singolo gruppo.
+	button.text = ""
+	button.icon = null
+
+	var center := CenterContainer.new()
+	center.name = "PlayCenter"
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var content := HBoxContainer.new()
+	content.name = "PlayContent"
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 12)
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(content)
+
+	var icon := TextureRect.new()
+	icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
+	icon.custom_minimum_size = Vector2(56, 56)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(icon)
+
+	var label := Label.new()
+	label.text = "PLAY"
+	label.add_theme_font_override("font", menu.KIDS_FONT)
+	label.add_theme_font_size_override("font_size", 32)
+	label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(label)
+
 
 func _send_options() -> void:
 	if syncing_options or not is_host or not session_controls.visible:

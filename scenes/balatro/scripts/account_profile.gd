@@ -22,6 +22,7 @@ var _account: Node
 var _settings: Node
 var _owner := ""
 
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -189,11 +190,16 @@ func _send(
 			"Prefer: resolution=ignore-duplicates,return=representation"
 		)
 
+	var request_body := ""
+
+	if method != HTTPClient.METHOD_GET:
+		request_body = JSON.stringify(body)
+
 	var err := _http.request(
 		_account.PROJECT_URL + "/rest/v1/bisca_profiles" + path,
 		headers,
 		method,
-		"" if method == HTTPClient.METHOD_GET else JSON.stringify(body)
+		request_body
 	)
 
 	if err != OK:
@@ -212,22 +218,37 @@ func _send(
 			"data": null
 		}
 
-	# Supabase può restituire una risposta HTTP valida senza body,
-	# ad esempio dopo un PATCH riuscito.
+	var request_result: int = int(response[0])
+	var response_code: int = int(response[1])
 	var response_body: PackedByteArray = response[3]
 	var response_text: String = response_body.get_string_from_utf8()
+
 	var parsed_data: Variant = null
 
+	# Non provare a parsare una risposta vuota.
+	# PATCH/DELETE di Supabase possono restituire HTTP 204/200 senza JSON.
 	if not response_text.strip_edges().is_empty():
-		parsed_data = JSON.parse_string(response_text)
+		var json := JSON.new()
+		var parse_error: Error = json.parse(response_text)
+
+		if parse_error == OK:
+			parsed_data = json.data
+		else:
+			push_warning(
+				"BISCA: risposta JSON non valida da Supabase. HTTP %d - %s"
+				% [
+					response_code,
+					json.get_error_message()
+				]
+			)
 
 	return {
 		"ok":
-			response[0] == HTTPRequest.RESULT_SUCCESS
-			and response[1] >= 200
-			and response[1] < 300,
+			request_result == HTTPRequest.RESULT_SUCCESS
+			and response_code >= 200
+			and response_code < 300,
 
-		"code": response[1],
+		"code": response_code,
 		"data": parsed_data
 	}
 
@@ -242,20 +263,37 @@ func sync() -> void:
 
 	if not _loaded:
 		# Recupera il profilo, incluso l'ID BISCA pubblico.
-		var result := await _send(
+		var result: Dictionary = await _send(
 			HTTPClient.METHOD_GET,
 			path + "&select=id,username,public_id,deck_back,deck_front"
 		)
 
-		# IMPORTANTE:
-		# Le parentesi evitano ambiguita' nel controllo del tipo.
-		if not result.ok or not (result.data is Array):
-			_failed(int(result.code))
+		# Prima controlliamo soltanto l'esito HTTP.
+		if not bool(result.get("ok", false)):
+			_failed(int(result.get("code", 0)))
 			return
 
-		if result.data.is_empty():
+		var data: Variant = result.get("data", null)
+
+		# Una GET di PostgREST deve restituire un array JSON.
+		if data == null:
+			_failed(int(result.get("code", 0)))
+			return
+
+		if not data is Array:
+			push_warning(
+				"BISCA: risposta profilo inattesa. Tipo ricevuto: %s"
+				% type_string(typeof(data))
+			)
+			_failed(int(result.get("code", 0)))
+			return
+
+		var rows_data: Array = data
+
+		# Se il profilo non esiste ancora, lo creiamo.
+		if rows_data.is_empty():
 			var initial := _deck()
-			initial.id = _account.user_id
+			initial["id"] = _account.user_id
 
 			result = await _send(
 				HTTPClient.METHOD_POST,
@@ -263,39 +301,54 @@ func sync() -> void:
 				initial
 			)
 
-			if not result.ok:
-				_failed(int(result.code))
+			if not bool(result.get("ok", false)):
+				_failed(int(result.get("code", 0)))
 				return
 
-			# Rileggi anche quando un altro client ha creato
-			# la riga nel frattempo.
+			# Rileggi il profilo appena creato.
 			result = await _send(
 				HTTPClient.METHOD_GET,
 				path + "&select=id,username,public_id,deck_back,deck_front"
 			)
 
-		# Stesso controllo corretto anche dopo la rilettura.
-		if (
-			not result.ok
-			or not (result.data is Array)
-			or result.data.is_empty()
-		):
-			_failed(int(result.code))
+			if not bool(result.get("ok", false)):
+				_failed(int(result.get("code", 0)))
+				return
+
+			data = result.get("data", null)
+
+			if data == null or not data is Array:
+				_failed(int(result.get("code", 0)))
+				return
+
+			rows_data = data
+
+		if rows_data.is_empty():
+			_failed(int(result.get("code", 0)))
 			return
 
-		profile = result.data[0]
+		var first_row: Variant = rows_data[0]
+
+		if not first_row is Dictionary:
+			push_warning(
+				"BISCA: il profilo ricevuto non e' un Dictionary."
+			)
+			_failed(int(result.get("code", 0)))
+			return
+
+		profile = first_row
 
 		if not _pending:
 			_applying = true
 
 			_settings.set_value(
 				"deck_back",
-				profile.deck_back
+				int(profile.get("deck_back", 1))
 			)
 
 			_settings.set_value(
 				"deck_front",
-				profile.deck_front
+				int(profile.get("deck_front", 0))
 			)
 
 			_settings.save_preferences()
@@ -311,14 +364,14 @@ func sync() -> void:
 		var sent_revision := _revision
 		var sent := _deck()
 
-		var result := await _send(
+		var patch_result: Dictionary = await _send(
 			HTTPClient.METHOD_PATCH,
 			path,
 			sent
 		)
 
-		if not result.ok:
-			_failed(int(result.code))
+		if not bool(patch_result.get("ok", false)):
+			_failed(int(patch_result.get("code", 0)))
 			return
 
 		profile.merge(sent, true)

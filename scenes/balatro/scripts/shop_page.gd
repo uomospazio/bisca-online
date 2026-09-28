@@ -10,7 +10,7 @@ const ITEMS_POSITION := Vector2(180, 180)
 const ITEMS_SIZE := Vector2(1560, 900)
 
 # Movimento minimo del dito prima di considerare il gesto uno scroll.
-const TOUCH_DRAG_THRESHOLD := 18.0
+const TOUCH_DRAG_THRESHOLD := 8.0
 
 var manager: Node
 var status: Label

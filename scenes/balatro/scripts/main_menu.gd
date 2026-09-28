@@ -112,6 +112,7 @@ var network_page: Control
 var menu_content: Control
 var active_page: Control
 var settings_page: Control
+var shop_page: Control
 var deck_selector: Control
 const PageTransition = preload("res://scenes/balatro/scripts/page_transition.gd")
 
@@ -138,7 +139,7 @@ func _switch_page(next: Control, backwards := false) -> void:
 			_place_deck_selector_profile()
 		profile_panel.visible = next == network_page and network_page.session_controls.visible
 		deck_selector.reset_preview()
-	if network_entry or next == home_page or next == setup_page:
+	if network_entry or next == home_page or next == setup_page or next == shop_page:
 		# L'ingresso Multiplayer usa solo il pop dei pulsanti, senza traslare la pagina.
 		if has_meta("page_transition_cleanup"):
 			get_meta("page_transition_cleanup").call()
@@ -259,6 +260,9 @@ func _ready() -> void:
 
 	# Contatore monete non cliccabile, sopra il pulsante Shop.
 	_build_coin_counter(home_persistent_ui)
+	var account_profile := get_node("/root/AccountProfile")
+	account_profile.changed.connect(_refresh_account_coins)
+	_refresh_account_coins()
 
 	# Pulsanti circolari indipendenti in alto a destra: SHOP, SETTINGS, INFO.
 	var round_buttons := Control.new()
@@ -268,7 +272,7 @@ func _ready() -> void:
 	round_buttons.offset_top = ROUND_BUTTONS_TOP_MARGIN
 	round_buttons.offset_right = -ROUND_BUTTONS_RIGHT_MARGIN
 	round_buttons.offset_bottom = ROUND_BUTTONS_TOP_MARGIN + ROUND_BUTTON_SIZE * 3.0 + ROUND_BUTTONS_SPACING * 2.0
-	var shop := _round_icon_button(round_buttons, "shop.svg", "Shop", _shop_placeholder)
+	var shop := _round_icon_button(round_buttons, "shop.svg", "Shop", _show_shop)
 	shop.position = Vector2.ZERO
 	shop.size = Vector2.ONE * ROUND_BUTTON_SIZE
 	var settings := _round_icon_button(round_buttons, "setting.svg", "Settings", _show_settings)
@@ -633,9 +637,15 @@ func _show_network() -> void:
 	_switch_page(network_page)
 	_animate_mode_heading("WITH YOUR FRIENDS")
 
-# SHOP resta cliccabile, ma per ora non apre nessuna pagina.
-func _shop_placeholder() -> void:
-	pass
+func _show_shop() -> void:
+	title.hide()
+	friends_subtitle.hide()
+	if not is_instance_valid(shop_page):
+		shop_page = preload("res://scenes/balatro/scripts/shop_page.gd").new()
+		add_child(shop_page)
+		shop_page.setup(self)
+	_switch_page(shop_page)
+	shop_page.open()
 
 
 func _show_settings() -> void:
@@ -927,10 +937,20 @@ func _build_coin_counter(parent: Control) -> void:
 	else:
 		push_warning("Immagine delle monete non trovata: " + COINS_ICON_PATH)
 
-# Da collegare in seguito ai dati delle monete del giocatore.
+func _refresh_account_coins() -> void:
+	var cloud := get_node("/root/AccountProfile")
+	var account := get_node("/root/AccountSession")
+	# Nessun saldo puo' passare da un'identita' all'altra.
+	var matching: bool = not str(account.user_id).is_empty() and str(cloud.profile.get("id", "")) == str(account.user_id)
+	set_coins_amount(int(cloud.profile.get("credits", 0)) if matching else 0)
+
+
+# Aggiorna solo la visualizzazione: i crediti vengono letti, mai scritti dal client.
 func set_coins_amount(amount: int) -> void:
 	if is_instance_valid(coins_label):
 		coins_label.text = str(maxi(amount, 0))
+	if is_instance_valid(shop_page) and is_instance_valid(shop_page.coins_amount):
+		shop_page.coins_amount.text = str(maxi(amount, 0))
 
 
 func _menu_button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:

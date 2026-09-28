@@ -101,6 +101,7 @@ func _account_changed() -> void:
 		_loaded = false
 		_pending = false
 		profile = {}
+		changed.emit() # Rimuove subito anche il saldo del precedente account dalla UI.
 		_revision += 1
 
 		var queue := ConfigFile.new()
@@ -271,7 +272,7 @@ func sync() -> void:
 		# Recupera il profilo, incluso l'ID BISCA pubblico.
 		var result: Dictionary = await _send(
 			HTTPClient.METHOD_GET,
-			path + "&select=id,username,public_id,deck_back,deck_front"
+			path + "&select=id,username,public_id,deck_back,deck_front,credits"
 		)
 
 		# Prima controlliamo soltanto l'esito HTTP.
@@ -314,7 +315,7 @@ func sync() -> void:
 			# Rileggi il profilo appena creato.
 			result = await _send(
 				HTTPClient.METHOD_GET,
-				path + "&select=id,username,public_id,deck_back,deck_front"
+				path + "&select=id,username,public_id,deck_back,deck_front,credits"
 			)
 
 			if not bool(result.get("ok", false)):

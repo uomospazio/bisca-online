@@ -67,6 +67,9 @@ func _ready() -> void:
 	editing_controls.append(confirm)
 
 	reset_preview()
+	var shop := get_node_or_null("/root/ShopManager")
+	if shop:
+		shop.changed.connect(_refresh_owned_backs)
 	var cloud := get_node_or_null("/root/AccountProfile")
 	if cloud:
 		cloud.preferences_loaded.connect(func():
@@ -125,8 +128,32 @@ func reset_preview() -> void:
 	flip_button.text = "FRONT"
 	selected_front = int(get_node("/root/GameSettings").values.deck_front)
 	selected = int(get_node("/root/GameSettings").values.deck_back)
-	preview.texture = get_node("/root/GameSettings").back_texture(selected)
+	_refresh_owned_backs()
 	_edit(false, false)
+
+
+## La proprieta' resta quella dell'inventario; back1 e' solo l'anteprima di attesa.
+func _owned_backs() -> Array[int]:
+	var backs: Array[int] = []
+	var shop := get_node_or_null("/root/ShopManager")
+	if shop:
+		for item in shop.get_owned_items():
+			var asset := int(item.asset_id)
+			if str(item.id).begins_with("deck_back_") and asset >= 1 and asset <= 12 and not backs.has(asset):
+				backs.append(asset)
+	backs.sort()
+	return backs
+
+
+func _refresh_owned_backs() -> void:
+	var backs := _owned_backs()
+	if edit_button.visible:
+		var saved := int(get_node("/root/GameSettings").values.deck_back)
+		if backs.has(saved):
+			selected = saved
+	if not backs.has(selected):
+		selected = backs[0] if not backs.is_empty() else 0
+	_update_texture()
 
 
 func _edit(value: bool, animate := true) -> void:
@@ -236,12 +263,16 @@ func _cycle(direction: int) -> void:
 		selected_front = wrapi(selected_front + direction, 0, get_node("/root/GameSettings").FRONT_FOLDERS.size())
 		_update_texture()
 		return
-	selected = wrapi(selected - 1 + direction, 0, 12) + 1
-	preview.texture = get_node("/root/GameSettings").back_texture(selected)
+	var backs := _owned_backs()
+	if backs.is_empty():
+		return
+	selected = backs[wrapi(backs.find(selected) + direction, 0, backs.size())]
+	_update_texture()
 
 func _update_texture() -> void:
 	var settings = get_node("/root/GameSettings")
-	preview.texture = settings.front_texture(3, 5, selected_front) if showing_front else settings.back_texture(selected)
+	# Non scrive preferenze e non concede oggetti mentre il cloud sta caricando.
+	preview.texture = settings.front_texture(3, 5, selected_front) if showing_front else settings.back_texture(selected if selected > 0 else 1)
 
 func _flip() -> void:
 	if switching or flipping:
@@ -261,7 +292,9 @@ func _flip() -> void:
 func _confirm() -> void:
 	if switching or flipping:
 		return
-	get_node("/root/GameSettings").set_value("deck_back", selected)
+	# Ricontrolla anche alla conferma: l'account puo' cambiare mentre si modifica.
+	if _owned_backs().has(selected):
+		get_node("/root/GameSettings").set_value("deck_back", selected)
 	get_node("/root/GameSettings").set_value("deck_front", selected_front)
 	get_node("/root/GameSettings").save_preferences()
 	if showing_front:

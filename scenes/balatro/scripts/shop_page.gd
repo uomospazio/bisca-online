@@ -8,7 +8,7 @@ const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 
 # Area visibile degli oggetti.
-const ITEMS_POSITION := Vector2(180, 180)
+const ITEMS_POSITION := Vector2(220, 180)
 const ITEMS_SIZE := Vector2(1560, 900)
 
 # Distanza che il dito deve percorrere prima che il gesto
@@ -116,12 +116,12 @@ func setup(menu: Control) -> void:
 
 	grid.add_theme_constant_override(
 		"h_separation",
-		20
+		120
 	)
 
 	grid.add_theme_constant_override(
 		"v_separation",
-		20
+		30
 	)
 
 	shop_scroll.add_child(grid)
@@ -499,7 +499,7 @@ func _update() -> void:
 		var panel := PanelContainer.new()
 
 		panel.custom_minimum_size = Vector2(
-			365,
+			280,
 			365
 		)
 

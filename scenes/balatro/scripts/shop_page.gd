@@ -9,6 +9,9 @@ const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 const ITEMS_POSITION := Vector2(180, 180)
 const ITEMS_SIZE := Vector2(1560, 900)
 
+# Movimento minimo del dito prima di considerare il gesto uno scroll.
+const TOUCH_DRAG_THRESHOLD := 18.0
+
 var manager: Node
 var status: Label
 var grid: GridContainer
@@ -23,6 +26,12 @@ var result_dialog: AcceptDialog
 var pending_item := ""
 var pending_price := 0
 var pending_user := ""
+
+# Gestione tap / swipe sugli oggetti dello shop.
+var touch_start_position := Vector2.ZERO
+var touch_item_id := ""
+var touch_tracking := false
+var touch_dragged := false
 
 
 func setup(menu: Control) -> void:
@@ -182,6 +191,50 @@ func _label(text: String, font_size := 22) -> Label:
 	return label
 
 
+# Gestisce click desktop e touch mobile.
+#
+# MOBILE:
+# - appoggio + rilascio senza movimento = tap
+# - movimento superiore alla soglia = scroll
+#
+# DESKTOP:
+# - click sinistro = acquisto
+func _item_touch_input(event: InputEvent, item_id: String) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			touch_tracking = true
+			touch_dragged = false
+			touch_start_position = event.position
+			touch_item_id = item_id
+
+		else:
+			if (
+				touch_tracking
+				and not touch_dragged
+				and touch_item_id == item_id
+			):
+				_ask_purchase(item_id)
+
+			touch_tracking = false
+			touch_dragged = false
+			touch_item_id = ""
+
+	elif event is InputEventScreenDrag:
+		if (
+			touch_tracking
+			and event.position.distance_to(touch_start_position) > TOUCH_DRAG_THRESHOLD
+		):
+			touch_dragged = true
+
+	elif event is InputEventMouseButton:
+		# Mantiene il comportamento desktop.
+		if (
+			event.button_index == MOUSE_BUTTON_LEFT
+			and event.pressed
+		):
+			_ask_purchase(item_id)
+
+
 func _update() -> void:
 	if grid == null or not is_visible_in_tree():
 		return
@@ -267,36 +320,21 @@ func _update() -> void:
 				"/root/GameSettings"
 			).back_texture(item.asset_id)
 
+			# PASS permette alla preview di ricevere il tap senza
+			# impedire allo ScrollContainer di gestire lo swipe.
+			preview.mouse_filter = Control.MOUSE_FILTER_PASS
+			preview.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
 			rows.add_child(preview)
 
-			# Pulsante trasparente sopra l'intera carta.
-			var buy := Button.new()
-
-			buy.flat = true
-			buy.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-			buy.tooltip_text = "Acquista"
-
-			buy.disabled = (
-				manager.owns_item(item.id)
-				or not item.is_available
-			)
-
-			# IMPORTANTE:
-			# Su mobile lo ScrollContainer puo' intercettare il touch
-			# prima del rilascio.
-			# ACTION_MODE_BUTTON_PRESS attiva il bottone al tocco iniziale.
-			buy.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-			buy.mouse_filter = Control.MOUSE_FILTER_STOP
-
-			preview.add_child(buy)
-
-			buy.set_anchors_and_offsets_preset(
-				Control.PRESET_FULL_RECT
-			)
-
-			buy.pressed.connect(
-				_ask_purchase.bind(str(item.id))
-			)
+			# Solo gli oggetti acquistabili ricevono il tap.
+			if (
+				not manager.owns_item(item.id)
+				and item.is_available
+			):
+				preview.gui_input.connect(
+					_item_touch_input.bind(str(item.id))
+				)
 
 		var footer := Control.new()
 		footer.custom_minimum_size.y = 80
@@ -351,6 +389,7 @@ func _update() -> void:
 
 		else:
 			var price_row := HBoxContainer.new()
+
 			price_row.add_theme_constant_override(
 				"separation",
 				10
@@ -375,6 +414,7 @@ func _update() -> void:
 			)
 
 			price_row.add_child(coin)
+
 			price_row.add_child(
 				_label(str(item.price), 38)
 			)

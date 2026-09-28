@@ -8,8 +8,10 @@ var lives: Stepper
 var rounds: Stepper
 var bot_count: Stepper
 var fill_bots: CheckButton
+var compact_rows := false
 
 func setup(menu: Control, multiplayer_game: bool) -> void:
+	compact_rows = not multiplayer_game
 	var panel_style := Style.button_style(Style.PANEL, Style.HOVER, 4)
 	panel_style.set_corner_radius_all(20)
 	panel_style.content_margin_left = 24
@@ -49,7 +51,7 @@ func values() -> Dictionary:
 		"bots": fill_bots == null or fill_bots.button_pressed, "bot_count": int(bot_count.value)}
 
 func _stepper(menu: Control, caption: String, minimum: int, maximum: int, initial: int) -> Stepper:
-	var row := VBoxContainer.new()
+	var row: BoxContainer = HBoxContainer.new() if compact_rows else VBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	content.add_child(row)
 	var label := Label.new()
@@ -58,7 +60,24 @@ func _stepper(menu: Control, caption: String, minimum: int, maximum: int, initia
 	label.add_theme_font_override("font", menu.KIDS_FONT)
 	label.add_theme_font_size_override("font_size", 22)
 	label.add_theme_color_override("font_color", Style.TEXT)
-	row.add_child(label)
+	if compact_rows and caption == "VITE INIZIALI":
+		var heart := TextureRect.new()
+		heart.texture = preload("res://scenes/balatro/trick_asset/mazzo_2/briscola/heart.svg")
+		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		heart.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		heart.custom_minimum_size = Vector2(48, 48)
+		heart.tooltip_text = "Vite iniziali"
+		row.add_child(heart)
+		var space := Control.new()
+		space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(space)
+		label.free()
+	else:
+		row.add_child(label)
+		if compact_rows:
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var selector := Stepper.new()
 	selector.min_value = minimum
 	selector.max_value = maximum
@@ -67,4 +86,14 @@ func _stepper(menu: Control, caption: String, minimum: int, maximum: int, initia
 	selector.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row.add_child(selector)
 	selector.setup(menu.KIDS_FONT)
+	if compact_rows:
+		selector.caption.add_theme_color_override("font_color", Color("f3effe"))
+		if caption == "VITE INIZIALI":
+			for button in [selector.previous, selector.next_button]:
+				button.icon = null
+				button.add_theme_font_override("font", menu.KIDS_FONT)
+				button.add_theme_font_size_override("font_size", 30)
+				button.add_theme_color_override("font_color", Color("f3effe"))
+			selector.previous.text = "-"
+			selector.next_button.text = "+"
 	return selector

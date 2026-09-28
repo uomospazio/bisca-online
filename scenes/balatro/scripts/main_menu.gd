@@ -17,15 +17,27 @@ const SINGLE_BUTTON_POSITION := Vector2(300, 450)
 const SINGLE_BUTTON_ROTATION := 0.0 # Gradi: es. -5 inclina verso sinistra.
 const MULTI_BUTTON_POSITION := Vector2(300, 600)
 const MULTI_BUTTON_ROTATION := 0.0 # Gradi: es. 5 inclina verso destra.
-const TITLE_SIZE := Vector2(970, 230)
-const TITLE_BUTTON_GAP := 50.0 # Distanza fra riquadro BISCA e Singleplayer
-const TITLE_POSITION := Vector2(55, SINGLE_BUTTON_POSITION.y - TITLE_SIZE.y - TITLE_BUTTON_GAP)
+const TITLE_FONT_SIZE := 164
+const SUBTITLE_FONT_SIZE := 52
+const TITLE_POSITION := Vector2(25, 170)
+const SUBTITLE_POSITION := Vector2(25, 350)
+const TITLE_WIDTH := 1000.0
 const HOME_BUTTONS_POSITION := Vector2(70, 785)
 const HOME_BUTTONS_SIZE := Vector2(820, 204)
 # Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
 const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
 const HOME_CHARACTER_POSITION := Vector2(600, 150)
 const HOME_CHARACTER_SIZE := Vector2(1320, 1310)
+const SOLO_CHARACTER_POSITION := Vector2(-60, 150)
+const MULTI_CHARACTER_POSITION := SOLO_CHARACTER_POSITION + Vector2(-150, 0)
+var solo_buttons: Array[Button] = []
+const SOLO_TITLE_POSITION := Vector2(920, 170)
+const SOLO_SUBTITLE_POSITION := Vector2(920, 350)
+var solo_transition: Tween
+var second_character: TextureRect
+var returning_home := false
+const SECOND_CHARACTER_POSITION := Vector2(500, 300)
+const SECOND_CHARACTER_SIZE := Vector2(800, 1050)
 const SETUP_ELEMENTS_POSITION := Vector2(640, 530)
 const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
 const MENU_BUTTON_HEIGHT := 96.0
@@ -43,9 +55,9 @@ const HOME_DECK_POSITION := Vector2(1520, 600)
 const HOME_DECK_SCALE := 1.0
 # Foto profilo e campo nome nella HOME, sotto MULTIPLAYER.
 # La foto usa una scala ridotta: il pulsante originale misura 260x260.
-const HOME_PROFILE_POSITION := Vector2(120, 720)
+const HOME_PROFILE_POSITION := Vector2(115, 720)
 const HOME_PROFILE_SCALE := 0.8
-const HOME_NAME_POSITION := Vector2(270, 780)
+const HOME_NAME_POSITION := Vector2(265, 780)
 const HOME_NAME_SIZE := Vector2(650, 148)
 const HOME_NAME_TEXT_SHIFT := 20.0 # Pixel verso destra per testo e placeholder, solo HOME
 # CONTATORE MONETE: in alto a destra, sopra Settings.
@@ -69,6 +81,9 @@ signal start_requested(player_name: String, count: int)
 
 var name_input: LineEdit
 var home_page: Control
+# Elementi condivisi tra HOME e ingresso MULTIPLAYER. Restano fermi mentre
+# i pulsanti principali scorrono via, ma vengono nascosti nella lobby vera.
+var home_persistent_ui: Control
 var coins_label: Label
 var home_intro_buttons: Array[Button] = []
 var home_intro: Tween
@@ -104,29 +119,43 @@ func _switch_page(next: Control, backwards := false) -> void:
 	_stop_home_intro()
 	var previous := active_page if is_instance_valid(active_page) else home_page
 	active_page = next
+	var network_entry: bool = next == network_page and not bool(network_page.session_controls.visible)
+	var show_home_extras: bool = next == home_page
+	if is_instance_valid(home_persistent_ui):
+		home_persistent_ui.visible = show_home_extras
 	if is_instance_valid(home_character):
-		home_character.visible = next == home_page or (next == network_page and not network_page.session_controls.visible)
+		home_character.visible = show_home_extras or next == setup_page or network_entry
 	# Foto e nome seguono la HOME o il pannello di configurazione.
 	if is_instance_valid(profile_button) and is_instance_valid(name_input):
-		if next == home_page:
+		if show_home_extras:
 			_place_profile_home()
-		elif next == setup_page or (next == network_page and network_page.session_controls.visible):
+		elif next == network_page and network_page.session_controls.visible:
 			_place_profile_in_panel()
 	if is_instance_valid(deck_selector):
-		if next == home_page:
+		if show_home_extras:
 			_place_deck_selector_home()
-		elif next == setup_page or (next == network_page and network_page.session_controls.visible):
+		elif next == network_page and network_page.session_controls.visible:
 			_place_deck_selector_profile()
-		profile_panel.visible = next == setup_page or (next == network_page and network_page.session_controls.visible)
+		profile_panel.visible = next == network_page and network_page.session_controls.visible
 		deck_selector.reset_preview()
-	PageTransition.slide(self, previous, next, backwards)
+	if network_entry or next == home_page or next == setup_page:
+		# L'ingresso Multiplayer usa solo il pop dei pulsanti, senza traslare la pagina.
+		if has_meta("page_transition_cleanup"):
+			get_meta("page_transition_cleanup").call()
+		if is_instance_valid(previous) and previous != next:
+			previous.hide()
+		next.show()
+	else:
+		PageTransition.slide(self, previous, next, backwards)
 	if next == home_page:
 		_play_home_intro()
 	if subtitle_slide and subtitle_slide.is_valid():
 		subtitle_slide.kill()
-	var subtitle_x := TITLE_POSITION.x if next == network_page else 0.0
+	if next == setup_page or network_entry or next == home_page:
+		return
+	var subtitle_x := SUBTITLE_POSITION.x
 	friends_subtitle.position.x = subtitle_x
-	if previous != next and friends_subtitle.visible:
+	if previous != next and friends_subtitle.visible and next != network_page:
 		friends_subtitle.position.x = subtitle_x + get_viewport_rect().size.x * (-1.0 if backwards else 1.0)
 		subtitle_slide = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 		subtitle_slide.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
@@ -164,14 +193,15 @@ func _ready() -> void:
 	friends_subtitle = preload("res://scenes/balatro/scripts/idle_subtitle.gd").new()
 	menu_content.add_child(friends_subtitle)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
-	friends_subtitle.position = Vector2(0, 175)
-	friends_subtitle.size = Vector2(1920, 44)
+	friends_subtitle.position = SUBTITLE_POSITION
+	friends_subtitle.size = Vector2(TITLE_WIDTH, 58)
 	friends_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	friends_subtitle.add_theme_font_override("font", KIDS_FONT)
-	friends_subtitle.add_theme_font_size_override("font_size", 32)
+	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
 	friends_subtitle.add_theme_color_override("font_color", BUTTON_TEXT)
 	friends_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	friends_subtitle.hide()
+	friends_subtitle.set_animated(true)
+	friends_subtitle.show()
 	home_page = Control.new()
 	menu_content.add_child(home_page)
 	home_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -191,7 +221,25 @@ func _ready() -> void:
 		mascot.position = HOME_CHARACTER_POSITION
 		mascot.size = HOME_CHARACTER_SIZE
 	# Mantieni i pulsanti della HOME sopra il disegno decorativo.
+	second_character = TextureRect.new()
+	second_character.texture = preload("res://scenes/balatro/resources/p2_menu.png")
+	second_character.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	second_character.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	second_character.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	second_character.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_content.add_child(second_character)
+	second_character.size = SECOND_CHARACTER_SIZE
+	second_character.hide()
+	if is_instance_valid(home_character):
+		menu_content.move_child(second_character, home_character.get_index())
 	menu_content.move_child(home_page, menu_content.get_child_count() - 1)
+	# Profilo, nome, monete, scorciatoie e selettore mazzo non fanno parte
+	# della pagina che scorre: sono condivisi con l'ingresso MULTIPLAYER.
+	home_persistent_ui = Control.new()
+	home_persistent_ui.name = "HomePersistentUI"
+	menu_content.add_child(home_persistent_ui)
+	home_persistent_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	home_persistent_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# I due pulsanti sono indipendenti: coordinate e rotazione separate.
 	var single := _button(home_page, "SINGLEPLAYER", show_setup)
 	single.position = SINGLE_BUTTON_POSITION
@@ -210,11 +258,11 @@ func _ready() -> void:
 	_set_play_button_radius(multi)
 
 	# Contatore monete non cliccabile, sopra il pulsante Shop.
-	_build_coin_counter(home_page)
+	_build_coin_counter(home_persistent_ui)
 
 	# Pulsanti circolari indipendenti in alto a destra: SHOP, SETTINGS, INFO.
 	var round_buttons := Control.new()
-	home_page.add_child(round_buttons)
+	home_persistent_ui.add_child(round_buttons)
 	round_buttons.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	round_buttons.offset_left = -ROUND_BUTTON_SIZE - ROUND_BUTTONS_RIGHT_MARGIN
 	round_buttons.offset_top = ROUND_BUTTONS_TOP_MARGIN
@@ -237,7 +285,7 @@ func _ready() -> void:
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
 	profile_button = TextureButton.new()
-	home_page.add_child(profile_button)
+	home_persistent_ui.add_child(profile_button)
 	profile_button.position = Vector2(110, 390)
 	profile_button.size = Vector2(260, 260)
 	profile_button.ignore_texture_size = true
@@ -276,7 +324,7 @@ func _ready() -> void:
 	name_input.custom_minimum_size.y = 58
 	name_input.add_theme_font_size_override("font_size", 46)
 	_style_input(name_input, 46)
-	home_page.add_child(name_input)
+	home_persistent_ui.add_child(name_input)
 	name_input.position = Vector2(60, 665)
 	name_input.size = Vector2(360, 64)
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -301,25 +349,34 @@ func _ready() -> void:
 	match_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	setup_page.add_child(match_options)
 	match_options.setup(self, false)
-	match_options.position = Vector2(90, 385)
-	match_options.size = Vector2(430, 510)
+	match_options.position = Vector2(1090, 440)
+	match_options.size = Vector2(660, 280)
 	bot_slider = match_options.bot_count
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 24)
 	setup_page.add_child(buttons)
-	buttons.position = Vector2(1010, 900)
-	buttons.size = Vector2(800, 96)
+	buttons.position = Vector2(1290, 760)
+	buttons.size = Vector2(260, 96)
 	var back := _button(setup_page, "Indietro", show_home)
 	back.position = Vector2(60, 960)
 	back.size = Vector2(260, 96)
 	var play := _button(buttons, "Gioca", _start)
+	solo_buttons = [back, play]
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for button in [back, play]:
+		button.custom_minimum_size = Vector2(260, 96)
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+			var style := button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+			if style:
+				style.set_corner_radius_all(48)
+				button.add_theme_stylebox_override(state, style)
 	setup_page.hide()
 	_build_mode_profile()
 	_place_profile_home() # Foto e nome visibili sotto Multiplayer già all'avvio.
 	_place_deck_selector_home() # Visibile già al primo avvio della HOME.
 	var participants := Panel.new()
 	setup_page.add_child(participants)
+	participants.hide()
 	participants.position = Vector2(990, 140)
 	participants.size = Vector2(840, 720)
 	participants.add_theme_stylebox_override("panel", _menu_button_style(LexispellStyle.PANEL, BUTTON_CYAN, 4))
@@ -369,27 +426,33 @@ func _stop_home_intro() -> void:
 		home_intro.kill()
 	for button in home_intro_buttons:
 		button.scale = Vector2.ONE
+		button.modulate.a = 1.0
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
 		button.focus_mode = Control.FOCUS_ALL
 		button.hover_animate = true
 	# Ripristina anche i tre elementi aggiunti all'animazione HOME.
 	# Le scale del profilo e del mazzo devono restare quelle configurate.
-	if is_instance_valid(profile_button) and profile_button.get_parent() == home_page:
+	if is_instance_valid(profile_button) and profile_button.get_parent() == home_persistent_ui:
 		profile_button.scale = Vector2.ONE * HOME_PROFILE_SCALE
 		profile_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		profile_button.focus_mode = Control.FOCUS_ALL
-	if is_instance_valid(name_input) and name_input.get_parent() == home_page:
+	if is_instance_valid(name_input) and name_input.get_parent() == home_persistent_ui:
 		name_input.scale = Vector2.ONE
 		name_input.mouse_filter = Control.MOUSE_FILTER_STOP
 		name_input.focus_mode = Control.FOCUS_ALL
-	if is_instance_valid(deck_selector) and deck_selector.get_parent() == home_page:
+	if is_instance_valid(deck_selector) and deck_selector.get_parent() == home_persistent_ui:
 		deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
 
 func _play_home_intro() -> void:
 	_stop_home_intro()
-	home_intro = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).set_parallel(true)
-	for index in home_intro_buttons.size():
-		var button = home_intro_buttons[index]
+	_home_pop_buttons(home_intro_buttons)
+	_animate_home_extras()
+
+func _home_pop_buttons(buttons: Array[Button]) -> void:
+	var tween := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).set_parallel(true)
+	home_intro = tween
+	for index in buttons.size():
+		var button: Button = buttons[index]
 		if button.hover_tween and button.hover_tween.is_valid():
 			button.hover_tween.kill()
 		# Non azzerare la rotazione: Singleplayer e Multiplayer la mantengono.
@@ -399,20 +462,26 @@ func _play_home_intro() -> void:
 		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.focus_mode = Control.FOCUS_NONE
 		button.scale = Vector2.ZERO
+		button.modulate.a = 0.0
 		var delay := HOME_INTRO_DELAY + index * HOME_INTRO_STAGGER
-		home_intro.tween_property(button, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		home_intro.tween_callback(func():
+		tween.tween_callback(func(): button.modulate.a = 1.0).set_delay(delay)
+		tween.tween_property(button, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_callback(func():
 			button.mouse_filter = Control.MOUSE_FILTER_STOP
 			button.focus_mode = Control.FOCUS_ALL
 			button.hover_animate = true
 		).set_delay(delay + HOME_INTRO_DURATION)
 
+func animate_buttons_like_home(buttons: Array[Button]) -> void:
+	_home_pop_buttons(buttons)
+
+func _animate_home_extras() -> void:
 	# Foto, nome e selettore mazzo entrano con lo stesso effetto pop,
 	# dopo i pulsanti (con leggero ritardo fra loro).
 	var home_extras: Array[Control] = [profile_button, name_input, deck_selector]
 	for index in home_extras.size():
 		var control: Control = home_extras[index]
-		if control.get_parent() != home_page:
+		if control.get_parent() != home_persistent_ui:
 			continue
 		var final_scale := Vector2.ONE
 		if control == profile_button:
@@ -448,18 +517,18 @@ func _build_mode_profile() -> void:
 
 # Stessi controlli, riposizionati senza duplicarli.
 func _place_profile_home() -> void:
-	if profile_button.get_parent() != home_page:
-		profile_button.reparent(home_page, false)
+	if profile_button.get_parent() != home_persistent_ui:
+		profile_button.reparent(home_persistent_ui, false)
 	profile_button.position = HOME_PROFILE_POSITION
 	profile_button.scale = Vector2.ONE * HOME_PROFILE_SCALE
-	if name_input.get_parent() != home_page:
-		name_input.reparent(home_page, false)
+	if name_input.get_parent() != home_persistent_ui:
+		name_input.reparent(home_persistent_ui, false)
 	name_input.position = HOME_NAME_POSITION
 	name_input.size = HOME_NAME_SIZE
 	_set_name_text_shift(true)
 	# Foto sopra il campo nome anche quando i due elementi si sovrappongono.
 	profile_button.z_index = 1
-	home_page.move_child(profile_button, home_page.get_child_count() - 1)
+	home_persistent_ui.move_child(profile_button, home_persistent_ui.get_child_count() - 1)
 
 func _place_profile_in_panel() -> void:
 	if profile_button.get_parent() != profile_panel:
@@ -477,10 +546,23 @@ func _place_profile_in_panel() -> void:
 
 # Il selettore viene spostato tra HOME e pannello partita senza duplicarlo.
 func _place_deck_selector_home() -> void:
-	if deck_selector.get_parent() != home_page:
-		deck_selector.reparent(home_page, false)
+	if deck_selector.get_parent() != home_persistent_ui:
+		deck_selector.reparent(home_persistent_ui, false)
 	deck_selector.position = HOME_DECK_POSITION
 	deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
+
+# Chiamate dalla pagina multiplayer quando si entra/esce dalla lobby reale.
+func show_network_entry_extras() -> void:
+	profile_panel.hide()
+	_place_profile_home()
+	_place_deck_selector_home()
+	home_persistent_ui.hide()
+	if is_instance_valid(home_character):
+		home_character.show()
+
+func hide_network_entry_extras() -> void:
+	home_persistent_ui.hide()
+	second_character.hide()
 
 func _place_deck_selector_profile() -> void:
 	if deck_selector.get_parent() != profile_panel:
@@ -549,6 +631,7 @@ func _show_network() -> void:
 		network_page.setup(self)
 	network_page.open()
 	_switch_page(network_page)
+	_animate_mode_heading("WITH YOUR FRIENDS")
 
 # SHOP resta cliccabile, ma per ora non apre nessuna pagina.
 func _shop_placeholder() -> void:
@@ -565,15 +648,22 @@ func _show_settings() -> void:
 	_switch_page(settings_page)
 
 func _show_menu_title(with_friends: bool = false) -> void:
+	second_character.hide()
+	if solo_transition and solo_transition.is_valid():
+		solo_transition.kill()
 	title.show()
+	title.modulate.a = 1.0
+	friends_subtitle.modulate.a = 1.0
+	friends_subtitle.scale = Vector2.ONE
 	if is_instance_valid(home_character):
 		home_character.show()
-	friends_subtitle.add_theme_font_size_override("font_size", 32)
+		home_character.position = HOME_CHARACTER_POSITION
+	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
-	friends_subtitle.position = Vector2(TITLE_POSITION.x, 335)
-	friends_subtitle.size.x = TITLE_SIZE.x
+	friends_subtitle.position = SUBTITLE_POSITION
+	friends_subtitle.size.x = TITLE_WIDTH
 	friends_subtitle.set_animated(with_friends)
-	friends_subtitle.add_theme_font_size_override("font_size", 56)
+	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
 	title.scale = Vector2.ONE
 	title.position = TITLE_POSITION
 	friends_subtitle.visible = with_friends
@@ -590,7 +680,7 @@ func _label(parent: Node, text: String, font_size: int) -> MixedLabel:
 func _build_title(parent: Control) -> void:
 	title = Control.new()
 	title.position = TITLE_POSITION
-	title.size = TITLE_SIZE
+	title.size = Vector2(TITLE_WIDTH, TITLE_FONT_SIZE + 30.0)
 	parent.add_child(title)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -602,8 +692,8 @@ func _build_title(parent: Control) -> void:
 	var title_font := KIDS_FONT
 	for character in "BISCA":
 		var letter := Control.new()
-		var width := title_font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, 196).x
-		letter.custom_minimum_size = Vector2(width + 14, 230)
+		var width := title_font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, TITLE_FONT_SIZE).x
+		letter.custom_minimum_size = Vector2(width + 14, TITLE_FONT_SIZE + 30.0)
 		letter.pivot_offset = letter.custom_minimum_size / 2.0
 		row.add_child(letter)
 		var outer := Label.new()
@@ -612,10 +702,10 @@ func _build_title(parent: Control) -> void:
 		outer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		outer.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		outer.add_theme_font_override("font", title_font)
-		outer.add_theme_font_size_override("font_size", 196)
+		outer.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 		outer.add_theme_color_override("font_color", LexispellStyle.TEXT)
 		outer.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
-		outer.add_theme_constant_override("outline_size", 20)
+		outer.add_theme_constant_override("outline_size", 16)
 		letter.add_child(outer)
 		var inner := Label.new()
 		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -623,10 +713,10 @@ func _build_title(parent: Control) -> void:
 		inner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		inner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		inner.add_theme_font_override("font", title_font)
-		inner.add_theme_font_size_override("font_size", 196)
+		inner.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 		inner.add_theme_color_override("font_color", LexispellStyle.TEXT)
 		inner.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
-		inner.add_theme_constant_override("outline_size", 30)
+		inner.add_theme_constant_override("outline_size", 24)
 		letter.add_child(inner)
 		title_letters.append(letter)
 
@@ -694,7 +784,7 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.pressed.connect(callback)
 	return button
 
-# SOLO per SINGLEPLAYER / MULTIPLAYER: estremità a capsula.
+# Pulsanti principali HOME e ingresso MULTIPLAYER: estremità a capsula.
 # Il radius segue automaticamente metà dell'altezza impostata in PLAY_BUTTON_SIZE.
 func _set_play_button_radius(button: Button) -> void:
 	var radius := int(PLAY_BUTTON_SIZE.y / 2.0)
@@ -862,20 +952,79 @@ func show_setup() -> void:
 	profile_panel.reparent(menu_content, false)
 	menu_content.move_child(profile_panel, 0)
 	profile_panel.position = Vector2(60, 140)
-	_show_menu_title()
 	title.hide()
+	friends_subtitle.hide()
+	if solo_transition and solo_transition.is_valid():
+		solo_transition.kill()
 	friends_subtitle.text = "SOLITARIA"
 	friends_subtitle.set_animated(true)
-	friends_subtitle.add_theme_font_size_override("font_size", 56)
-	friends_subtitle.position = Vector2(0, 35)
-	friends_subtitle.size.x = 1920
-	friends_subtitle.show()
+	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
+	friends_subtitle.position = SOLO_SUBTITLE_POSITION
+	friends_subtitle.size.x = TITLE_WIDTH
+	title.position = SOLO_TITLE_POSITION
 	single_name_input.text = name_input.text
 	_switch_page(setup_page)
+	_animate_mode_heading("SOLITARIA")
+	_home_pop_buttons(solo_buttons)
+	match_options.pivot_offset = match_options.size / 2.0
+	match_options.scale = Vector2.ZERO
+	home_intro.tween_property(match_options, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(HOME_INTRO_DELAY).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _animate_mode_heading(subtitle_text: String) -> void:
+	if solo_transition and solo_transition.is_valid():
+		solo_transition.kill()
+	title.position = SOLO_TITLE_POSITION
+	friends_subtitle.position = SOLO_SUBTITLE_POSITION
+	friends_subtitle.text = subtitle_text
+	friends_subtitle.size.x = TITLE_WIDTH
+	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
+	friends_subtitle.set_animated(true)
+	solo_transition = create_tween().set_parallel(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if subtitle_text == "WITH YOUR FRIENDS":
+		second_character.position = SECOND_CHARACTER_POSITION + Vector2(1920, 0)
+		second_character.show()
+		solo_transition.tween_property(second_character, "position", SECOND_CHARACTER_POSITION, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	else:
+		second_character.hide()
+	if is_instance_valid(home_character):
+		var character_target := MULTI_CHARACTER_POSITION if subtitle_text == "WITH YOUR FRIENDS" else SOLO_CHARACTER_POSITION
+		solo_transition.tween_property(home_character, "position", character_target, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	for heading in [title, friends_subtitle]:
+		heading.pivot_offset = heading.size / 2.0
+		heading.scale = Vector2.ZERO
+		heading.show()
+		solo_transition.tween_property(heading, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func show_home() -> void:
-	_show_menu_title()
+	if returning_home:
+		return
+	returning_home = true
+	var previous := active_page
+	if solo_transition and solo_transition.is_valid():
+		solo_transition.kill()
+	if is_instance_valid(previous) and previous != home_page:
+		for item in [previous, title, friends_subtitle]:
+			item.hide()
+		previous.scale = Vector2.ONE
+	var character_position := HOME_CHARACTER_POSITION
+	if is_instance_valid(home_character):
+		character_position = home_character.position
+	var second_was_visible := second_character.visible
+	_show_menu_title(true)
 	_switch_page(home_page, true)
+	var entrance := create_tween().set_parallel(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if is_instance_valid(home_character):
+		home_character.position = character_position
+		entrance.tween_property(home_character, "position", HOME_CHARACTER_POSITION, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	if second_was_visible:
+		second_character.show()
+		entrance.tween_property(second_character, "position:x", 1920.0, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		entrance.tween_callback(second_character.hide).set_delay(0.55)
+	for heading in [title, friends_subtitle]:
+		heading.scale = Vector2.ZERO
+		entrance.tween_property(heading, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await entrance.finished
+	returning_home = false
 
 func _start() -> void:
 	_lock_landscape_web()

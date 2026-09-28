@@ -9,8 +9,13 @@ func run() -> void:
 	await process_frame
 	assert(not menu.profile_panel.visible)
 	menu.show_setup()
-	await create_timer(0.5).timeout
-	assert(menu.profile_panel.visible and not menu.title.visible)
+	await create_timer(0.8).timeout
+	assert(not menu.profile_panel.visible and menu.title.visible)
+	assert(not menu.home_persistent_ui.visible)
+	assert(menu.home_character.position.is_equal_approx(menu.SOLO_CHARACTER_POSITION))
+	assert(menu.title.position == menu.SOLO_TITLE_POSITION)
+	assert(menu.friends_subtitle.text == "SOLITARIA")
+	assert(menu.title.scale.is_equal_approx(Vector2.ONE))
 	menu.name_input.text = "TEST"
 	menu._refresh_single_profile()
 	assert(menu.single_player_name.text == "TEST   · TU")
@@ -18,11 +23,18 @@ func run() -> void:
 	menu._show_network()
 	await create_timer(0.5).timeout
 	assert(not menu.profile_panel.visible)
+	assert(not menu.home_persistent_ui.visible)
+	assert(menu.title.position == menu.SOLO_TITLE_POSITION)
+	assert(menu.friends_subtitle.text == "WITH YOUR FRIENDS")
+	assert(menu.profile_button.get_parent() == menu.home_persistent_ui)
+	assert(menu.name_input.get_parent() == menu.home_persistent_ui)
+	assert(menu.deck_selector.get_parent() == menu.home_persistent_ui)
 	menu.network_page.profile_room = "ABC123"
 	var lobby_state := {"stage": "lobby", "code": "ABC123", "you": 0,
 		"people": [{"name": "TEST", "connected": true, "bot": false}], "options": {}}
 	menu.network_page._update(lobby_state)
 	await create_timer(0.5).timeout
+	assert(not menu.home_persistent_ui.visible)
 	assert(menu.profile_panel.is_visible_in_tree())
 	assert(menu.network_page.players_box.get_child_count() == 8)
 	menu.name_input.text = "NUOVO"

@@ -22,6 +22,8 @@ var entry: VBoxContainer
 var create_button: Button
 var join_button: Button
 var rejoin_button: Button
+var entry_buttons: Array[Button] = []
+var form_intro: Tween
 var profile_picker: Node
 var profile_room := ""
 var rendered_people: Array = []
@@ -37,20 +39,24 @@ func setup(owner_menu: Control) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entry = VBoxContainer.new()
 	add_child(entry)
-	entry.position = Vector2(180, 460)
+	entry.position = Vector2(1100, 460)
 	entry.size = Vector2(640, 200)
 	entry.add_theme_constant_override("separation", 24)
 	var choices := VBoxContainer.new()
 	entry.add_child(choices)
 	choices.add_theme_constant_override("separation", 24)
 	var create: Button = menu._button(choices, "CREA LOBBY", func(): net.connect_room(net.endpoint, {"op": "create", "name": menu.chosen_name(), "capacity": 8}))
-	create.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var join: Button = menu._button(choices, "ENTRA CON CODICE", func(): _show_form(false))
-	join.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	join.add_theme_font_size_override("font_size", 22)
+	entry_buttons = [create, join]
+	# Stesse dimensioni e forma a capsula dei pulsanti principali della HOME.
+	for button in [create, join]:
+		button.custom_minimum_size = menu.PLAY_BUTTON_SIZE
+		button.size = menu.PLAY_BUTTON_SIZE
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		menu._set_play_button_radius(button)
 	controls = VBoxContainer.new()
 	add_child(controls)
-	controls.position = Vector2(180, 460)
+	controls.position = Vector2(1100, 460)
 	controls.size = Vector2(640, 400)
 	controls.add_theme_constant_override("separation", 16)
 	address = LineEdit.new()
@@ -65,9 +71,15 @@ func setup(owner_menu: Control) -> void:
 	code.virtual_keyboard_show_on_focus = true
 	code.placeholder_text = "Codice stanza"
 	code.max_length = 6
-	code.custom_minimum_size = Vector2(500, 80)
+	code.custom_minimum_size = menu.PLAY_BUTTON_SIZE
+	code.size = menu.PLAY_BUTTON_SIZE
 	code.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	menu._style_input(code, 24)
+	code.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu._style_input(code, 36)
+	for state in ["normal", "focus"]:
+		var style := code.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+		style.set_corner_radius_all(int(menu.PLAY_BUTTON_SIZE.y / 2.0))
+		code.add_theme_stylebox_override(state, style)
 	controls.add_child(code)
 	match_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	controls.add_child(match_options)
@@ -78,6 +90,10 @@ func setup(owner_menu: Control) -> void:
 		net.connect_room(address.text, command)
 	)
 	join_button = menu._button(controls, "Entra", func(): net.connect_room(address.text, {"op": "join", "name": menu.chosen_name(), "code": code.text}))
+	join_button.custom_minimum_size = menu.PLAY_BUTTON_SIZE
+	join_button.size = menu.PLAY_BUTTON_SIZE
+	join_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	menu._set_play_button_radius(join_button)
 	rejoin_button = menu._button(controls, "Rientra nella partita", func(): net.connect_room(address.text, {"op": "rejoin", "code": net.room_code, "token": net.token}))
 	controls.hide()
 	session_controls = Control.new()
@@ -189,21 +205,40 @@ func setup(owner_menu: Control) -> void:
 	info.add_theme_font_size_override("font_size", 24)
 	var back_row := VBoxContainer.new()
 	add_child(back_row)
-	back_row.position = Vector2(60, 960)
+	back_row.position = Vector2(40, 40)
 	back_row.size.x = 260
-	menu._button(back_row, "Indietro", _back)
+	var back_button: Button = menu._button(back_row, "Indietro", _back)
+	entry_buttons.append(back_button)
+	back_button.custom_minimum_size.y = menu.MENU_BUTTON_HEIGHT
+	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := back_button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(int(menu.MENU_BUTTON_HEIGHT / 2.0))
+			back_button.add_theme_stylebox_override(state, style)
 	net.updated.connect(_update)
 	net.problem.connect(func(message): info.text = message)
 	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)
 
 func open() -> void:
-	menu.profile_panel.hide()
+	menu.show_network_entry_extras()
 	show()
 	entry.show()
+	for button in entry_buttons:
+		# Il layout iniziale dei Container puo' ripristinare la scala.
+		# Restano trasparenti fino all'inizio del proprio pop.
+		button.modulate.a = 0.0
+		button.scale = Vector2.ZERO
 	controls.hide()
 	session_controls.hide()
 	info.text = ""
 	menu._show_menu_title(true)
+	_animate_entry_buttons.call_deferred()
+
+func _animate_entry_buttons() -> void:
+	if is_visible_in_tree() and entry.visible:
+		menu.animate_buttons_like_home(entry_buttons)
 
 func _show_form(creating: bool) -> void:
 	code.visible = not creating
@@ -212,10 +247,52 @@ func _show_form(creating: bool) -> void:
 	join_button.visible = not creating
 	rejoin_button.visible = not creating and not net.token.is_empty()
 	info.text = ""
-	preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, entry, controls)
+	entry.hide()
+	controls.show()
+	var items: Array[Control] = []
+	for control in [code, match_options, create_button, join_button, rejoin_button]:
+		if control.visible:
+			items.append(control)
+	_pop_form_controls(items)
+
+func _pop_form_controls(items: Array[Control]) -> void:
+	if form_intro and form_intro.is_valid():
+		form_intro.kill()
+	form_intro = create_tween().set_parallel(true)
+	for index in items.size():
+		var item := items[index]
+		if item is RoundedSquareButton:
+			item.hover_animate = false
+			if item.hover_tween and item.hover_tween.is_valid():
+				item.hover_tween.kill()
+		item.release_focus()
+		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.focus_mode = Control.FOCUS_NONE
+		item.modulate.a = 0.0
+		item.scale = Vector2.ZERO
+		var delay: float = menu.HOME_INTRO_DELAY + index * menu.HOME_INTRO_STAGGER
+		form_intro.tween_callback(func():
+			item.pivot_offset = item.size / 2.0
+			item.modulate.a = 1.0
+		).set_delay(delay)
+		form_intro.tween_property(item, "scale", Vector2.ONE, menu.HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		form_intro.tween_callback(func():
+			item.mouse_filter = Control.MOUSE_FILTER_STOP
+			item.focus_mode = Control.FOCUS_ALL
+			if item is RoundedSquareButton:
+				item.hover_animate = true
+		).set_delay(delay + menu.HOME_INTRO_DURATION)
 
 func _back() -> void:
 	profile_picker.close()
+	if controls.visible and not session_controls.visible:
+		controls.hide()
+		entry.show()
+		info.text = ""
+		# Indietro, titolo e personaggio restano gia' visibili.
+		var choices: Array[Control] = [entry_buttons[0], entry_buttons[1]]
+		_pop_form_controls(choices)
+		return
 	if controls.visible or session_controls.visible:
 		var previous: Control = session_controls if session_controls.visible else controls
 		if session_controls.visible:
@@ -225,6 +302,8 @@ func _back() -> void:
 		menu.profile_panel.hide()
 		info.text = ""
 		menu._show_menu_title(true)
+		menu.show_network_entry_extras()
+		menu._animate_mode_heading("WITH YOUR FRIENDS")
 		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, previous, entry, true)
 	else:
 		menu.show_home()
@@ -238,9 +317,12 @@ func _update(state: Dictionary) -> void:
 		profile_room = str(state.code)
 		net.send.call_deferred({"op": "profile", "avatar": menu.profile_avatar})
 	if not session_controls.visible:
+		menu.hide_network_entry_extras()
 		menu.profile_panel.reparent(session_controls, false)
 		session_controls.move_child(menu.profile_panel, 0)
 		menu.profile_panel.position = Vector2(60, 140)
+		menu._place_profile_in_panel()
+		menu._place_deck_selector_profile()
 		menu.profile_panel.show()
 		menu.title.hide()
 		if is_instance_valid(menu.home_character):

@@ -75,12 +75,14 @@ func _ready() -> void:
 
 	sync()
 
+
 func _queue_path() -> String:
 	return (
 		"user://bisca_profile_%s.cfg" % _owner
 		if not _owner.is_empty()
 		else QUEUE_FILE
 	)
+
 
 func _account_changed() -> void:
 	var next_owner := str(_account.user_id)
@@ -129,11 +131,13 @@ func _account_changed() -> void:
 
 	sync()
 
+
 func _deck() -> Dictionary:
 	return {
 		"deck_back": int(_settings.values.deck_back),
 		"deck_front": int(_settings.values.deck_front)
 	}
+
 
 func _settings_changed() -> void:
 	var current := _deck()
@@ -147,6 +151,7 @@ func _settings_changed() -> void:
 
 	_save_queue()
 	_timer.start(0.75)
+
 
 func _save_queue() -> void:
 	var queue := ConfigFile.new()
@@ -168,6 +173,7 @@ func _save_queue() -> void:
 		push_warning(
 			"BISCA: salvataggio coda preferenze non riuscito."
 		)
+
 
 func _send(
 	method: int,
@@ -225,6 +231,7 @@ func _send(
 		"data": parsed_data
 	}
 
+
 func sync() -> void:
 	if _busy or not _account.is_authenticated():
 		return
@@ -240,7 +247,9 @@ func sync() -> void:
 			path + "&select=id,username,public_id,deck_back,deck_front"
 		)
 
-		if not result.ok or not result.data is Array:
+		# IMPORTANTE:
+		# Le parentesi evitano ambiguita' nel controllo del tipo.
+		if not result.ok or not (result.data is Array):
 			_failed(int(result.code))
 			return
 
@@ -265,9 +274,10 @@ func sync() -> void:
 				path + "&select=id,username,public_id,deck_back,deck_front"
 			)
 
+		# Stesso controllo corretto anche dopo la rilettura.
 		if (
 			not result.ok
-			or not result.data is Array
+			or not (result.data is Array)
 			or result.data.is_empty()
 		):
 			_failed(int(result.code))
@@ -324,6 +334,7 @@ func sync() -> void:
 
 	if _pending:
 		_timer.start(0.75)
+
 
 func _failed(code: int) -> void:
 	_busy = false

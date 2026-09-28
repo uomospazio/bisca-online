@@ -20,6 +20,54 @@ var _generation := 0
 var _queued := false
 var _account: Node
 var _http: HTTPRequest
+var purchasing := false
+
+## Il client invia solo ID e prezzo confermato. Saldo e proprieta' decide il server.
+func purchase_item(item_id: String, expected_price: int) -> Dictionary:
+	if purchasing or _account == null or not _account.is_authenticated():
+		return {"ok": false, "message": "Acquisto occupato o account offline."}
+	var owner := _owner
+	var generation := _generation
+	purchasing = true
+	changed.emit()
+	var request := HTTPRequest.new()
+	request.timeout = 20.0
+	request.accept_gzip = not OS.has_feature("web")
+	add_child(request)
+	var error := request.request(_account.PROJECT_URL + "/rest/v1/rpc/bisca_purchase_item",
+		_account.database_headers(), HTTPClient.METHOD_POST,
+		JSON.stringify({"p_item_id": item_id, "p_expected_price": expected_price}))
+	var response: Array = []
+	if error == OK:
+		response = await request.request_completed
+	request.queue_free()
+	purchasing = false
+	changed.emit()
+	if not _current(generation, owner):
+		return {"ok": false, "message": "Account cambiato: controlla l'inventario dell'account precedente."}
+	if response.is_empty() or response[0] != HTTPRequest.RESULT_SUCCESS:
+		refresh()
+		return {"ok": false, "message": "Risposta non ricevuta. Aggiorna l'inventario prima di riprovare: l'acquisto potrebbe essere riuscito."}
+	var data = JSON.parse_string(response[3].get_string_from_utf8())
+	if response[1] < 200 or response[1] >= 300:
+		var messages := {
+			"INSUFFICIENT_CREDITS": "Monete insufficienti.",
+			"PRICE_CHANGED": "Prezzo cambiato: aggiorna lo shop e riprova.",
+			"ITEM_UNAVAILABLE": "Oggetto non disponibile.",
+			"PROFILE_NOT_READY": "Profilo non pronto. Riconnetti l'account.",
+			"ITEM_NOT_FOUND": "Oggetto non trovato."
+		}
+		var code := str(data.get("message", "")) if data is Dictionary else ""
+		var message: String = messages.get(code, "Acquisto non disponibile. Controlla che 004_shop_purchase.sql sia stato eseguito.")
+		return {"ok": false, "message": message}
+	if not data is Dictionary or str(data.get("user_id", "")) != owner or not str(data.get("credits", "")).is_valid_int():
+		return {"ok": false, "message": "Risposta inattesa. Aggiorna l'inventario prima di riprovare."}
+	var cloud := get_node("/root/AccountProfile")
+	if str(cloud.profile.get("id", "")) == owner:
+		cloud.profile.credits = int(data.credits)
+		cloud.changed.emit()
+	refresh()
+	return {"ok": true, "message": "Gia' posseduto, nessun addebito." if data.get("already_owned", false) else "Acquisto completato!"}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS

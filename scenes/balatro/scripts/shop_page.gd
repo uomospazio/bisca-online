@@ -14,6 +14,11 @@ var coins_amount: Label
 var intro_controls: Array[Control] = []
 var intro_tween: Tween
 var rendered_items: Array = []
+var purchase_dialog: ConfirmationDialog
+var result_dialog: AcceptDialog
+var pending_item := ""
+var pending_price := 0
+var pending_user := ""
 
 func setup(menu: Control) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -65,6 +70,35 @@ func setup(menu: Control) -> void:
 	intro_controls.append(reload_button)
 	manager.changed.connect(_update)
 	visibility_changed.connect(_update)
+	purchase_dialog = ConfirmationDialog.new()
+	purchase_dialog.title = "CONFERMA ACQUISTO"
+	purchase_dialog.ok_button_text = "ACQUISTA"
+	purchase_dialog.cancel_button_text = "ANNULLA"
+	add_child(purchase_dialog)
+	purchase_dialog.confirmed.connect(_purchase_confirmed)
+	result_dialog = AcceptDialog.new()
+	add_child(result_dialog)
+
+func _ask_purchase(item_id: String) -> void:
+	if manager.purchasing or manager.owns_item(item_id):
+		return
+	var item: Dictionary = manager.get_item(item_id)
+	if item.is_empty() or not item.is_available:
+		return
+	pending_item = item_id
+	pending_price = int(item.price)
+	pending_user = str(get_node("/root/AccountSession").user_id)
+	purchase_dialog.dialog_text = "Acquistare %s per %d monete?" % [item.name, pending_price]
+	purchase_dialog.popup_centered(Vector2i(560, 200))
+
+func _purchase_confirmed() -> void:
+	if pending_user != str(get_node("/root/AccountSession").user_id):
+		return
+	var result: Dictionary = await manager.purchase_item(pending_item, pending_price)
+	if not is_inside_tree():
+		return
+	result_dialog.dialog_text = result.message
+	result_dialog.popup_centered(Vector2i(560, 200))
 
 func open() -> void:
 	coins_amount.text = menu_owner.coins_label.text
@@ -93,7 +127,7 @@ func _label(text: String, font_size := 22) -> Label:
 func _update() -> void:
 	if grid == null or not is_visible_in_tree():
 		return
-	reload_button.disabled = manager.loading
+	reload_button.disabled = manager.loading or manager.purchasing
 	status.text = ""
 	if manager.loading:
 		status.text += "\nCARICAMENTO..."
@@ -137,6 +171,14 @@ func _update() -> void:
 			preview.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 			preview.texture = get_node("/root/GameSettings").back_texture(item.asset_id)
 			rows.add_child(preview)
+			var buy := Button.new()
+			buy.flat = true
+			buy.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			buy.tooltip_text = "Acquista"
+			buy.disabled = manager.owns_item(item.id) or not item.is_available
+			preview.add_child(buy)
+			buy.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			buy.pressed.connect(_ask_purchase.bind(str(item.id)))
 		var footer := Control.new()
 		footer.custom_minimum_size.y = 80
 		rows.add_child(footer)

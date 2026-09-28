@@ -63,6 +63,9 @@ func _ready() -> void:
 			_last_deck = _deck()
 
 	_http = HTTPRequest.new()
+	# Fetch nel browser decomprime gia' la risposta. Non decomprimerla
+	# una seconda volta in Godot (HTTP 200 ma RESULT_BODY_DECOMPRESS_FAILED).
+	_http.accept_gzip = not OS.has_feature("web")
 	_http.timeout = 15.0
 	add_child(_http)
 
@@ -220,6 +223,9 @@ func _send(
 
 	var request_result: int = int(response[0])
 	var response_code: int = int(response[1])
+	if request_result != HTTPRequest.RESULT_SUCCESS:
+		# Solo codici diagnostici: mai token, email o contenuto del profilo.
+		push_warning("BISCA: lettura profilo fallita: trasporto %d, HTTP %d." % [request_result, response_code])
 	var response_body: PackedByteArray = response[3]
 	var response_text: String = response_body.get_string_from_utf8()
 

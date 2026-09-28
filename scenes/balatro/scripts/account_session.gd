@@ -29,6 +29,8 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or OS.get_cmdline_user_args().has("--server"):
 		return
 	_request = HTTPRequest.new()
+	# Sul Web la decompressione e' gia' gestita dal browser.
+	_request.accept_gzip = not OS.has_feature("web")
 	_request.timeout = 15.0
 	add_child(_request)
 	_renew = Timer.new()

@@ -55,20 +55,26 @@ func refresh() -> void:
 		return
 	busy = true
 	var generation := _generation
-	var result := await call_api("bisca_list_friends")
+	var result := await call_api("bisca_friends_presence")
+	var invites := await call_api("bisca_list_invites") if result.ok else {}
 	busy = false
 	if generation != _generation:
 		refresh.call_deferred()
 		return
 	if result.ok and result.data is Array:
 		entries = result.data
+		if invites.get("ok",false) and invites.get("data") is Array:
+			for invite in invites.data:
+				for row in entries:
+					if str(row.id) == str(invite.sender):
+						row["invite_code"] = str(invite.room_code)
 		error = ""
 	else:
 		error = result.get("message", "Risposta amici non valida.")
 	changed.emit()
 
 func pending_count() -> int:
-	return entries.filter(func(row): return row.status == "pending" and row.incoming).size()
+	return entries.filter(func(row): return (row.status == "pending" and row.incoming) or row.has("invite_code")).size()
 
 func display_name(row: Dictionary) -> String:
 	var username := str(row.username) if row.get("username") != null else ""

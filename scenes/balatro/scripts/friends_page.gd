@@ -9,6 +9,7 @@ var notice: Label
 var working := false
 var search_generation := 0
 var identity := ""
+var search_box: Panel
 
 func setup(host: Control) -> void:
 	menu = host
@@ -21,8 +22,14 @@ func setup(host: Control) -> void:
 		var skin := back.get_theme_stylebox(state).duplicate() as StyleBoxFlat
 		skin.set_corner_radius_all(48)
 		back.add_theme_stylebox_override(state,skin)
-	var title := label("AMICI", self)
-	title.position = Vector2(860,55)
+	var title := preload("res://scenes/balatro/scripts/idle_subtitle.gd").new()
+	add_child(title)
+	title.text = "AMICI"
+	title.position = Vector2(710,55)
+	title.size = Vector2(500,90)
+	title.add_theme_font_override("font",menu.KIDS_FONT)
+	title.add_theme_font_size_override("font_size",58)
+	title.set_animated(true)
 	query = LineEdit.new()
 	add_child(query)
 	query.position = Vector2(180,180)
@@ -40,6 +47,40 @@ func setup(host: Control) -> void:
 	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	results = column(Vector2(180,380))
 	contacts = column(Vector2(990,380))
+	var friends_box := Panel.new()
+	add_child(friends_box)
+	friends_box.position = Vector2(180,230)
+	friends_box.size = Vector2(1500,750)
+	friends_box.add_theme_stylebox_override("panel",Style.button_style(Style.PANEL,Style.HOVER,4))
+	var contacts_scroll := contacts.get_parent() as ScrollContainer
+	contacts_scroll.reparent(friends_box)
+	contacts_scroll.position = Vector2(24,24)
+	contacts_scroll.size = Vector2(1452,702)
+	search_box = Panel.new()
+	add_child(search_box)
+	search_box.position = Vector2(980,330)
+	search_box.size = Vector2(780,650)
+	search_box.z_index = 10
+	search_box.add_theme_stylebox_override("panel",Style.button_style(Style.PANEL,Style.HOVER,4))
+	query.reparent(search_box)
+	query.position = Vector2(24,24)
+	query.size = Vector2(732,70)
+	search_button.reparent(search_box)
+	search_button.position = Vector2(24,110)
+	search_button.size = Vector2(340,70)
+	var close: Button = menu._button(search_box,"CHIUDI",func(): search_box.hide())
+	close.position = Vector2(392,110)
+	close.size = Vector2(364,70)
+	var results_scroll := results.get_parent() as ScrollContainer
+	results_scroll.reparent(search_box)
+	results_scroll.position = Vector2(24,204)
+	results_scroll.size = Vector2(732,422)
+	search_box.hide()
+	var add_button: Button = menu._round_icon_button(self,"add_friends.svg","Aggiungi amici",func(): search_box.show(); query.grab_focus())
+	add_button.position = Vector2(1740,230)
+	add_button.size = Vector2.ONE * menu.ROUND_BUTTON_SIZE
+	notice.position = Vector2(180,150)
+	notice.size = Vector2(1450,70)
 	manager.changed.connect(update_contacts)
 	get_node("/root/AccountSession").changed.connect(_identity_changed)
 	identity = str(get_node("/root/AccountSession").user_id)
@@ -80,6 +121,7 @@ func _identity_changed() -> void:
 	query.clear()
 
 func open() -> void:
+	search_box.hide()
 	manager.refresh()
 	update_contacts()
 
@@ -114,17 +156,64 @@ func act(target: String, action: String) -> void:
 	notice.text = "Operazione completata." if response.ok else response.message
 	manager.refresh()
 
+func answer_invite(sender: String, accept: bool) -> void:
+	if working: return
+	var net := get_node("/root/NetworkSession")
+	if accept and not net.room_code.is_empty():
+		notice.text = "Esci prima dalla lobby attuale per accettare l'invito."
+		return
+	working = true
+	var generation := search_generation
+	var response: Dictionary = await manager.call_api("bisca_answer_invite",{"from_user":sender,"accept":accept})
+	working = false
+	if generation != search_generation: return
+	if not response.ok:
+		notice.text = "Invito scaduto o non disponibile."
+	else:
+		notice.text = "Invito rifiutato." if not accept else "Ingresso nella lobby..."
+		if accept and response.data is String:
+			menu._show_network()
+			net.connect_room(net.endpoint,{"op":"join","code":response.data,"name":menu.chosen_name()})
+	manager.refresh()
+
 func update_contacts() -> void:
 	clear(contacts)
 	label("AMICI E RICHIESTE",contacts)
 	for row in manager.entries:
-		label(manager.display_name(row),contacts)
-		if row.status == "accepted":
-			label("AMICO",contacts)
-		else:
-			label("Richiesta ricevuta" if row.incoming else "Richiesta inviata",contacts)
+		var tile := PanelContainer.new()
+		tile.custom_minimum_size.y = 110
+		var skin := Style.button_style(Style.NORMAL)
+		skin.set_corner_radius_all(28)
+		skin.set_content_margin_all(18)
+		tile.add_theme_stylebox_override("panel",skin)
+		contacts.add_child(tile)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation",20)
+		tile.add_child(line)
+		var dot := Panel.new()
+		dot.custom_minimum_size = Vector2(22,22)
+		dot.size_flags_vertical = SIZE_SHRINK_CENTER
+		var dot_skin := StyleBoxFlat.new()
+		dot_skin.bg_color = Color("48cf83") if row.get("online",false) else Color("777583")
+		dot_skin.set_corner_radius_all(11)
+		dot.add_theme_stylebox_override("panel",dot_skin)
+		dot.tooltip_text = "Online di recente" if row.get("online",false) else "Offline"
+		line.add_child(dot)
+		var identity_rows := VBoxContainer.new()
+		identity_rows.size_flags_horizontal = SIZE_EXPAND_FILL
+		line.add_child(identity_rows)
+		label(manager.display_name(row),identity_rows)
+		if row.has("invite_code"):
+			label("Invito alla lobby " + str(row.invite_code),identity_rows)
+			for accept in [true,false]:
+				var invitation_button: Button = menu._button(line,"ACCETTA" if accept else "RIFIUTA",answer_invite.bind(str(row.id),accept))
+				invitation_button.custom_minimum_size = Vector2(210,60)
+				invitation_button.size_flags_vertical = SIZE_SHRINK_CENTER
+		if row.status != "accepted":
+			label("Richiesta ricevuta" if row.incoming else "Richiesta inviata",identity_rows)
 			var actions := ["accept","decline"] if row.incoming else ["cancel"]
 			for action in actions:
-				var button: Button = menu._button(contacts,{"accept":"ACCETTA","decline":"RIFIUTA","cancel":"ANNULLA"}[action],act.bind(str(row.id),action))
-				button.custom_minimum_size = Vector2(0,60)
+				var button: Button = menu._button(line,{"accept":"ACCETTA","decline":"RIFIUTA","cancel":"ANNULLA"}[action],act.bind(str(row.id),action))
+				button.custom_minimum_size = Vector2(210,60)
+				button.size_flags_vertical = SIZE_SHRINK_CENTER
 	if not manager.error.is_empty(): notice.text = manager.error

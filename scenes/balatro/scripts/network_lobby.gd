@@ -37,6 +37,9 @@ var profile_picker: Node
 var profile_room := ""
 var rendered_people: Array = []
 var rendered_self := -1
+var invite_box: AcceptDialog
+var invite_rows: VBoxContainer
+var sending_invite := false
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
@@ -109,6 +112,21 @@ func setup(owner_menu: Control) -> void:
 	add_child(session_controls)
 	session_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	session_controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var invite_button: Button = menu._round_icon_button(session_controls,"add_friends.svg","Invita amici",_open_invites)
+	invite_button.position = Vector2(1740,145)
+	invite_button.size = Vector2.ONE * menu.ROUND_BUTTON_SIZE
+	invite_box = AcceptDialog.new()
+	invite_box.title = "INVITA AMICI IN LOBBY"
+	invite_box.ok_button_text = "CHIUDI"
+	add_child(invite_box)
+	var invite_scroll := ScrollContainer.new()
+	invite_scroll.custom_minimum_size = Vector2(700,440)
+	invite_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	invite_box.add_child(invite_scroll)
+	invite_rows = VBoxContainer.new()
+	invite_rows.size_flags_horizontal = SIZE_EXPAND_FILL
+	invite_scroll.add_child(invite_rows)
+	get_node("/root/FriendsManager").changed.connect(_refresh_invites)
 	code_button = menu._button(session_controls, "CODICE PARTITA", func():
 		DisplayServer.clipboard_set(code_button.get_meta("room_code", ""))
 		copied_code = str(code_button.get_meta("room_code", ""))
@@ -342,6 +360,7 @@ func _back() -> void:
 
 func _update(state: Dictionary) -> void:
 	if state.stage != "lobby":
+		invite_box.hide()
 		profile_picker.close()
 		hide()
 		return
@@ -526,6 +545,39 @@ func _update(state: Dictionary) -> void:
 	info.text = "In attesa dei giocatori…"
 	refresh_own_card()
 	_update_voice_buttons()
+
+func _open_invites() -> void:
+	invite_box.popup_centered(Vector2i(760,540))
+	_refresh_invites()
+	get_node("/root/FriendsManager").refresh()
+
+func _refresh_invites() -> void:
+	if not is_instance_valid(invite_box) or not invite_box.visible: return
+	for child in invite_rows.get_children():
+		invite_rows.remove_child(child)
+		child.queue_free()
+	var manager := get_node("/root/FriendsManager")
+	var count := 0
+	for friend in manager.entries:
+		if friend.status != "accepted": continue
+		count += 1
+		var button: Button = menu._button(invite_rows,"INVITA " + manager.display_name(friend),_send_invite.bind(str(friend.id)))
+		button.custom_minimum_size = Vector2(0,68)
+		button.disabled = sending_invite
+	if count == 0:
+		var empty := Label.new()
+		empty.text = "Nessun amico disponibile. Aggiungi amici dalla home."
+		empty.add_theme_font_size_override("font_size",24)
+		invite_rows.add_child(empty)
+
+func _send_invite(target: String) -> void:
+	if sending_invite or not session_controls.is_visible_in_tree() or net.room_code.is_empty(): return
+	sending_invite = true
+	_refresh_invites()
+	var result: Dictionary = await get_node("/root/FriendsManager").call_api("bisca_invite_friend",{"target":target,"code":net.room_code})
+	sending_invite = false
+	invite_box.title = "INVITO INVIATO" if result.ok else "INVIO NON RIUSCITO - CONTROLLA SQL 009"
+	_refresh_invites()
 
 func refresh_own_card() -> void:
 	if not is_instance_valid(players_box):

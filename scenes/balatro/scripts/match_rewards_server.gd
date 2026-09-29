@@ -2,6 +2,8 @@ extends Node
 ## Usato SOLO dal server dedicato. La chiave segreta arriva dall'ambiente.
 ## La lobby resta indipendente da nome/avatar del profilo.
 const Account = preload("res://scenes/balatro/scripts/account_session.gd")
+# Temporaneamente false per testare i premi anche da soli con i bot.
+const REQUIRE_THREE_DISTINCT_ACCOUNTS := false
 signal credited(receipt: Dictionary)
 var pending: Dictionary = {}
 var sending := false
@@ -53,7 +55,8 @@ func start_match(room: Dictionary) -> void:
 		if not person.bot and person.peer > 0 and not uid.is_empty():
 			distinct[uid] = true
 			room.reward_users[i] = uid
-	room.reward_eligible = enabled() and int(room.options.get("starting_cards", 5)) == 5 and distinct.size() >= 3 and distinct.size() == room.reward_users.size()
+	var accounts_valid: bool = not REQUIRE_THREE_DISTINCT_ACCOUNTS or (distinct.size() >= 3 and distinct.size() == room.reward_users.size())
+	room.reward_eligible = enabled() and int(room.options.get("starting_cards", 5)) == 5 and accounts_valid
 	room.reward_sent = {}
 
 func observe(room: Dictionary) -> void:

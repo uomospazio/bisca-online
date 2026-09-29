@@ -6,7 +6,11 @@
 
 Non ci sono nuovi autoload. Nessun prezzo dei dorsi viene modificato.
 
-## Regole
+## Modalita' di test attuale
+
+`REQUIRE_THREE_DISTINCT_ACCOUNTS = false` in `match_rewards_server.gd`: il minimo di tre account e il blocco dei duplicati sono temporaneamente disattivati. Si possono provare i premi in multiplayer anche con un solo umano e i bot. Restano necessari un account autenticato destinatario (anche guest), il server configurato e la partenza da 5 carte. I bot non ricevono monete; resta un solo premio per account/partita, anche con piu' posti sullo stesso account (vale il primo risultato premiato). Il singleplayer locale non cambia. Basta aggiornare il server, senza nuovo SQL.
+
+## Regole con il controllo account riattivato
 
 - Partenza da 5 carte; almeno 3 account Supabase distinti, verificati e connessi all'avvio. I guest autenticati valgono come gli account con email.
 - Se due posti usano lo stesso account la partita non assegna premi.

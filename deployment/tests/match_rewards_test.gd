@@ -45,11 +45,29 @@ func run() -> void:
 	assert(not room.reward_eligible)
 	room.options.starting_cards = 5
 	rewards.start_match(room)
-	assert(not room.reward_eligible) # solo due umani connessi
+	assert(room.reward_eligible) # temporaneamente ammessi anche due umani
 	room.people[1].peer = 3
 	room.people[1].account_id = "a"
 	rewards.start_match(room)
-	assert(not room.reward_eligible) # account duplicato
+	assert(room.reward_eligible) # account duplicato non blocca la partita
+	rewards.pending.clear()
+	rewards.observe(room)
+	assert(rewards.pending.size() == 2) # sempre un solo premio per account
+	room.people[1] = {"bot": true, "peer": 0, "account_id": ""}
+	room.people[2] = {"bot": true, "peer": 0, "account_id": ""}
+	rewards.start_match(room)
+	assert(room.reward_eligible)
+	assert(room.reward_users.size() == 1)
+	rewards.pending.clear()
+	rewards.observe(room)
+	assert(rewards.pending.size() == 1) # eliminazione umano, nessun premio ai bot
+	assert(rewards.pending.values()[0].p_outcome == "elimination")
+	rewards.start_match(room)
+	rewards.pending.clear()
+	rules.winner = 0
+	rewards.observe(room)
+	assert(rewards.pending.size() == 1)
+	assert(rewards.pending.values()[0].p_outcome == "victory")
 	rewards.free()
 	var popup := RewardPanel.new()
 	root.add_child(popup)

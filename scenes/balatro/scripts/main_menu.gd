@@ -43,6 +43,10 @@ const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
 const MENU_BUTTON_HEIGHT := 96.0
 const ROUND_BUTTON_SIZE := 96.0
 const ROUND_ICON_SIZE := 54.0
+# Discord: pulsante circolare in alto a sinistra, sotto INFO.
+const DISCORD_BUTTON_SIZE := 96.0
+const DISCORD_POSITION := Vector2(40, 156)
+const DISCORD_INVITE_URL := "https://discord.gg/ZdRv3gVf8"
 # Icona e testo centrati insieme nei pulsanti principali.
 const PLAY_ICON_SIZE := 54.0
 const PLAY_ICON_TEXT_SPACING := 12.0
@@ -299,9 +303,14 @@ func _ready() -> void:
 	info.position = Vector2(40,40)
 	info.size = Vector2.ONE * ROUND_BUTTON_SIZE
 
+	# Discord: sotto INFO, in alto a sinistra.
+	var discord := _round_icon_button(home_persistent_ui, "discord.svg", "Discord", _open_discord)
+	discord.position = DISCORD_POSITION
+	discord.size = Vector2.ONE * DISCORD_BUTTON_SIZE
+
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
 	# Control separati: nessun Container forza le loro dimensioni.
-	for button in [single, multi, shop, settings, friends, info]:
+	for button in [single, multi, shop, settings, friends, info, discord]:
 		home_intro_buttons.append(button)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
@@ -615,6 +624,10 @@ func _set_home_profile(avatar: String) -> void:
 	_refresh_single_profile()
 	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
 		get_node("/root/NetworkSession").send({"op": "profile", "avatar": avatar})
+
+func _open_discord() -> void:
+	OS.shell_open(DISCORD_INVITE_URL)
+
 
 func _show_home_info() -> void:
 	var dialog := AcceptDialog.new()

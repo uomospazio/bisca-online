@@ -89,6 +89,7 @@ func _button(
 
 	button.position = at
 	button.size = dimensions
+	button.custom_minimum_size = dimensions
 	button.add_theme_font_override("font", FONT)
 	button.add_theme_font_size_override("font_size", 24)
 	button.add_theme_color_override("font_color", Style.TEXT)
@@ -103,14 +104,16 @@ func _button(
 		)
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
+	var radius := int(dimensions.y / 2.0)
+
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		var style := Style.button_style(
-			Style.HOVER if state in ["hover", "focus"] else Style.NORMAL
+			Style.HOVER if state in ["hover", "focus"] else Style.NORMAL,
+			Color.TRANSPARENT,
+			0,
+			dimensions.y
 		)
-
-		if not icon_name.is_empty():
-			style.set_corner_radius_all(32)
-
+		style.set_corner_radius_all(radius)
 		button.add_theme_stylebox_override(state, style)
 
 	button.pressed.connect(callback)
@@ -192,14 +195,11 @@ func _animate_control_swap(
 	var tween := create_tween()
 	controls_tween = tween
 
-	# Prepara i controlli che stanno sparendo.
 	for control in outgoing:
 		control.pivot_offset = control.size / 2.0
 		control.scale = Vector2.ONE
 		control.set("hover_animate", false)
 
-	# SPARIZIONE:
-	# solo rimpicciolimento.
 	tween.set_trans(Tween.TRANS_BACK)
 	tween.set_ease(Tween.EASE_IN)
 	tween.set_parallel(true)
@@ -214,7 +214,6 @@ func _animate_control_swap(
 
 	tween.set_parallel(false)
 
-	# Nasconde i vecchi e prepara i nuovi già rimpiccioliti.
 	tween.tween_callback(func():
 		for control in outgoing:
 			control.hide()
@@ -227,8 +226,6 @@ func _animate_control_swap(
 			control.show()
 	)
 
-	# APPARIZIONE:
-	# solo ingrandimento con effetto pop.
 	tween.set_trans(Tween.TRANS_BACK)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.set_parallel(true)
@@ -243,7 +240,6 @@ func _animate_control_swap(
 
 	tween.set_parallel(false)
 
-	# Ripristina lo stato normale e riattiva l'hover.
 	tween.tween_callback(func():
 		for control in incoming:
 			control.scale = Vector2.ONE
@@ -271,7 +267,6 @@ func _cycle(direction: int) -> void:
 
 func _update_texture() -> void:
 	var settings = get_node("/root/GameSettings")
-	# Non scrive preferenze e non concede oggetti mentre il cloud sta caricando.
 	preview.texture = settings.front_texture(3, 5, selected_front) if showing_front else settings.back_texture(selected if selected > 0 else 1)
 
 func _flip() -> void:
@@ -292,7 +287,6 @@ func _flip() -> void:
 func _confirm() -> void:
 	if switching or flipping:
 		return
-	# Ricontrolla anche alla conferma: l'account puo' cambiare mentre si modifica.
 	if _owned_backs().has(selected):
 		get_node("/root/GameSettings").set_value("deck_back", selected)
 	get_node("/root/GameSettings").set_value("deck_front", selected_front)

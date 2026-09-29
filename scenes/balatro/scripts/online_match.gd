@@ -72,7 +72,9 @@ func _apply(value: Dictionary) -> void:
 	host.rules.order.clear()
 	for id in value.order:
 		host.rules.order.append(seat(id, count))
-	host.rules.seat_order.assign(range(count))
+	host.rules.seat_order.clear()
+	for id in value.get("seat_order", range(count)):
+		host.rules.seat_order.append(seat(id, count))
 	host.rules.remaining_deck.resize(value.remaining)
 	var new_round: bool = entering_match or round_seen != value.round
 	if new_round:

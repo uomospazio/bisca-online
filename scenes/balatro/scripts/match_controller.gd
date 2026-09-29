@@ -605,9 +605,12 @@ func _visual_seat_for_player(player_id: int) -> int:
 	# In multiplayer arriva dal server; in locale è quello creato in _start().
 	var seating: Array = []
 	var local_player_id := 0
+	var server_player_id := player_id
 	if online:
 		seating = online_match.state.get("seat_order", [])
 		local_player_id = online_match.local_id
+		# I badge usano ID locali ruotati, seat_order contiene invece ID server.
+		server_player_id = posmod(player_id + local_player_id, player_count)
 	else:
 		seating = rules.seat_order
 
@@ -615,7 +618,7 @@ func _visual_seat_for_player(player_id: int) -> int:
 		return clampi(player_id, 0, SEAT_POSITIONS.size() - 1)
 
 	var local_index := seating.find(local_player_id)
-	var player_index := seating.find(player_id)
+	var player_index := seating.find(server_player_id)
 	if local_index < 0 or player_index < 0:
 		return clampi(player_id, 0, SEAT_POSITIONS.size() - 1)
 

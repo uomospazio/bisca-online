@@ -222,7 +222,7 @@ func _send(
 
 	if method == HTTPClient.METHOD_POST:
 		headers.append(
-			"Prefer: resolution=ignore-duplicates,return=representation"
+			"Prefer: resolution=ignore-duplicates,return=minimal"
 		)
 
 	var request_body := ""
@@ -335,7 +335,7 @@ func sync() -> void:
 
 			result = await _send(
 				HTTPClient.METHOD_POST,
-				"?on_conflict=id",
+				"?on_conflict=id&columns=id,deck_back,deck_front",
 				initial
 			)
 

@@ -428,7 +428,10 @@ func _start(count: int) -> void:
 	game_ui.show()
 	$Parallax.show()
 	player_count = count
+	# Randomizza una sola volta i posti logici attorno al tavolo.
+	# Il turno seguirà poi sempre questo ordine in senso orario.
 	var seating: Array = CLOCKWISE_SEATS.filter(func(id): return id < count)
+	seating.shuffle()
 	rules.start(count, -1, seating)
 	pile.place_home()
 	displayed_taken.clear()
@@ -597,6 +600,30 @@ func _animate_round_damage() -> void:
 		await shade_out.finished
 		damage_shade.hide()
 
+func _visual_seat_for_player(player_id: int) -> int:
+	# seat_order è l'ordine fisico/orario deciso una sola volta a inizio partita.
+	# In multiplayer arriva dal server; in locale è quello creato in _start().
+	var seating: Array = []
+	var local_player_id := 0
+	if online:
+		seating = online_match.state.get("seat_order", [])
+		local_player_id = online_match.local_id
+	else:
+		seating = rules.seat_order
+
+	if seating.is_empty():
+		return clampi(player_id, 0, SEAT_POSITIONS.size() - 1)
+
+	var local_index := seating.find(local_player_id)
+	var player_index := seating.find(player_id)
+	if local_index < 0 or player_index < 0:
+		return clampi(player_id, 0, SEAT_POSITIONS.size() - 1)
+
+	# Ruota solo la visuale: per ogni client il proprio giocatore resta nel
+	# posto 0, mentre gli altri mantengono lo stesso ordine orario relativo.
+	return posmod(player_index - local_index, seating.size())
+
+
 func _refresh() -> void:
 	_clear(actions)
 	actions.position.y = 550.0 if rules.phase == "prediction" else 630.0
@@ -614,7 +641,7 @@ func _refresh() -> void:
 		# positions. A refresh must not move a visible/revealing badge back to
 		# its seat for one frame.
 		if not prediction_focus or p.id == 0:
-			badge.position = SEAT_POSITIONS[p.id]
+			badge.position = SEAT_POSITIONS[_visual_seat_for_player(p.id)]
 		if not prediction_focus:
 			badge.modulate.a = 1.0
 		var badge_scale := 1.5 if p.id == 0 else 1.35

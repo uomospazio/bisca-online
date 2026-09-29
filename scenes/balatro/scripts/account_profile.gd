@@ -1,5 +1,5 @@
 extends Node
-## Sincronizza esclusivamente il mazzo. Nome/foto lobby restano locali.
+## Sincronizza mazzo e username persistente. Nome/foto lobby restano separati.
 ## Il cloud prevale al primo caricamento; modifiche locali non inviate prevalgono
 ## dopo un periodo offline. Le richieste sono seriali, senza lavoro per frame.
 
@@ -21,6 +21,37 @@ var _timer: Timer
 var _account: Node
 var _settings: Node
 var _owner := ""
+
+func account_display_name() -> String:
+	var username := str(profile.get("username") if profile.get("username") != null else "").strip_edges()
+	if not username.is_empty():
+		return username
+	var code := str(profile.get("public_id") if profile.get("public_id") != null else "").strip_edges()
+	return "#" + code if not code.is_empty() else ""
+
+func save_username(value: String) -> Dictionary:
+	value = value.strip_edges()
+	var pattern := RegEx.new()
+	pattern.compile("^[A-Za-z0-9_.]{3,24}$")
+	if not value.is_empty() and pattern.search(value) == null:
+		return {"ok": false, "message": "Usa 3–24 caratteri: lettere, numeri, punto o underscore."}
+	if _busy or not _loaded or not _account.is_authenticated():
+		return {"ok": false, "message": "Profilo non pronto. Attendi o ricontrolla la connessione."}
+	var owner := _owner
+	var revision := _revision
+	_busy = true
+	var result := await _send(HTTPClient.METHOD_PATCH, "?id=eq." + owner.uri_encode() + "&select=id,username", {"username": value if not value.is_empty() else null})
+	_busy = false
+	if owner != _owner or owner != str(_account.user_id) or revision != _revision:
+		sync.call_deferred()
+		return {"ok": false, "message": "Profilo cambiato durante il salvataggio. Ricontrolla il nome."}
+	if not result.ok:
+		return {"ok": false, "message": "Username non salvato. Verifica connessione e migrazione 005_account_username.sql."}
+	profile.username = value if not value.is_empty() else null
+	changed.emit()
+	if _pending:
+		sync.call_deferred()
+	return {"ok": true}
 
 
 func _ready() -> void:

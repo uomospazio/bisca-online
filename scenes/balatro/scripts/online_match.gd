@@ -113,6 +113,8 @@ func _apply(value: Dictionary) -> void:
 			card.set_face_down(id < 0)
 			card.set_meta("seat_id", p.id)
 			host.table.play_card(card, false)
+			if p.id == 0:
+				card.hide()
 			host.table_visuals[p.id] = card
 	var capture_key := "%d:%d" % [value.round, value.completed_tricks]
 	var already_collected: bool = (value.stage == "trick" and trick_seen == capture_key) or value.phase in ["round_complete", "finished"]
@@ -147,11 +149,16 @@ func _apply(value: Dictionary) -> void:
 			var card = host.table_visuals[entry.player]
 			card.set_card_data(host.catalog[entry.card])
 			card.set_face_down(false)
+		if value.hand_size == 1 and entry.player == 0:
+			host.table_visuals[0].visible = entry.card >= 0
 		if entry.card == host.Rules.JOKER and entry.has("strength") and joker_seen_round != value.round:
 			joker_seen_round = value.round
 			announce_joker = true
 			joker_high = entry.strength == 41
-	_sync_hand(players[0].hand, value.hand_size == 1)
+	var own_hand: Array = players[0].hand
+	if value.hand_size == 1 and players[0].active and value.phase in ["prediction", "play"]:
+		own_hand = [-1] # Resta in mano anche dopo la giocata automatica, fino alla rivelazione.
+	_sync_hand(own_hand, value.hand_size == 1)
 	if not host.rules.trick.is_empty() and value.hand_size > 1:
 		host._refresh_winning_card()
 	if announce_joker:
@@ -180,7 +187,7 @@ func _apply(value: Dictionary) -> void:
 	host.hand.allow_play = value.stage == "turn" and value.phase == "play" and value.hand_size > 1 and host.rules.current == 0
 
 func _sync_hand(ids: Array, blind: bool) -> void:
-	var desired: Array = [] if blind else ids
+	var desired: Array = ids
 	var current: Array = []
 	for card in host.hand.cards:
 		current.append(card.data.strength - 1 if card.data else -1)
@@ -192,7 +199,10 @@ func _sync_hand(ids: Array, blind: bool) -> void:
 		return
 	host.hand.rebuild(desired.size())
 	for i in range(desired.size()):
-		host.hand.cards[i].set_card_data(host.catalog[desired[i]])
+		if not blind and desired[i] >= 0:
+			host.hand.cards[i].set_card_data(host.catalog[desired[i]])
+		host.hand.cards[i].set_face_down(blind)
+		host.hand.cards[i].disabled = blind
 
 func action(command: Dictionary) -> void:
 	command["rev"] = command.get("rev", state.rev)

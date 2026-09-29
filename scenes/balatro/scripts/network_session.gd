@@ -502,7 +502,10 @@ func request(command: Dictionary) -> void:
 			return
 		room.rules = Rules.new()
 		room.rules.configure(room.get("options", {}))
-		room.rules.start(room.people.size())
+		# Mescola i posti, non gli ID lobby: host e riconnessioni restano invariati.
+		var seating: Array = range(room.people.size())
+		seating.shuffle()
+		room.rules.start(room.people.size(), -1, seating)
 		room.stage = "deal"
 		room.deadline = Time.get_ticks_msec() + 4500
 		_broadcast(room)

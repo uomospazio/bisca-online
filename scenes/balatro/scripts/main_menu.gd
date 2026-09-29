@@ -85,6 +85,7 @@ var home_page: Control
 # i pulsanti principali scorrono via, ma vengono nascosti nella lobby vera.
 var home_persistent_ui: Control
 var coins_label: Label
+var account_default_name := ""
 var home_intro_buttons: Array[Button] = []
 var home_intro: Tween
 # Tempi dell'ingresso pulsanti di Dub Together (pop con leggero rimbalzo).
@@ -422,6 +423,8 @@ func _ready() -> void:
 	name_input.focus_exited.connect(_send_profile_name)
 	name_input.text_submitted.connect(func(_value): _send_profile_name())
 	_refresh_single_profile()
+	get_node("/root/AccountProfile").changed.connect(_refresh_default_name)
+	_refresh_default_name()
 	_start_title_wave()
 	_play_home_intro()
 
@@ -961,6 +964,18 @@ func _has_special(value: String) -> bool:
 		if value.contains(character):
 			return true
 	return false
+
+func _refresh_default_name() -> void:
+	if not is_instance_valid(name_input):
+		return
+	var cloud := get_node("/root/AccountProfile")
+	var default_name: String = cloud.account_display_name()
+	# Solo un valore predefinito: non rinomina chi ha scelto un nome lobby proprio.
+	var net := get_node("/root/NetworkSession")
+	if net.room_code.is_empty() and (name_input.text.strip_edges().is_empty() or name_input.text == account_default_name):
+		name_input.text = default_name
+		_refresh_single_profile()
+	account_default_name = default_name
 
 func chosen_name() -> String:
 	# Do not rewrite a focused LineEdit on every mobile input event: it

@@ -446,7 +446,10 @@ func _deal_round() -> void:
 	var own: Array = rules.view_for(0).players[0].hand
 	hand.conceal_hand = rules.hand_size == 1
 	if rules.hand_size == 1:
-		hand.rebuild(0)
+		hand.rebuild(own.size())
+		for card in hand.cards:
+			card.set_face_down(true)
+			card.disabled = true
 		_refresh()
 		status.set_mixed_text("Una carta · Preparazione del tavolo…")
 		if not own.is_empty():
@@ -497,6 +500,8 @@ func _place_blind_cards(animate_own: bool) -> void:
 		card.set_meta("seat_id", p.id)
 		card.global_position = pile.top_global_position()
 		table.play_card(card, animate_own and p.id == 0)
+		if p.id == 0:
+			card.hide() # La copia logica sul tavolo non duplica la carta coperta in mano.
 		table_visuals[p.id] = card
 	_refresh_winning_card()
 
@@ -957,8 +962,11 @@ func _drive() -> void:
 					await overlay.announce_joker(joker_high)
 			continue
 		if rules.phase == "trick_complete":
+			if rules.hand_size == 1:
+				hand.rebuild(0)
 			for entry in rules.trick:
 				var card = table_visuals[entry.player]
+				card.show()
 				card.set_card_data(catalog[entry.card])
 				card.set_face_down(false)
 				if entry.card == Rules.JOKER:

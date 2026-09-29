@@ -14,6 +14,7 @@ var confirmation: CheckBox
 var buttons: Array[Button] = []
 var working := false
 var mode := ""
+var username_field: LineEdit
 
 func setup(host: Control) -> void:
 	menu = host
@@ -226,6 +227,10 @@ func _show(next: String) -> void:
 		)
 
 		var cloud := get_node("/root/AccountProfile")
+		var display_name: String = cloud.account_display_name()
+		if not display_name.is_empty():
+			_text("PROFILO: " + display_name)
+		_button("MODIFICA USERNAME", func(): _show("username"))
 
 		# ID BISCA pubblico.
 		# Esempio: #7P33XD
@@ -307,6 +312,15 @@ func _show(next: String) -> void:
 					_show("logout")
 			)
 
+
+	elif mode == "username":
+		_text("Username account: 3–24 caratteri, lettere, numeri, punto o underscore. Vuoto = solo codice.")
+		username_field = _field("Username")
+		username_field.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
+		username_field.max_length = 24
+		var saved = get_node("/root/AccountProfile").profile.get("username")
+		username_field.text = str(saved) if saved != null else ""
+		_button("SALVA USERNAME", func(): _run("username"))
 
 	elif mode == "link":
 
@@ -469,6 +483,8 @@ func _run(action: String) -> void:
 	var result: Dictionary
 
 	match action:
+		"username":
+			result = await get_node("/root/AccountProfile").save_username(username_field.text)
 
 		"link":
 			result = await account.link_email(

@@ -117,6 +117,12 @@ func setup(owner_menu: Control) -> void:
 	code_button.position = Vector2(1050, 145)
 	code_button.custom_minimum_size = Vector2(540, 200)
 	code_button.size = Vector2(540, 200)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var style := code_button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+		if style:
+			style.border_color = menu.BUTTON_CYAN
+			style.set_border_width_all(4)
+			code_button.add_theme_stylebox_override(state, style)
 
 	# Icona e codice formano un unico gruppo centrato automaticamente nel Button.
 	# Il gruppo si ricentra anche quando cambia il testo (codice stanza).

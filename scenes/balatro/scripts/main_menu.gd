@@ -85,6 +85,8 @@ var home_page: Control
 # i pulsanti principali scorrono via, ma vengono nascosti nella lobby vera.
 var home_persistent_ui: Control
 var coins_label: Label
+var friends_page: Control
+var friends_dot: Panel
 var account_default_name := ""
 var home_intro_buttons: Array[Button] = []
 var home_intro: Tween
@@ -140,7 +142,7 @@ func _switch_page(next: Control, backwards := false) -> void:
 			_place_deck_selector_profile()
 		profile_panel.visible = next == network_page and network_page.session_controls.visible
 		deck_selector.reset_preview()
-	if network_entry or next == home_page or next == setup_page or next == shop_page:
+	if network_entry or next == home_page or next == setup_page or next == shop_page or next == friends_page:
 		# L'ingresso Multiplayer usa solo il pop dei pulsanti, senza traslare la pagina.
 		if has_meta("page_transition_cleanup"):
 			get_meta("page_transition_cleanup").call()
@@ -279,13 +281,27 @@ func _ready() -> void:
 	var settings := _round_icon_button(round_buttons, "setting.svg", "Settings", _show_settings)
 	settings.position = Vector2(0, ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING)
 	settings.size = Vector2.ONE * ROUND_BUTTON_SIZE
-	var info := _round_icon_button(round_buttons, "info.svg", "Info", _show_home_info)
-	info.position = Vector2(0, (ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING) * 2.0)
+	var friends := _round_icon_button(round_buttons, "friends.svg", "Amici", _show_friends)
+	friends.position = Vector2(0, (ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING) * 2.0)
+	friends.size = Vector2.ONE * ROUND_BUTTON_SIZE
+	friends_dot = Panel.new()
+	friends.add_child(friends_dot)
+	friends_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	friends_dot.position = Vector2(ROUND_BUTTON_SIZE - 24, 0)
+	friends_dot.size = Vector2(22,22)
+	var dot_style := StyleBoxFlat.new()
+	dot_style.bg_color = Color("ed4155")
+	dot_style.set_corner_radius_all(11)
+	friends_dot.add_theme_stylebox_override("panel",dot_style)
+	get_node("/root/FriendsManager").changed.connect(_refresh_friends_dot)
+	_refresh_friends_dot()
+	var info := _round_icon_button(home_persistent_ui, "info.svg", "Info", _show_home_info)
+	info.position = Vector2(40,40)
 	info.size = Vector2.ONE * ROUND_BUTTON_SIZE
 
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
 	# Control separati: nessun Container forza le loro dimensioni.
-	for button in [single, multi, shop, settings, info]:
+	for button in [single, multi, shop, settings, friends, info]:
 		home_intro_buttons.append(button)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
@@ -639,6 +655,20 @@ func _show_network() -> void:
 	network_page.open()
 	_switch_page(network_page)
 	_animate_mode_heading("WITH YOUR FRIENDS")
+
+func _refresh_friends_dot() -> void:
+	if is_instance_valid(friends_dot):
+		friends_dot.visible = get_node("/root/FriendsManager").pending_count() > 0
+
+func _show_friends() -> void:
+	title.hide()
+	friends_subtitle.hide()
+	if not is_instance_valid(friends_page):
+		friends_page = preload("res://scenes/balatro/scripts/friends_page.gd").new()
+		add_child(friends_page)
+		friends_page.setup(self)
+	_switch_page(friends_page)
+	friends_page.open()
 
 func _show_shop() -> void:
 	title.hide()

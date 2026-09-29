@@ -34,6 +34,7 @@ VoiceChat="*res://scenes/balatro/scripts/voice_chat.gd"
 AccountSession="*res://scenes/balatro/scripts/account_session.gd"
 AccountProfile="*res://scenes/balatro/scripts/account_profile.gd"
 ShopManager="*res://scenes/balatro/scripts/shop_manager.gd"
+FriendsManager="*res://scenes/balatro/scripts/friends_manager.gd"
 
 [bisca]
 

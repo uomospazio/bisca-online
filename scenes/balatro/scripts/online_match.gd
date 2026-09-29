@@ -113,7 +113,7 @@ func _apply(value: Dictionary) -> void:
 			if id >= 0:
 				card.set_card_data(host.catalog[id])
 			card.set_face_down(id < 0)
-			card.set_meta("seat_id", p.id)
+			card.set_meta("seat_id", host._visual_seat_for_player(p.id))
 			host.table.play_card(card, false)
 			if p.id == 0:
 				card.hide()
@@ -133,7 +133,7 @@ func _apply(value: Dictionary) -> void:
 						card = own_card
 			if card:
 				from_hand = true
-				card.set_meta("seat_id", entry.player)
+				card.set_meta("seat_id", host._visual_seat_for_player(entry.player))
 				host.hand.commit_card(card)
 			else:
 				card = host.CardScene.instantiate()
@@ -143,7 +143,7 @@ func _apply(value: Dictionary) -> void:
 				card.set_card_data(host.catalog[entry.card])
 			else:
 				card.set_face_down(true)
-			card.set_meta("seat_id", entry.player)
+			card.set_meta("seat_id", host._visual_seat_for_player(entry.player))
 			if not from_hand:
 				host.table.play_card(card)
 			host.table_visuals[entry.player] = card

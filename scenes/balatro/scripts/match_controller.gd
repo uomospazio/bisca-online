@@ -516,7 +516,7 @@ func _place_blind_cards(animate_own: bool) -> void:
 			card.set_face_down(true)
 		else:
 			card.set_card_data(catalog[p.hand[0]])
-		card.set_meta("seat_id", p.id)
+		card.set_meta("seat_id", _visual_seat_for_player(p.id))
 		card.global_position = pile.top_global_position()
 		table.play_card(card, animate_own and p.id == 0)
 		if p.id == 0:
@@ -922,7 +922,7 @@ func _show_bot_card(id: int) -> void:
 	card.set_card_data(catalog[entry.card])
 	var badge = scores.get_child(id)
 	card.global_position = badge.global_position + Vector2(80, 128) * badge.scale - card.size / 2.0
-	card.set_meta("seat_id", id)
+	card.set_meta("seat_id", _visual_seat_for_player(id))
 	card.rotation = table.landing_rotation(card)
 	card.scale = Vector2.ONE * 0.5
 	table.play_card(card)

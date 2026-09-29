@@ -157,23 +157,54 @@ func act(target: String, action: String) -> void:
 	manager.refresh()
 
 func answer_invite(sender: String, accept: bool) -> void:
-	if working: return
+	if working:
+		return
+
 	var net := get_node("/root/NetworkSession")
-	if accept and not net.room_code.is_empty():
+
+	# room_code può rimanere valorizzato per il rejoin anche quando
+	# il giocatore non si trova realmente dentro una lobby.
+	# Consideriamo attiva la lobby solo quando esiste anche uno
+	# stato server valido relativo allo stesso codice stanza.
+	var actually_in_lobby: bool = (
+		not net.room_code.is_empty()
+		and not net.latest.is_empty()
+		and str(net.latest.get("code", "")) == net.room_code
+	)
+
+	if accept and actually_in_lobby:
 		notice.text = "Esci prima dalla lobby attuale per accettare l'invito."
 		return
+
 	working = true
 	var generation := search_generation
-	var response: Dictionary = await manager.call_api("bisca_answer_invite",{"from_user":sender,"accept":accept})
+	var response: Dictionary = await manager.call_api(
+		"bisca_answer_invite",
+		{
+			"from_user": sender,
+			"accept": accept
+		}
+	)
 	working = false
-	if generation != search_generation: return
+
+	if generation != search_generation:
+		return
+
 	if not response.ok:
 		notice.text = "Invito scaduto o non disponibile."
 	else:
 		notice.text = "Invito rifiutato." if not accept else "Ingresso nella lobby..."
 		if accept and response.data is String:
 			menu._show_network()
-			net.connect_room(net.endpoint,{"op":"join","code":response.data,"name":menu.chosen_name()})
+			net.connect_room(
+				net.endpoint,
+				{
+					"op": "join",
+					"code": response.data,
+					"name": menu.chosen_name()
+				}
+			)
+
 	manager.refresh()
 
 func update_contacts() -> void:

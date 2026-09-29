@@ -136,6 +136,10 @@ func _auth_action(path: String, method: int, body: Dictionary, authorized := tru
 		return {"ok": false, "message": "Connessione non riuscita. Riprova."}
 	var response: Array = await _request.request_completed
 	_busy = false
+	# Come Supabase Auth: una sessione gia' revocata/non valida non deve
+	# impedire l'uscita locale esplicitamente richiesta dall'utente.
+	if path == "logout?scope=local" and response[0] == HTTPRequest.RESULT_SUCCESS and response[1] in [401, 403, 404]:
+		return {"ok": true, "data": {}}
 	var data = JSON.parse_string(response[3].get_string_from_utf8())
 	if response[0] != HTTPRequest.RESULT_SUCCESS or response[1] < 200 or response[1] >= 300:
 		var code := str(data.get("error_code", "")) if data is Dictionary else ""

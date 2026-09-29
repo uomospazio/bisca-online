@@ -815,10 +815,10 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.custom_minimum_size.y = MENU_BUTTON_HEIGHT
 	button.add_theme_font_override("font", KIDS_FONT)
 	button.add_theme_font_size_override("font_size", 36)
-	button.add_theme_stylebox_override("normal", _menu_button_style(BUTTON_PURPLE))
-	button.add_theme_stylebox_override("hover", _menu_button_style(BUTTON_CYAN, BUTTON_TEXT, 6))
-	button.add_theme_stylebox_override("pressed", _menu_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2))
-	button.add_theme_stylebox_override("disabled", _menu_button_style(BUTTON_DISABLED))
+	button.add_theme_stylebox_override("normal", _menu_button_style(BUTTON_PURPLE, Color.TRANSPARENT, 0, MENU_BUTTON_HEIGHT))
+	button.add_theme_stylebox_override("hover", _menu_button_style(BUTTON_CYAN, BUTTON_TEXT, 6, MENU_BUTTON_HEIGHT))
+	button.add_theme_stylebox_override("pressed", _menu_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2, MENU_BUTTON_HEIGHT))
+	button.add_theme_stylebox_override("disabled", _menu_button_style(BUTTON_DISABLED, Color.TRANSPARENT, 0, MENU_BUTTON_HEIGHT))
 	button.add_theme_color_override("font_color", BUTTON_TEXT)
 	button.add_theme_color_override("font_hover_color", BUTTON_TEXT)
 	button.add_theme_color_override("font_pressed_color", BUTTON_TEXT)
@@ -986,8 +986,13 @@ func set_coins_amount(amount: int) -> void:
 		shop_page.coins_amount.text = str(maxi(amount, 0))
 
 
-func _menu_button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
-	return LexispellStyle.button_style(color, border_color, border_width)
+func _menu_button_style(
+	color: Color,
+	border_color: Color = Color.TRANSPARENT,
+	border_width: int = 0,
+	button_height: float = 0.0
+) -> StyleBoxFlat:
+	return LexispellStyle.button_style(color, border_color, border_width, button_height)
 
 func _has_special(value: String) -> bool:
 	for character in "+-/éÉ?'−·…":

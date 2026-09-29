@@ -10,6 +10,7 @@ var working := false
 var search_generation := 0
 var identity := ""
 var search_box: Panel
+var search_timer: Timer
 
 func setup(host: Control) -> void:
 	menu = host
@@ -18,10 +19,8 @@ func setup(host: Control) -> void:
 	var back: Button = menu._button(self, "INDIETRO", menu.show_home)
 	back.position = Vector2(40,40)
 	back.size = Vector2(260,96)
-	for state in ["normal","hover","pressed","focus","disabled"]:
-		var skin := back.get_theme_stylebox(state).duplicate() as StyleBoxFlat
-		skin.set_corner_radius_all(48)
-		back.add_theme_stylebox_override(state,skin)
+	_set_button_radius(back, 48)
+
 	var title := preload("res://scenes/balatro/scripts/idle_subtitle.gd").new()
 	add_child(title)
 	title.text = "AMICI"
@@ -30,61 +29,141 @@ func setup(host: Control) -> void:
 	title.add_theme_font_override("font",menu.KIDS_FONT)
 	title.add_theme_font_size_override("font_size",58)
 	title.set_animated(true)
+
 	query = LineEdit.new()
 	add_child(query)
 	query.position = Vector2(180,180)
 	query.size = Vector2(1050,70)
+	query.custom_minimum_size.y = 70
 	query.placeholder_text = "Username completo o #codice"
 	query.max_length = 64
 	query.add_theme_font_size_override("font_size",30)
-	query.text_submitted.connect(func(_text): search())
-	var search_button: Button = menu._button(self,"CERCA",search)
-	search_button.position = Vector2(1260,180)
-	search_button.size = Vector2(300,70)
+	_set_line_edit_radius(query, 35)
+	# Ricerca automatica mentre si scrive, con un piccolo debounce
+	# per evitare una richiesta di rete a ogni singolo tasto.
+	search_timer = Timer.new()
+	search_timer.one_shot = true
+	search_timer.wait_time = 0.35
+	add_child(search_timer)
+	search_timer.timeout.connect(search)
+
+	query.text_changed.connect(func(_text):
+		search_generation += 1
+		search_timer.stop()
+		if query.text.strip_edges().length() >= 3:
+			search_timer.start()
+		else:
+			clear(results)
+			notice.text = ""
+	)
+
 	notice = label("",self)
 	notice.position = Vector2(180,270)
 	notice.size = Vector2(1560,90)
 	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	results = column(Vector2(180,380))
 	contacts = column(Vector2(990,380))
+
 	var friends_box := Panel.new()
 	add_child(friends_box)
 	friends_box.position = Vector2(180,230)
 	friends_box.size = Vector2(1500,750)
 	friends_box.add_theme_stylebox_override("panel",Style.button_style(Style.PANEL,Style.HOVER,4))
+
 	var contacts_scroll := contacts.get_parent() as ScrollContainer
 	contacts_scroll.reparent(friends_box)
 	contacts_scroll.position = Vector2(24,24)
 	contacts_scroll.size = Vector2(1452,702)
+
 	search_box = Panel.new()
 	add_child(search_box)
 	search_box.position = Vector2(980,330)
 	search_box.size = Vector2(780,650)
 	search_box.z_index = 10
 	search_box.add_theme_stylebox_override("panel",Style.button_style(Style.PANEL,Style.HOVER,4))
+
 	query.reparent(search_box)
 	query.position = Vector2(24,24)
 	query.size = Vector2(732,70)
-	search_button.reparent(search_box)
-	search_button.position = Vector2(24,110)
-	search_button.size = Vector2(340,70)
-	var close: Button = menu._button(search_box,"CHIUDI",func(): search_box.hide())
-	close.position = Vector2(392,110)
-	close.size = Vector2(364,70)
+	query.custom_minimum_size.y = 70
+	_set_line_edit_radius(query, 35)
+
+
 	var results_scroll := results.get_parent() as ScrollContainer
 	results_scroll.reparent(search_box)
-	results_scroll.position = Vector2(24,204)
-	results_scroll.size = Vector2(732,422)
+	results_scroll.position = Vector2(24,110)
+	results_scroll.size = Vector2(732,516)
 	search_box.hide()
-	var add_button: Button = menu._round_icon_button(self,"add_friends.svg","Aggiungi amici",func(): search_box.show(); query.grab_focus())
+
+	var add_button: Button = menu._round_icon_button(
+		self,
+		"add_friends.svg",
+		"Aggiungi amici",
+		func(): _toggle_search_box()
+	)
 	add_button.position = Vector2(1740,230)
 	add_button.size = Vector2.ONE * menu.ROUND_BUTTON_SIZE
+
+	# Click/tap fuori dal popup: chiude la ricerca.
+	search_box.mouse_filter = Control.MOUSE_FILTER_STOP
+
 	notice.position = Vector2(180,150)
 	notice.size = Vector2(1450,70)
+
 	manager.changed.connect(update_contacts)
 	get_node("/root/AccountSession").changed.connect(_identity_changed)
 	identity = str(get_node("/root/AccountSession").user_id)
 	update_contacts()
+
+func _toggle_search_box() -> void:
+	if search_box.visible:
+		_close_search_box()
+	else:
+		search_box.show()
+		query.grab_focus()
+
+
+func _close_search_box() -> void:
+	search_box.hide()
+	query.release_focus()
+	if search_timer:
+		search_timer.stop()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_instance_valid(search_box) or not search_box.visible:
+		return
+
+	var pressed := false
+	var position := Vector2.ZERO
+
+	if event is InputEventMouseButton:
+		pressed = event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+		position = event.position
+	elif event is InputEventScreenTouch:
+		pressed = event.pressed
+		position = event.position
+
+	if pressed and not search_box.get_global_rect().has_point(position):
+		_close_search_box()
+		get_viewport().set_input_as_handled()
+
+
+func _set_button_radius(button: Button, radius: int) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(radius)
+			button.add_theme_stylebox_override(state, style)
+
+func _set_line_edit_radius(field: LineEdit, radius: int) -> void:
+	for state in ["normal", "focus", "read_only"]:
+		var base_style := field.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(radius)
+			field.add_theme_stylebox_override(state, style)
 
 func label(text: String, parent: Node) -> Label:
 	var node := Label.new()
@@ -117,22 +196,27 @@ func _identity_changed() -> void:
 	if identity == next_identity: return
 	identity = next_identity
 	search_generation += 1
+	if search_timer:
+		search_timer.stop()
 	clear(results)
 	query.clear()
 
 func open() -> void:
-	search_box.hide()
+	_close_search_box()
 	manager.refresh()
 	update_contacts()
 
 func search() -> void:
-	if working: return
-	if query.text.strip_edges().length() < 3:
-		notice.text = "Inserisci almeno 3 caratteri."
+	if working:
 		return
+
+	var search_text := query.text.strip_edges()
+	if search_text.length() < 3:
+		return
+
 	working = true
 	var generation := search_generation
-	var response: Dictionary = await manager.call_api("bisca_search_friends", {"query":query.text.strip_edges()})
+	var response: Dictionary = await manager.call_api("bisca_search_friends", {"query":search_text})
 	working = false
 	if generation != search_generation: return
 	clear(results)
@@ -145,6 +229,7 @@ func search() -> void:
 		label(manager.display_name(row),results)
 		var button: Button = menu._button(results,"AGGIUNGI",act.bind(str(row.id),"request"))
 		button.custom_minimum_size = Vector2(0,60)
+		_set_button_radius(button, 30)
 
 func act(target: String, action: String) -> void:
 	if working: return
@@ -162,10 +247,6 @@ func answer_invite(sender: String, accept: bool) -> void:
 
 	var net := get_node("/root/NetworkSession")
 
-	# room_code può rimanere valorizzato per il rejoin anche quando
-	# il giocatore non si trova realmente dentro una lobby.
-	# Consideriamo attiva la lobby solo quando esiste anche uno
-	# stato server valido relativo allo stesso codice stanza.
 	var actually_in_lobby: bool = (
 		not net.room_code.is_empty()
 		and not net.latest.is_empty()
@@ -218,9 +299,11 @@ func update_contacts() -> void:
 		skin.set_content_margin_all(18)
 		tile.add_theme_stylebox_override("panel",skin)
 		contacts.add_child(tile)
+
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation",20)
 		tile.add_child(line)
+
 		var dot := Panel.new()
 		dot.custom_minimum_size = Vector2(22,22)
 		dot.size_flags_vertical = SIZE_SHRINK_CENTER
@@ -230,16 +313,20 @@ func update_contacts() -> void:
 		dot.add_theme_stylebox_override("panel",dot_skin)
 		dot.tooltip_text = "Online di recente" if row.get("online",false) else "Offline"
 		line.add_child(dot)
+
 		var identity_rows := VBoxContainer.new()
 		identity_rows.size_flags_horizontal = SIZE_EXPAND_FILL
 		line.add_child(identity_rows)
 		label(manager.display_name(row),identity_rows)
+
 		if row.has("invite_code"):
 			label("Invito alla lobby " + str(row.invite_code),identity_rows)
 			for accept in [true,false]:
 				var invitation_button: Button = menu._button(line,"ACCETTA" if accept else "RIFIUTA",answer_invite.bind(str(row.id),accept))
 				invitation_button.custom_minimum_size = Vector2(210,60)
 				invitation_button.size_flags_vertical = SIZE_SHRINK_CENTER
+				_set_button_radius(invitation_button, 30)
+
 		if row.status != "accepted":
 			label("Richiesta ricevuta" if row.incoming else "Richiesta inviata",identity_rows)
 			var actions := ["accept","decline"] if row.incoming else ["cancel"]
@@ -247,4 +334,6 @@ func update_contacts() -> void:
 				var button: Button = menu._button(line,{"accept":"ACCETTA","decline":"RIFIUTA","cancel":"ANNULLA"}[action],act.bind(str(row.id),action))
 				button.custom_minimum_size = Vector2(210,60)
 				button.size_flags_vertical = SIZE_SHRINK_CENTER
+				_set_button_radius(button, 30)
+
 	if not manager.error.is_empty(): notice.text = manager.error

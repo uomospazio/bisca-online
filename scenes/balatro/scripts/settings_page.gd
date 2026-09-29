@@ -63,6 +63,7 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 		account_panel.setup(menu)
 	)
 	account_button.custom_minimum_size = Vector2(0, 64)
+	_set_button_radius(account_button, 32)
 	# Cambiare identita' durante una partita interromperebbe l'associazione al profilo.
 	account_button.disabled = back_action.is_valid()
 	account_button.tooltip_text = "Gestisci l'account dai Settings del menu principale."
@@ -75,10 +76,20 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	buttons.add_theme_constant_override("separation", 30)
 	var back: Button = menu._button(buttons, "INDIETRO", back_action if back_action.is_valid() else menu.show_home)
 	back.custom_minimum_size = Vector2(320, 80)
+	_set_button_radius(back, 40)
 	var reset: Button = menu._button(buttons, "RIPRISTINA", settings.reset_defaults)
 	reset.custom_minimum_size = Vector2(320, 80)
+	_set_button_radius(reset, 40)
 	settings.changed.connect(_sync)
 	_sync()
+
+func _set_button_radius(button: Button, radius: int) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(radius)
+			button.add_theme_stylebox_override(state, style)
 
 func _label(text: String, font_size: int = 26) -> Label:
 	var label := Label.new()
@@ -174,6 +185,7 @@ func _build_voice_settings(rows: VBoxContainer, menu: Control) -> void:
 	voice_stop = menu._button(buttons, "DISATTIVA", voice.stop)
 	for button in [voice_start, voice_stop]:
 		button.custom_minimum_size = Vector2(330, 64)
+		_set_button_radius(button, 32)
 	var row := _row(rows, "MICROFONO ACCESO")
 	mic_toggle = CheckButton.new()
 	mic_toggle.add_theme_icon_override("checked", preload("res://scenes/balatro/visuals/settings_toggle_on.svg"))

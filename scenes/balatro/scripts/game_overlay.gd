@@ -137,7 +137,8 @@ func _ready() -> void:
 	hide()
 
 func _overlay_button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
-	return LexispellStyle.button_style(color, border_color, border_width)
+	# I pulsanti dell'overlay sono alti 64 px: radius Y/2 = 32.
+	return LexispellStyle.button_style(color, border_color, border_width, 64.0)
 
 func announce_turn(prediction: bool, single_card: bool = false) -> void:
 	z_index = 0

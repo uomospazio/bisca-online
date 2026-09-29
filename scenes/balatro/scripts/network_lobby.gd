@@ -135,6 +135,7 @@ func setup(owner_menu: Control) -> void:
 	code_button.position = Vector2(1050, 145)
 	code_button.custom_minimum_size = Vector2(540, 200)
 	code_button.size = Vector2(540, 200)
+	_set_button_radius(code_button, 100)
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		var style := code_button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
 		if style:
@@ -563,6 +564,7 @@ func _refresh_invites() -> void:
 		count += 1
 		var button: Button = menu._button(invite_rows,"INVITA " + manager.display_name(friend),_send_invite.bind(str(friend.id)))
 		button.custom_minimum_size = Vector2(0,68)
+		_set_button_radius(button, 34)
 		button.disabled = sending_invite
 	if count == 0:
 		var empty := Label.new()
@@ -589,6 +591,14 @@ func refresh_own_card() -> void:
 		var avatar: TextureRect = row.get_meta("avatar_view")
 		avatar.texture = menu.profile_texture
 		avatar.queue_redraw()
+
+func _set_button_radius(button: Button, radius: int) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(radius)
+			button.add_theme_stylebox_override(state, style)
 
 func _style_player_slot(style: StyleBoxFlat) -> void:
 	style.set_corner_radius_all(int(PLAYER_SLOT_HEIGHT / 2.0))

@@ -14,14 +14,12 @@ var hover_tween: Tween
 var silent := false
 
 func _ready() -> void:
-	add_theme_stylebox_override("focus", LexispellStyle.button_style(LexispellStyle.HOVER, LexispellStyle.TEXT, 4))
-	add_theme_stylebox_override("disabled", LexispellStyle.button_style(LexispellStyle.DISABLED))
-	add_theme_stylebox_override("hover_pressed", LexispellStyle.button_style(LexispellStyle.NORMAL, Color.TRANSPARENT, 2))
+	_update_state_styles()
 	add_theme_color_override("font_focus_color", LexispellStyle.TEXT)
 	add_theme_color_override("font_hover_pressed_color", LexispellStyle.TEXT)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_resync_pivot()
-	resized.connect(_resync_pivot)
+	resized.connect(_on_resized)
 	focus_entered.connect(_hover)
 	focus_exited.connect(_unhover)
 	mouse_entered.connect(_grab_focus)
@@ -33,6 +31,48 @@ func _ready() -> void:
 	pressed.connect(func():
 		if click_sound_enabled:
 			ButtonAudio.play(self, ButtonAudio.CLICK)
+	)
+
+func _on_resized() -> void:
+	_resync_pivot()
+	_update_state_styles()
+
+func _update_state_styles() -> void:
+	# Ogni stato gestito da questa classe usa sempre radius = Y / 2.
+	# `resized` richiama questa funzione quando Container/layout assegnano
+	# l'altezza definitiva al pulsante.
+	var button_height := size.y
+	if button_height <= 0.0:
+		button_height = custom_minimum_size.y
+	if button_height <= 0.0:
+		return
+
+	add_theme_stylebox_override(
+		"focus",
+		LexispellStyle.button_style(
+			LexispellStyle.HOVER,
+			LexispellStyle.TEXT,
+			4,
+			button_height
+		)
+	)
+	add_theme_stylebox_override(
+		"disabled",
+		LexispellStyle.button_style(
+			LexispellStyle.DISABLED,
+			Color.TRANSPARENT,
+			0,
+			button_height
+		)
+	)
+	add_theme_stylebox_override(
+		"hover_pressed",
+		LexispellStyle.button_style(
+			LexispellStyle.NORMAL,
+			Color.TRANSPARENT,
+			2,
+			button_height
+		)
 	)
 
 func grab_focus_silent() -> void:

@@ -42,18 +42,22 @@ func _ready() -> void:
 	scale_with_width = false
 	super._ready()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# Radius sempre pari a metà dell'altezza reale del pulsante.
+	var pill_radius := int(size.y / 2.0)
+
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		var state_color := hover_color if state in ["hover", "focus"] else base_color
 		var border := 4 if state == "focus" else (2 if state in ["pressed", "hover_pressed"] else 0)
-		var style := LexispellStyle.button_style(state_color, LexispellStyle.TEXT, border)
-		style.set_corner_radius_all(corner_radius)
+		var style := LexispellStyle.button_style(state_color, LexispellStyle.TEXT, border, size.y)
+		style.set_corner_radius_all(pill_radius)
 		add_theme_stylebox_override(state, style)
 	progress = Panel.new()
 	progress.name = "Progress"
 	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var silhouette := StyleBoxFlat.new()
 	silhouette.bg_color = Color.WHITE
-	silhouette.set_corner_radius_all(corner_radius)
+	silhouette.set_corner_radius_all(pill_radius)
 	silhouette.corner_detail = 12
 	silhouette.anti_aliasing_size = 0.285
 	progress.add_theme_stylebox_override("panel", silhouette)
@@ -76,7 +80,7 @@ func _ready() -> void:
 		label.add_theme_font_override("font", font)
 	add_child(label)
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	
+
 	# "Tieni premuto" hint
 	hint_label = Label.new()
 	hint_label.name = "HoldHint"
@@ -100,7 +104,7 @@ func _ready() -> void:
 	hint_label.offset_bottom = 40.0
 
 	hint_label.modulate.a = 0.0
-	
+
 	long_press_sfx = AudioStreamPlayer.new()
 	get_node("/root/GameSettings").configure_sfx(long_press_sfx)
 	long_press_sfx.stream = HOLD_SOUND

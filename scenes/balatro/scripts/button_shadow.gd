@@ -5,25 +5,34 @@ const SHADOW_COLOR := Color("241f1d")
 const SHADOW_OFFSET := Vector2(5, 5)
 
 var target: Control
-var corner_radius := 20
+var corner_radius := 0
 
-func setup(owner_control: Control, radius: int = 20) -> void:
+func setup(owner_control: Control, radius: int = -1) -> void:
 	target = owner_control
-	corner_radius = radius
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	focus_mode = Control.FOCUS_NONE
 	show_behind_parent = true
-	z_index = 0
+
+	# Se viene passato un radius esplicito lo mantiene.
+	# Altrimenti segue automaticamente Y/2 del pulsante.
+	corner_radius = radius if radius >= 0 else int(target.size.y / 2.0)
+
 	if not target.resized.is_connected(_sync_to_target):
 		target.resized.connect(_sync_to_target)
+
 	_sync_to_target()
 	queue_redraw()
 
 func _sync_to_target() -> void:
 	if not is_instance_valid(target):
 		return
+
 	size = target.size
 	position = SHADOW_OFFSET
+
+	# Radius sempre pari a metà dell'altezza del target.
+	corner_radius = int(target.size.y / 2.0)
+
 	queue_redraw()
 
 func _draw() -> void:

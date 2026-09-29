@@ -113,12 +113,14 @@ func _ready() -> void:
 	pause_button.position = Vector2(28, 24)
 	pause_button.custom_minimum_size = Vector2(80, 64)
 	pause_button.size = Vector2(80, 64)
+	_set_button_radius(pause_button, 32)
 	pause_button.z_index = 200
 	var card_info = preload("res://scenes/balatro/scripts/card_info.gd").new()
 	add_child(card_info)
 	card_info.setup(self)
 	var info_button: Button = menu._button(game_ui, "INFO", card_info.open)
 	info_button.custom_minimum_size = Vector2(150, 64)
+	_set_button_radius(info_button, 32)
 	info_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	info_button.offset_left = -178
 	info_button.offset_right = -28
@@ -131,6 +133,7 @@ func _ready() -> void:
 	voice_button.add_theme_constant_override("icon_max_width", 28)
 	voice_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	voice_button.custom_minimum_size = Vector2(150, 64)
+	_set_button_radius(voice_button, 32)
 	voice_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	voice_button.offset_left = -178
 	voice_button.offset_right = -28
@@ -363,10 +366,10 @@ func _button(text: String, callback: Callable, enabled: bool = true) -> Button:
 	button.custom_minimum_size = Vector2(112, 60)
 	button.add_theme_font_size_override("font_size", 26)
 	button.add_theme_font_override("font", KIDS_FONT)
-	button.add_theme_stylebox_override("normal", _action_button_style(BUTTON_PURPLE))
-	button.add_theme_stylebox_override("hover", _action_button_style(BUTTON_CYAN, BUTTON_TEXT, 6))
-	button.add_theme_stylebox_override("pressed", _action_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2))
-	button.add_theme_stylebox_override("disabled", _action_button_style(BUTTON_DISABLED))
+	button.add_theme_stylebox_override("normal", _action_button_style(BUTTON_PURPLE, Color.TRANSPARENT, 0, 60.0))
+	button.add_theme_stylebox_override("hover", _action_button_style(BUTTON_CYAN, BUTTON_TEXT, 6, 60.0))
+	button.add_theme_stylebox_override("pressed", _action_button_style(BUTTON_PURPLE_PRESSED, BUTTON_TEXT, 2, 60.0))
+	button.add_theme_stylebox_override("disabled", _action_button_style(BUTTON_DISABLED, Color.TRANSPARENT, 0, 60.0))
 	button.add_theme_color_override("font_color", BUTTON_TEXT)
 	button.add_theme_color_override("font_hover_color", BUTTON_TEXT)
 	button.add_theme_color_override("font_pressed_color", BUTTON_TEXT)
@@ -389,13 +392,26 @@ func _hold_button_in(text: String, callback: Callable, parent: Node) -> HoldButt
 	button.confirm_progress_color = BUTTON_CYAN
 	button.font = KIDS_FONT
 	button.font_size = 24
-	button.corner_radius = JOKER_BUTTON_RADIUS
+	button.corner_radius = int(button.custom_minimum_size.y / 2.0)
 	parent.add_child(button)
 	button.hold_completed.connect(callback)
 	return button
 
-func _action_button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
-	return LexispellStyle.button_style(color, border_color, border_width)
+func _action_button_style(
+	color: Color,
+	border_color: Color = Color.TRANSPARENT,
+	border_width: int = 0,
+	button_height: float = 0.0
+) -> StyleBoxFlat:
+	return LexispellStyle.button_style(color, border_color, border_width, button_height)
+
+func _set_button_radius(button: Button, radius: int) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(radius)
+			button.add_theme_stylebox_override(state, style)
 
 func _start(count: int) -> void:
 	presented_damage_round = -1
@@ -635,6 +651,7 @@ func _refresh() -> void:
 					caption = "Perdo" if bid == 0 else "Vinco"
 				var prediction_button := _button(caption, _predict.bind(bid), rules.legal_bids(0).has(bid))
 				prediction_button.custom_minimum_size.y = 80
+				_set_button_radius(prediction_button, 40)
 				prediction_button.pivot_offset = prediction_button.size / 2.0
 				prediction_button.scale = Vector2.ONE * 0.72
 				prediction_button.rotation_degrees = 5.0 * [-1.0, 1.0].pick_random()

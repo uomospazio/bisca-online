@@ -77,7 +77,6 @@ func _account_changed() -> void:
 		_show("home")
 
 
-# Ricontrolla sia la sessione Supabase sia il profilo cloud.
 func _reconnect() -> void:
 	if working:
 		return
@@ -93,14 +92,10 @@ func _reconnect() -> void:
 	await account.connect_account()
 
 	var cloud := get_node("/root/AccountProfile")
-
-	# Forziamo una nuova lettura del profilo dal cloud.
 	cloud._loaded = false
-
 	await cloud.sync()
 
 	working = false
-
 	_show("home")
 
 
@@ -110,27 +105,14 @@ func _text(
 ) -> Label:
 
 	var label := Label.new()
-
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-	label.add_theme_font_override(
-		"font",
-		FONT
-	)
-
-	label.add_theme_font_size_override(
-		"font_size",
-		size_value
-	)
-
-	label.add_theme_color_override(
-		"font_color",
-		Style.TEXT
-	)
+	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_size_override("font_size", size_value)
+	label.add_theme_color_override("font_color", Style.TEXT)
 
 	rows.add_child(label)
-
 	return label
 
 
@@ -152,20 +134,9 @@ func _field(
 		else LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
 	)
 
-	field.add_theme_font_size_override(
-		"font_size",
-		28
-	)
-
-	field.add_theme_color_override(
-		"font_color",
-		Color("f3effe")
-	)
-
-	field.add_theme_color_override(
-		"font_placeholder_color",
-		Color("aaa3be")
-	)
+	field.add_theme_font_size_override("font_size", 28)
+	field.add_theme_color_override("font_color", Color("f3effe"))
+	field.add_theme_color_override("font_placeholder_color", Color("aaa3be"))
 
 	field.add_theme_stylebox_override(
 		"normal",
@@ -182,7 +153,6 @@ func _field(
 	)
 
 	rows.add_child(field)
-
 	return field
 
 
@@ -201,6 +171,14 @@ func _button(
 		0,
 		60
 	)
+
+	# Altezza 60 px -> radius Y/2 = 30 px.
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var base_style := button.get_theme_stylebox(state)
+		if base_style is StyleBoxFlat:
+			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+			style.set_corner_radius_all(30)
+			button.add_theme_stylebox_override(state, style)
 
 	buttons.append(button)
 
@@ -232,8 +210,6 @@ func _show(next: String) -> void:
 			_text("PROFILO: " + display_name)
 		_button("MODIFICA USERNAME", func(): _show("username"))
 
-		# ID BISCA pubblico.
-		# Esempio: #7P33XD
 		if cloud.profile.has("public_id"):
 			var public_id := str(
 				cloud.profile.get(
@@ -295,11 +271,8 @@ func _show(next: String) -> void:
 				_show("login")
 		)
 
-		# Ora questo pulsante aggiorna sia la sessione
 		_button("CONTINUA CON UN NUOVO OSPITE", func(): _show("new_guest"))
 
-		# Ora questo pulsante aggiorna sia la sessione
-		# sia AccountProfile.
 		_button(
 			"RICONTROLLA CONNESSIONE",
 			_reconnect
@@ -315,7 +288,6 @@ func _show(next: String) -> void:
 					_show("logout")
 			)
 
-
 	elif mode == "username":
 		_text("Username account: 3–24 caratteri, lettere, numeri, punto o underscore. Vuoto = solo codice.")
 		username_field = _field("Username")
@@ -326,7 +298,6 @@ func _show(next: String) -> void:
 		_button("SALVA USERNAME", func(): _run("username"))
 
 	elif mode == "link":
-
 		_text(
 			"Collega la tua email all'ospite: il profilo e il mazzo rimangono gli stessi."
 		)
@@ -340,9 +311,7 @@ func _show(next: String) -> void:
 				_run("link")
 		)
 
-
 	elif mode == "verify":
-
 		_text(
 			"Apri l'email inviata a "
 			+ account.pending_email
@@ -366,9 +335,7 @@ func _show(next: String) -> void:
 				_show("link")
 		)
 
-
 	elif mode == "password":
-
 		_text(
 			"Email verificata. Scegli una password di almeno 8 caratteri per recuperare questo account."
 		)
@@ -384,9 +351,7 @@ func _show(next: String) -> void:
 				_run("password")
 		)
 
-
 	elif mode == "login":
-
 		_text(
 			"Accedi al profilo esistente. I dati dell'ospite NON vengono uniti. Se vuoi conservarlo, collega prima la sua email."
 		)
@@ -399,26 +364,15 @@ func _show(next: String) -> void:
 		)
 
 		confirmation = CheckBox.new()
-
-		confirmation.text = (
-			"Confermo il cambio di account"
-		)
-
-		confirmation.add_theme_font_size_override(
-			"font_size",
-			26
-		)
-
-		rows.add_child(
-			confirmation
-		)
+		confirmation.text = "Confermo il cambio di account"
+		confirmation.add_theme_font_size_override("font_size", 26)
+		rows.add_child(confirmation)
 
 		_button(
 			"ACCEDI",
 			func():
 				_run("login")
 		)
-
 
 	elif mode == "new_guest":
 		_text("Creare un nuovo ospite separato? L'account precedente resta nel cloud: se collegato, puoi recuperarlo con email e password. Monete e oggetti NON vengono trasferiti.")
@@ -430,7 +384,6 @@ func _show(next: String) -> void:
 		_button("CREA NUOVO OSPITE", func(): _run("new_guest"))
 
 	elif mode == "logout":
-
 		_text(
 			"Uscire da questo account? I dati cloud restano salvati. Verra' creato un nuovo ospite; per recuperare questo profilo serviranno email e password."
 		)
@@ -440,7 +393,6 @@ func _show(next: String) -> void:
 			func():
 				_run("logout")
 		)
-
 
 	notice = _text(
 		"",
@@ -471,18 +423,14 @@ func _run(action: String) -> void:
 			or address.text.strip_edges().is_empty()
 		)
 	):
-		notice.text = (
-			"Inserisci un indirizzo email valido."
-		)
+		notice.text = "Inserisci un indirizzo email valido."
 		return
 
 	if (
 		action in ["login", "new_guest"]
 		and not confirmation.button_pressed
 	):
-		notice.text = (
-			"Conferma il cambio account prima di accedere."
-		)
+		notice.text = "Conferma il cambio account prima di accedere."
 		return
 
 	working = true
@@ -499,26 +447,14 @@ func _run(action: String) -> void:
 			result = await account.continue_as_new_guest()
 		"username":
 			result = await get_node("/root/AccountProfile").save_username(username_field.text)
-
 		"link":
-			result = await account.link_email(
-				address.text
-			)
-
+			result = await account.link_email(address.text)
 		"verify":
 			result = await account.check_email_confirmation()
-
 		"password":
-			result = await account.set_password(
-				password.text
-			)
-
+			result = await account.set_password(password.text)
 		"login":
-			result = await account.sign_in(
-				address.text,
-				password.text
-			)
-
+			result = await account.sign_in(address.text, password.text)
 		"logout":
 			result = await account.sign_out()
 
@@ -528,7 +464,6 @@ func _run(action: String) -> void:
 	working = false
 
 	if not result.ok:
-
 		for button in buttons:
 			button.disabled = false
 
@@ -536,7 +471,6 @@ func _run(action: String) -> void:
 			"message",
 			"Operazione non riuscita."
 		)
-
 		return
 
 	_show(

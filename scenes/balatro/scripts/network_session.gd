@@ -231,6 +231,8 @@ func _disconnected(peer_id: int) -> void:
 		return
 	_revoke_voice(room, room.people[ref.slot])
 	room.people[ref.slot].peer = 0
+	if room.rules == null:
+		_reset_ready(room)
 	room.touched = Time.get_ticks_msec()
 	# Switch an already-running human turn to the normal bot timing too.
 	if room.rules != null and room.stage == "turn" and room.rules.current == ref.slot and room.rules.phase in ["prediction", "play"]:
@@ -388,6 +390,8 @@ func request(command: Dictionary) -> void:
 			var display_name := str(command.get("name", "Giocatore")).strip_edges().substr(0, 16)
 			room.people.append({"name": display_name if not display_name.is_empty() else "Giocatore", "peer": 0, "bot": false, "token": Crypto.new().generate_random_bytes(32).hex_encode()})
 		room.people[slot].peer = peer
+		if room.rules == null:
+			_reset_ready(room)
 		# Durante una partita il proprietario del posto non puo' cambiare account.
 		if room.rules == null:
 			room.people[slot]["account_id"] = account_id
@@ -473,8 +477,14 @@ func request(command: Dictionary) -> void:
 		room.options = {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5)}
 		room.bots = bool(command.get("bots", false))
 		room.bot_count = clampi(int(command.get("bot_count", 2)), 1, 7)
+		_reset_ready(room)
 		_broadcast(room)
 		return
+	if op == "restart":
+		if slot != 0:
+			_reject(peer, "Solo il creatore puo' proporre una nuova partita")
+			return
+		op = "return_lobby"
 	if op == "return_lobby":
 		if room.rules == null or room.rules.phase != "finished" or room.stage != "turn":
 			return
@@ -488,6 +498,7 @@ func request(command: Dictionary) -> void:
 				members[room.people[i].peer].slot = i
 		room.rules = null
 		room.stage = "lobby"
+		_reset_ready(room)
 		room.deadline = 0
 		_broadcast(room)
 		return
@@ -501,6 +512,7 @@ func request(command: Dictionary) -> void:
 		var kicked_peer: int = room.people[kicked_slot].peer
 		_revoke_voice(room, room.people[kicked_slot])
 		room.people.remove_at(kicked_slot)
+		_reset_ready(room)
 		if kicked_peer > 0:
 			members.erase(kicked_peer)
 			multiplayer.disconnect_peer(kicked_peer)
@@ -509,11 +521,21 @@ func request(command: Dictionary) -> void:
 				members[room.people[i].peer].slot = i
 		_broadcast(room)
 		return
-	if op in ["start", "restart"]:
-		if slot != 0 or (op == "start" and room.rules != null) or (op == "restart" and (room.rules == null or room.rules.phase != "finished")):
+	if op == "ready":
+		if room.rules != null or room.stage != "lobby":
+			return
+		room.people[slot]["ready"] = bool(command.get("ready", true))
+		if not _all_ready(room):
+			_broadcast(room)
+			return
+	if op in ["start", "restart", "ready"]:
+		if (slot != 0 and op != "ready") or (op in ["start", "ready"] and room.rules != null) or (op == "restart" and (room.rules == null or room.rules.phase != "finished")):
 			_reject(peer, "Solo il creatore può avviare la stanza")
 			return
-		if op == "start" and room.bots:
+		if op in ["start", "ready"] and not _all_ready(room):
+			_reject(peer, "Tutti i giocatori devono essere pronti")
+			return
+		if op in ["start", "ready"] and room.bots:
 			var bots_to_add := mini(int(room.get("bot_count", 2)), int(room.capacity) - room.people.size())
 			for _i in range(bots_to_add):
 				room.people.append({"name": "Bot %d" % room.people.size(), "peer": 0, "bot": true, "token": ""})
@@ -546,6 +568,20 @@ func request(command: Dictionary) -> void:
 	else:
 		_reject(peer, "Scelta non valida")
 
+func _reset_ready(room: Dictionary) -> void:
+	for person in room.people:
+		person["ready"] = false
+
+func _all_ready(room: Dictionary) -> bool:
+	var humans := 0
+	for person in room.people:
+		if person.bot:
+			continue
+		humans += 1
+		if person.peer <= 0 or not bool(person.get("ready", false)):
+			return false
+	return humans > 0
+
 func _broadcast(room: Dictionary) -> void:
 	if rewards:
 		rewards.observe(room)
@@ -562,7 +598,7 @@ func _broadcast(room: Dictionary) -> void:
 		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
 		state["bot_count"] = room.get("bot_count", 2)
 		for p in room.people:
-			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id, "voice_active": bool(p.get("voice_active", false))})
+			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id, "voice_active": bool(p.get("voice_active", false)), "ready": bool(p.get("ready", false))})
 		if room.rules != null:
 			state.merge(room.rules.view_for(id))
 			state["completed_tricks"] = room.rules.completed_tricks

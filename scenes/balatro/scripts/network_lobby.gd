@@ -16,6 +16,7 @@ var code: LineEdit
 var match_options: PanelContainer
 var info: Label
 var start_button: Button
+var ready_label: Label
 var controls: VBoxContainer
 var session_controls: Control
 var lobby_options: PanelContainer
@@ -234,7 +235,12 @@ func setup(owner_menu: Control) -> void:
 	players_box = VBoxContainer.new()
 	players_box.add_theme_constant_override("separation", 8)
 	participant_content.add_child(players_box)
-	start_button = menu._button(session_controls, "PLAY", func(): net.send({"op": "start"}))
+	start_button = menu._button(session_controls, "PRONTO", func():
+		var people: Array = net.latest.get("people", [])
+		var own := int(net.latest.get("you", -1))
+		if own >= 0 and own < people.size():
+			net.send({"op": "ready", "ready": not bool(people[own].get("ready", false))})
+	)
 	start_button.position = Vector2(1300, 800)
 	start_button.size = Vector2(260, 80)
 	start_button.custom_minimum_size.y = 80
@@ -378,7 +384,9 @@ func _update(state: Dictionary) -> void:
 			menu.home_character.hide()
 		menu.friends_subtitle.hide()
 		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, entry if entry.visible else controls, session_controls)
-	start_button.disabled = state.you != 0
+	start_button.disabled = false
+	var own_ready: bool = bool(state.people[int(state.you)].get("ready", false))
+	ready_label.text = "ANNULLA" if own_ready else "PRONTO"
 	is_host = state.you == 0
 	_sync_options(state)
 	code_label.text = str(state.code)
@@ -452,6 +460,12 @@ func _update(state: Dictionary) -> void:
 		name_button.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 		name_button.flat = true
 		line.add_child(name_button)
+		var ready_dot := Label.new()
+		ready_dot.text = "●"
+		ready_dot.tooltip_text = "Pronto" if bool(p.get("ready", false)) else "Non pronto"
+		ready_dot.add_theme_font_size_override("font_size", 24)
+		ready_dot.add_theme_color_override("font_color", Color("48cf83") if bool(p.get("ready", false)) else Color("777583"))
+		line.add_child(ready_dot)
 		if index == 0:
 			var crown := TextureRect.new()
 			crown.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/crown.svg")
@@ -707,7 +721,8 @@ func _set_icon(button: Button, icon_name: String) -> void:
 	content.add_child(icon)
 
 	var label := Label.new()
-	label.text = "PLAY"
+	label.text = "PRONTO"
+	ready_label = label
 	label.add_theme_font_override("font", menu.KIDS_FONT)
 	label.add_theme_font_size_override("font_size", 32)
 	label.add_theme_color_override("font_color", menu.BUTTON_TEXT)

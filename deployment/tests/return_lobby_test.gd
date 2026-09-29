@@ -62,7 +62,7 @@ func _run() -> void:
 	assert(client.avatar_for_slot(0) == null)
 	client.send({"op": "settings", "lives": 5, "starting_cards": 2, "bots": true, "bot_count": 2})
 	await create_timer(0.2).timeout
-	client.send({"op": "start"})
+	client.send({"op": "ready", "ready": true})
 	await create_timer(0.2).timeout
 	assert(client.latest.stage == "deal" and client.latest.people.size() == 3)
 	assert(client.latest.hand_size == 2 and client.latest.players[0].lives == 5)

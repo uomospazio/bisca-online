@@ -1,10 +1,22 @@
 # Premi partita: attivazione
 
-1. Eseguire `010_match_rewards.sql` nel SQL Editor Supabase.
+1. Eseguire `010_match_rewards.sql` e poi `011_match_statistics.sql` nel SQL Editor Supabase. Se 010 e' gia' applicato, basta 011. Applicare 011 prima di distribuire il nuovo server: ora usa `bisca_record_match`.
 2. Nel servizio **server Godot** su Render, Environment, aggiungere `SUPABASE_SECRET_KEY` con una secret key `sb_secret_...` del progetto Supabase (Settings > API Keys). NON aggiungerla a Godot client, GitHub o file esportati. NON usare la publishable key.
 3. Distribuire il server aggiornato (Dockerfile incluso) e riesportare/distribuire il client.
 
 Non ci sono nuovi autoload. Nessun prezzo dei dorsi viene modificato.
+
+## Statistiche
+
+Le nuove partite multiplayer concluse per l'account (eliminazione/vittoria) aumentano `bisca_profiles.games_played`; una vittoria aumenta anche `wins`. Sono conteggiate anche le partite senza premio in monete, comprese quelle da meno di 5 carte. Guest e account email seguono la stessa regola. Un registro `bisca_match_results` impedisce doppi conteggi sui retry: statistiche e premi vengono registrati nella stessa transazione. Nessun conteggio retroattivo; singleplayer locale e abbandono volontario prima del risultato esclusi. Nessuna scrittura delle statistiche dal client.
+
+Verifica: annotare games_played/wins prima del match; dopo eliminazione aspettarsi +1/+0, dopo vittoria +1/+1. Retry e riconnessioni non devono incrementare nuovamente i valori. Con partenza da 4 carte aspettarsi le statistiche ma zero monete.
+
+## Lobby e animazioni testo
+
+Tutti gli umani in lobby devono premere PRONTO; l'ultimo avvia automaticamente. I bot non devono confermare. Il pulsante diventa ANNULLA finche' non parte la partita. Ingressi, disconnessioni, rimozioni e modifiche alle impostazioni azzerano le conferme. Rigioca riapre la lobby per una nuova conferma. Aggiornare sia server sia client.
+
+In Settings, ANIMAZIONI TESTO attiva/disattiva l'oscillazione di nomi e sottotitoli. La preferenza e' locale, salvata automaticamente, efficace subito anche in partita; le transizioni menu e le animazioni delle carte restano invariate.
 
 ## Modalita' di test attuale
 

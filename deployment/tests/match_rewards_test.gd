@@ -43,6 +43,10 @@ func run() -> void:
 	room.options.starting_cards = 4
 	rewards.start_match(room)
 	assert(not room.reward_eligible)
+	rewards.pending.clear()
+	rewards.observe(room)
+	assert(not rewards.pending.is_empty()) # statistiche anche senza premio
+	assert(not rewards.pending.values()[0].p_reward)
 	room.options.starting_cards = 5
 	rewards.start_match(room)
 	assert(room.reward_eligible) # temporaneamente ammessi anche due umani

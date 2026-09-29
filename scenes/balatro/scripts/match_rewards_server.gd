@@ -60,7 +60,7 @@ func start_match(room: Dictionary) -> void:
 	room.reward_sent = {}
 
 func observe(room: Dictionary) -> void:
-	if not room.get("reward_eligible", false) or room.rules == null:
+	if not enabled() or not room.has("reward_users") or room.rules == null:
 		return
 	for slot in room.reward_users:
 		var uid: String = room.reward_users[slot]
@@ -73,7 +73,8 @@ func observe(room: Dictionary) -> void:
 		room.reward_sent[uid] = true
 		var key: String = room.reward_match + ":" + uid
 		pending[key] = {"p_match_id": room.reward_match, "p_user_id": uid,
-			"p_outcome": "victory" if victory else "elimination"}
+			"p_outcome": "victory" if victory else "elimination",
+			"p_reward": bool(room.get("reward_eligible", false))}
 	_flush()
 
 func _flush() -> void:
@@ -82,10 +83,11 @@ func _flush() -> void:
 	sending = true
 	for key in pending.keys():
 		var secret := OS.get_environment("SUPABASE_SECRET_KEY")
-		var data := await _http("/rest/v1/rpc/bisca_award_match", PackedStringArray([
+		var data := await _http("/rest/v1/rpc/bisca_record_match", PackedStringArray([
 			"apikey: " + secret,
 			"Content-Type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(pending[key]))
 		if not data.is_empty():
 			pending.erase(key)
-			credited.emit(data)
+			if int(data.get("amount", 0)) > 0:
+				credited.emit(data)
 	sending = false

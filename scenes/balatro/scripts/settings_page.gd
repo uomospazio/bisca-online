@@ -49,6 +49,7 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	var separator := HSeparator.new()
 	rows.add_child(separator)
 	_add_toggle(rows, "MOVIMENTO CAMERA", "camera")
+	_add_toggle(rows, "ANIMAZIONI TESTO", "text_animations")
 	_add_toggle(rows, "TOOLTIP CARTE", "tooltips")
 	_add_toggle(rows, "SCHERMO INTERO", "fullscreen")
 	if OS.get_name() in ["Android", "iOS", "Web"]:

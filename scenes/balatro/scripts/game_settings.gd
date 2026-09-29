@@ -1,7 +1,7 @@
 extends Node
 
 signal changed
-const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0}
+const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "text_animations": true, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0}
 const FRONT_FOLDERS := ["res://scenes/balatro/trick_asset/mazzo_2/briscola/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_big/Deck/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_color/Deck/"]
 
 func front_texture(colour: int = 3, number: int = 5, index: int = -1) -> Texture2D:

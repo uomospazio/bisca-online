@@ -91,6 +91,18 @@ var font: Font = KIDS_FONT
 var configured := false
 var counter_tween: Tween
 var name_idle_time := 0.0
+var text_motion_enabled := true
+
+func _ready() -> void:
+	var settings := get_node_or_null("/root/GameSettings")
+	if settings:
+		settings.changed.connect(_sync_text_motion)
+	_sync_text_motion()
+
+func _sync_text_motion() -> void:
+	var settings := get_node_or_null("/root/GameSettings")
+	text_motion_enabled = settings == null or bool(settings.values.get("text_animations", true))
+	queue_redraw()
 # Cache limitata al nome corrente: nessun accumulo quando i giocatori cambiano.
 var cached_name := ""
 var cached_font: Font
@@ -125,7 +137,8 @@ func _init() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	name_idle_time += delta
+	if text_motion_enabled:
+		name_idle_time += delta
 	if is_visible_in_tree():
 		queue_redraw()
 
@@ -231,8 +244,8 @@ func _draw_idle_name(value: String, font_size: int) -> void:
 		var character := value.substr(index, 1)
 		var character_width := cached_character_widths[index]
 		var phase := name_idle_time * 4.0 + float(index) * 0.55
-		var bob := sin(phase) * 2.5
-		var tilt := deg_to_rad(sin(phase + 0.7) * 1.4)
+		var bob := sin(phase) * 2.5 if text_motion_enabled else 0.0
+		var tilt := deg_to_rad(sin(phase + 0.7) * 1.4) if text_motion_enabled else 0.0
 		var center := Vector2(cursor_x + character_width / 2.0, 38.0 + bob)
 		var baseline := Vector2(-character_width / 2.0, (ascent - descent) / 2.0)
 		draw_set_transform(center, tilt, Vector2.ONE)

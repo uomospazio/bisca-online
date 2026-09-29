@@ -37,6 +37,9 @@ const Rules = preload("res://scenes/balatro/scripts/match_rules.gd")
 var bot_policy = preload("res://scenes/balatro/scripts/bot_policy.gd").new()
 const PORT := 8910
 var dedicated := false
+var rewards: Node
+var verifying_peers: Dictionary = {}
+var reward_receipts: Dictionary = {}
 var rooms: Dictionary = {}
 var members: Dictionary = {}
 var room_code := ""
@@ -65,6 +68,9 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_lost)
 	multiplayer.server_disconnected.connect(_lost)
 	if dedicated:
+		rewards = preload("res://scenes/balatro/scripts/match_rewards_server.gd").new()
+		add_child(rewards)
+		rewards.credited.connect(_reward_credited)
 		var use_websocket := OS.get_cmdline_user_args().has("--websocket")
 		var peer: MultiplayerPeer
 		var err: Error
@@ -109,6 +115,10 @@ func connect_room(address: String, command: Dictionary) -> void:
 
 	if endpoint.is_empty():
 		endpoint = default_endpoint()
+	# Non inviare mai credenziali Supabase a server personalizzati o senza TLS.
+	var account := get_node_or_null("/root/AccountSession")
+	if endpoint == default_endpoint() and endpoint.begins_with("wss://") and account and account.is_authenticated():
+		command["account_jwt"] = account.match_access_token()
 
 	retry = 0.0
 	connection_deadline = 0
@@ -335,7 +345,12 @@ func request(command: Dictionary) -> void:
 	var peer := multiplayer.get_remote_sender_id()
 	var op := str(command.get("op", ""))
 	if op in ["create", "join", "rejoin"]:
-		if members.has(peer):
+		if members.has(peer) or verifying_peers.has(peer):
+			return
+		verifying_peers[peer] = true
+		var account_id: String = await rewards.verify(str(command.get("account_jwt", "")))
+		verifying_peers.erase(peer)
+		if not _peer_connected(peer) or members.has(peer):
 			return
 		var code := str(command.get("code", "")).strip_edges().to_upper()
 		if op == "create":
@@ -373,6 +388,9 @@ func request(command: Dictionary) -> void:
 			var display_name := str(command.get("name", "Giocatore")).strip_edges().substr(0, 16)
 			room.people.append({"name": display_name if not display_name.is_empty() else "Giocatore", "peer": 0, "bot": false, "token": Crypto.new().generate_random_bytes(32).hex_encode()})
 		room.people[slot].peer = peer
+		# Durante una partita il proprietario del posto non puo' cambiare account.
+		if room.rules == null:
+			room.people[slot]["account_id"] = account_id
 		# If control returns during this player's turn, restore the human
 		# timer rather than leaving the bot's sub-second deadline active.
 		if op == "rejoin" and room.rules != null and room.stage == "turn" and room.rules.current == slot and room.rules.phase in ["prediction", "play"]:
@@ -444,6 +462,8 @@ func request(command: Dictionary) -> void:
 				avatar_received.rpc_id(recipient.peer, person.voice_id, encoded)
 		return
 	if op == "leave":
+		if room.rules != null and room.rules.players[slot].active and room.rules.phase != "finished":
+			room.get("reward_users", {}).erase(slot)
 		_disconnected(peer)
 		return
 	if op == "settings":
@@ -506,6 +526,7 @@ func request(command: Dictionary) -> void:
 		var seating: Array = range(room.people.size())
 		seating.shuffle()
 		room.rules.start(room.people.size(), -1, seating)
+		rewards.start_match(room)
 		room.stage = "deal"
 		room.deadline = Time.get_ticks_msec() + 4500
 		_broadcast(room)
@@ -526,6 +547,8 @@ func request(command: Dictionary) -> void:
 		_reject(peer, "Scelta non valida")
 
 func _broadcast(room: Dictionary) -> void:
+	if rewards:
+		rewards.observe(room)
 	room.rev += 1
 	for p in room.people:
 		if not p.has("voice_id"):
@@ -548,6 +571,42 @@ func _broadcast(room: Dictionary) -> void:
 			state["remaining"] = room.rules.remaining_deck.size()
 			state["order"] = room.rules.order.duplicate()
 		snapshot.rpc_id(person.peer, state)
+		var uid := str(person.get("account_id", ""))
+		for receipt in reward_receipts.get(uid, []):
+			reward_received.rpc_id(person.peer, receipt)
+
+func _reward_credited(receipt: Dictionary) -> void:
+	var uid := str(receipt.get("user_id", ""))
+	if not reward_receipts.has(uid):
+		reward_receipts[uid] = []
+	reward_receipts[uid].append(receipt)
+	for room in rooms.values():
+		for person in room.people:
+			if person.get("account_id", "") == uid and _peer_connected(person.peer):
+				reward_received.rpc_id(person.peer, receipt)
+
+@rpc("authority", "call_remote", "reliable")
+func reward_received(receipt: Dictionary) -> void:
+	if dedicated:
+		return
+	load("res://scenes/balatro/scripts/match_reward_popup.gd").present(self, receipt)
+
+@rpc("any_peer", "call_remote", "reliable")
+func reward_seen(match_id: String) -> void:
+	if not dedicated:
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if not members.has(peer):
+		return
+	var member: Dictionary = members[peer]
+	var person: Dictionary = rooms[member.code].people[member.slot]
+	var uid := str(person.get("account_id", ""))
+	var receipts: Array = reward_receipts.get(uid, [])
+	for i in range(receipts.size() - 1, -1, -1):
+		if receipts[i].match_id == match_id:
+			receipts.remove_at(i)
+	if receipts.is_empty():
+		reward_receipts.erase(uid)
 
 @rpc("authority", "call_remote", "reliable")
 func snapshot(state: Dictionary) -> void:

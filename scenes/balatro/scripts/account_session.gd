@@ -23,6 +23,10 @@ var _request: HTTPRequest
 var _renew: Timer
 var _cache := ConfigFile.new()
 
+func match_access_token() -> String:
+	# Solo NetworkSession, verso il server di gioco configurato con TLS.
+	return _access_token if is_authenticated() else ""
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# I server e i test headless non devono creare utenti reali.

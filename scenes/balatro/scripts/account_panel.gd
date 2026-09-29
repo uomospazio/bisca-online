@@ -296,6 +296,9 @@ func _show(next: String) -> void:
 		)
 
 		# Ora questo pulsante aggiorna sia la sessione
+		_button("CONTINUA CON UN NUOVO OSPITE", func(): _show("new_guest"))
+
+		# Ora questo pulsante aggiorna sia la sessione
 		# sia AccountProfile.
 		_button(
 			"RICONTROLLA CONNESSIONE",
@@ -417,6 +420,15 @@ func _show(next: String) -> void:
 		)
 
 
+	elif mode == "new_guest":
+		_text("Creare un nuovo ospite separato? L'account precedente resta nel cloud: se collegato, puoi recuperarlo con email e password. Monete e oggetti NON vengono trasferiti.")
+		_text("Se il precedente account era un ospite senza email, potresti non poterlo piu' recuperare da questo dispositivo.", 22)
+		confirmation = CheckBox.new()
+		confirmation.text = "Confermo di voler cambiare account"
+		confirmation.add_theme_font_size_override("font_size", 26)
+		rows.add_child(confirmation)
+		_button("CREA NUOVO OSPITE", func(): _run("new_guest"))
+
 	elif mode == "logout":
 
 		_text(
@@ -465,7 +477,7 @@ func _run(action: String) -> void:
 		return
 
 	if (
-		action == "login"
+		action in ["login", "new_guest"]
 		and not confirmation.button_pressed
 	):
 		notice.text = (
@@ -483,6 +495,8 @@ func _run(action: String) -> void:
 	var result: Dictionary
 
 	match action:
+		"new_guest":
+			result = await account.continue_as_new_guest()
 		"username":
 			result = await get_node("/root/AccountProfile").save_username(username_field.text)
 

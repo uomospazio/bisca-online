@@ -205,6 +205,18 @@ func sign_in(address: String, password: String) -> Dictionary:
 			return {"ok": false, "message": "Impossibile salvare la sessione. Account precedente conservato."}
 	return result
 
+## Chiamata solo dopo conferma esplicita: nessuna cancellazione dell'account cloud.
+func continue_as_new_guest() -> Dictionary:
+	var result := await _auth_action("signup", HTTPClient.METHOD_POST, {}, false)
+	if not result.ok:
+		return result
+	var user: Dictionary = result.data.get("user", {})
+	if not bool(user.get("is_anonymous", false)) or str(user.get("id", "")) == user_id:
+		return {"ok": false, "message": "Risposta ospite inattesa. Sessione precedente conservata."}
+	if not _accept_session(result.data, true):
+		return {"ok": false, "message": "Impossibile salvare il nuovo ospite. Sessione precedente conservata."}
+	return {"ok": true}
+
 func _accept_session(data: Dictionary, allow_switch: bool) -> bool:
 	var user: Dictionary = data.get("user", {})
 	var next_id := str(user.get("id", ""))
@@ -215,12 +227,15 @@ func _accept_session(data: Dictionary, allow_switch: bool) -> bool:
 	var next_cache := ConfigFile.new()
 	next_cache.set_value("session", "user_id", next_id)
 	next_cache.set_value("session", "refresh_token", data.refresh_token)
-	next_cache.set_value("session", "password_ready", allow_switch or password_ready)
+	var next_password_ready := not bool(user.get("is_anonymous", true)) and (allow_switch or password_ready)
+	next_cache.set_value("session", "password_ready", next_password_ready)
 	if next_cache.save(SESSION_FILE) != OK:
 		return false
 	_cache = next_cache
 	user_id = next_id
-	password_ready = allow_switch or password_ready
+	password_ready = next_password_ready
+	if allow_switch:
+		pending_email = ""
 	_read_user(user)
 	_access_token = str(data.access_token)
 	_refresh_token = str(data.refresh_token)

@@ -209,6 +209,10 @@ func _ready() -> void:
 	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
 	friends_subtitle.add_theme_color_override("font_color", BUTTON_TEXT)
 	friends_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	friends_subtitle.relief_shadow = true
+	friends_subtitle.add_theme_color_override("font_shadow_color", Color("0c0918"))
+	friends_subtitle.add_theme_constant_override("shadow_offset_x", 0)
+	friends_subtitle.add_theme_constant_override("shadow_offset_y", 5)
 	friends_subtitle.set_animated(true)
 	friends_subtitle.show()
 	home_page = Control.new()
@@ -257,6 +261,7 @@ func _ready() -> void:
 	single.rotation_degrees = SINGLE_BUTTON_ROTATION
 	_add_button_icon(single, "res://scenes/balatro/trick_asset/ui_bisca/single.svg")
 	_set_play_button_radius(single)
+	_add_gloss_button_style(single)
 
 	var multi := _button(home_page, "MULTIPLAYER", _show_network)
 	multi.position = MULTI_BUTTON_POSITION
@@ -265,6 +270,7 @@ func _ready() -> void:
 	multi.rotation_degrees = MULTI_BUTTON_ROTATION
 	_add_button_icon(multi, "res://scenes/balatro/trick_asset/ui_bisca/multi.svg")
 	_set_play_button_radius(multi)
+	_add_gloss_button_style(multi)
 
 	# Contatore monete non cliccabile, sopra il pulsante Shop.
 	_build_coin_counter(home_persistent_ui)
@@ -315,10 +321,12 @@ func _ready() -> void:
 	discord.position = DISCORD_POSITION
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(discord)
 	discord.size = Vector2.ONE * DISCORD_BUTTON_SIZE
+	_add_gloss_button_style(discord)
 
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
 	# Control separati: nessun Container forza le loro dimensioni.
 	for button in [single, multi, shop, settings, friends, info, discord]:
+		_add_gloss_button_style(button)
 		home_intro_buttons.append(button)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
 	add_child(profile_picker)
@@ -331,8 +339,11 @@ func _ready() -> void:
 	profile_button.tooltip_text = "Scegli la foto profilo"
 	profile_button.draw.connect(func():
 		if profile_texture == null:
+			profile_button.draw_circle(Vector2(130, 135), 127, Color(0.047059, 0.035294, 0.094118, 0.28), true, -1, true)
 			profile_button.draw_circle(Vector2(130, 130), 127, LexispellStyle.MUTED_TEXT, true, -1, true)
-		profile_button.draw_arc(Vector2(130, 130), 127, 0, TAU, 128, Color.BLACK, 5.0, true)
+			profile_button.draw_arc(Vector2(130, 130), 119, 0.12 * PI, 0.88 * PI, 64, Color(0, 0, 0, 0.26), 9, true)
+			profile_button.draw_arc(Vector2(130, 130), 121, 1.12 * PI, 1.88 * PI, 64, Color(1, 1, 1, 0.8), 4, true)
+		profile_button.draw_arc(Vector2(130, 130), 127, 0, TAU, 128, Color("0c0918") if profile_texture == null else Color.BLACK, 5.0, true)
 	)
 	var camera_icon := TextureRect.new()
 	camera_icon.name = "CameraIcon"
@@ -352,6 +363,9 @@ func _ready() -> void:
 	menu_content.add_child(deck_selector)
 	deck_selector.position = Vector2(515, 375)
 	deck_selector.size = Vector2(360, 368)
+	for child in deck_selector.get_children():
+		if child is Button:
+			_add_gloss_button_style(child)
 	name_input = LineEdit.new()
 	name_input.virtual_keyboard_enabled = true
 	name_input.virtual_keyboard_show_on_focus = true
@@ -366,6 +380,7 @@ func _ready() -> void:
 	name_input.position = Vector2(60, 665)
 	name_input.size = Vector2(360, 64)
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_add_name_gloss_style()
 	setup_page = Control.new()
 	menu_content.add_child(setup_page)
 	setup_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -790,6 +805,10 @@ func _build_title(parent: Control) -> void:
 		outer.add_theme_color_override("font_color", LexispellStyle.TEXT)
 		outer.add_theme_color_override("font_outline_color", LexispellStyle.HOVER)
 		outer.add_theme_constant_override("outline_size", 16)
+		outer.add_theme_color_override("font_shadow_color", Color("0c0918"))
+		outer.add_theme_constant_override("shadow_offset_x", 0)
+		outer.add_theme_constant_override("shadow_offset_y", 7)
+		outer.add_theme_constant_override("shadow_outline_size", 16)
 		letter.add_child(outer)
 		var inner := Label.new()
 		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -872,6 +891,41 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 
 # Pulsanti principali HOME e ingresso MULTIPLAYER: estremità a capsula.
 # Il radius segue automaticamente metà dell'altezza impostata in PLAY_BUTTON_SIZE.
+func _add_gloss_button_style(button: Button) -> void:
+	preload("res://scenes/balatro/scripts/cartoon_button_style.gd").attach(button)
+
+func _add_name_gloss_style() -> void:
+	# This remains a LineEdit: keyboard, caret and text saving are unchanged.
+	var style := name_input.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+	style.bg_color = Color("38315a")
+	style.border_color = Color("0c0918")
+	style.set_border_width_all(4)
+	style.border_width_bottom = 8
+	style.set_corner_radius_all(int(name_input.size.y * 0.5))
+	style.corner_detail = 20
+	style.anti_aliasing_size = 1.4
+	style.shadow_color = Color(0.047059, 0.035294, 0.094118, 0.28)
+	style.shadow_size = 1
+	style.shadow_offset = Vector2(0, 5)
+	name_input.add_theme_stylebox_override("normal", style)
+	var bevel := preload("res://scenes/balatro/scripts/button_bevel.gd").new()
+	name_input.add_child(bevel)
+	bevel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var gloss := preload("res://scenes/balatro/scripts/button_gloss.gd").new()
+	gloss.gloss_color = Color(1, 1, 1, 0.28)
+	name_input.add_child(gloss)
+	gloss.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var refresh := func():
+		var normal := name_input.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+		normal.set_corner_radius_all(int(name_input.size.y * 0.5))
+		name_input.add_theme_stylebox_override("normal", normal)
+		bevel.visible = not name_input.has_focus()
+		gloss.visible = not name_input.has_focus()
+	name_input.resized.connect(refresh)
+	name_input.focus_entered.connect(refresh)
+	name_input.focus_exited.connect(refresh)
+
+
 func _set_play_button_radius(button: Button) -> void:
 	var radius := int(PLAY_BUTTON_SIZE.y / 2.0)
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:

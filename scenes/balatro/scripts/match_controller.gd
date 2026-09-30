@@ -95,6 +95,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_screen)
 	_fit_screen()
 	# Slightly enlarge only the player's hand; table cards and the deck keep
+	get_tree().node_added.connect(_style_new_button)
 	# their existing proportions.
 	hand.scale = Vector2.ONE * 1.7
 	for data in Deck.new().cards:
@@ -268,6 +269,16 @@ func _ready() -> void:
 		var restart: Dictionary = get_tree().get_meta("bisca_restart")
 		get_tree().remove_meta("bisca_restart")
 		_menu_start.call_deferred(restart.name, restart.count)
+
+func _style_new_button(node: Node) -> void:
+	if node is Button and node is not CheckButton and node is not CheckBox:
+		# Wait until callers have assigned colors, dimensions and input callbacks.
+		_style_button_deferred.call_deferred(weakref(node))
+
+func _style_button_deferred(reference: WeakRef) -> void:
+	var button = reference.get_ref()
+	if is_instance_valid(button) and is_ancestor_of(button):
+		preload("res://scenes/balatro/scripts/cartoon_button_style.gd").attach(button)
 
 func _fit_screen() -> void:
 	var screen_size := get_viewport_rect().size

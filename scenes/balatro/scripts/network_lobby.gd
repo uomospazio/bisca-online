@@ -408,9 +408,17 @@ func _update(state: Dictionary) -> void:
 		child.queue_free()
 	for index in range(8):
 		var row := PanelContainer.new()
+		row.set_meta("cartoon_style_children_excluded", true)
 		row.custom_minimum_size = Vector2(PLAYER_SLOT_WIDTH, PLAYER_SLOT_HEIGHT)
 		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		row.clip_contents = true
+		row.clip_contents = false
+		# Decorate the entire player tile, leaving name/microphone/kick intact.
+		row.draw.connect(func():
+			var left := PLAYER_SLOT_HEIGHT * 0.5
+			var right := row.size.x - left
+			row.draw_line(Vector2(left, 6), Vector2(right, 6), Color(1, 1, 1, 0.8), 3, true)
+			row.draw_line(Vector2(left, row.size.y - 9), Vector2(right, row.size.y - 9), Color(0, 0, 0, 0.26), 7, true)
+		)
 		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
 		row_style.shadow_size = 0
 		row_style.shadow_offset = Vector2.ZERO
@@ -619,8 +627,12 @@ func _set_button_radius(button: Button, radius: int) -> void:
 func _style_player_slot(style: StyleBoxFlat) -> void:
 	style.set_corner_radius_all(int(PLAYER_SLOT_HEIGHT / 2.0))
 	style.corner_detail = 16
-	style.set_border_width_all(2)
+	style.set_border_width_all(4)
+	style.border_width_bottom = 8
 	style.border_color = menu.LexispellStyle.SHADOW
+	style.shadow_color = Color(0.047059, 0.035294, 0.094118, 0.28)
+	style.shadow_size = 1
+	style.shadow_offset = Vector2(0, 5)
 	style.content_margin_left = 12
 	style.content_margin_right = 12
 	style.content_margin_top = 10

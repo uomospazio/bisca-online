@@ -3,6 +3,7 @@ extends Label
 const Badge = preload("res://scenes/balatro/scripts/player_badge.gd")
 var idle_time := 0.0
 var animated := false
+var relief_shadow := false
 var cached_text := ""
 var cached_font: Font
 var cached_font_size := -1
@@ -58,7 +59,7 @@ func _draw() -> void:
 		var center := Vector2(cursor_x + character_width / 2.0, baseline_y + (sin(phase) * 2.5 if motion_enabled else 0.0))
 		var baseline := Vector2(-character_width / 2.0, 0)
 		draw_set_transform(center, deg_to_rad(sin(phase + 0.7) * 1.4) if motion_enabled else 0.0)
-		draw_string_outline(font, baseline + Vector2(2, 4), character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Badge.NAME_SHADOW_COLOR)
+		draw_string_outline(font, baseline + (Vector2(0, 5) if relief_shadow else Vector2(2, 4)), character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color("0c0918") if relief_shadow else Badge.NAME_SHADOW_COLOR)
 		draw_string_outline(font, baseline, character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 10, Badge.NAME_OUTLINE_COLOR)
 		draw_string(font, baseline, character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Badge.NAME_TEXT_COLOR)
 		draw_set_transform(Vector2.ZERO)

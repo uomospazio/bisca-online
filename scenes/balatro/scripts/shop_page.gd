@@ -350,8 +350,8 @@ func open() -> void:
 
 	var elements: Array[Control] = intro_controls.duplicate()
 
-	for card in grid.get_children():
-		elements.append(card)
+	# Gli oggetti dello shop sono già presenti senza pop: si animano solo
+	# titolo e pulsanti della schermata.
 
 	for index in elements.size():
 		var element := elements[index]

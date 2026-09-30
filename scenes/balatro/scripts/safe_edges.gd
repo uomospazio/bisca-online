@@ -11,7 +11,14 @@ static func attach(control: Control, right: bool = false) -> void:
 			return
 		var viewport_size := control.get_viewport_rect().size
 		var safe := Rect2(Vector2.ZERO, viewport_size)
-		if OS.has_feature("mobile") and not OS.has_feature("web"):
+		if OS.has_feature("web"):
+			# Browser CSS pixels must be converted to logical Godot coordinates.
+			# Older/custom shells without the bridge retain the full viewport.
+			var encoded = JavaScriptBridge.eval("typeof window.biscaSafeArea === 'function' ? window.biscaSafeArea() : '[0,0,1,1]'", true)
+			var fractions = JSON.parse_string(str(encoded))
+			if fractions is Array and fractions.size() == 4:
+				safe = Rect2(Vector2(float(fractions[0]), float(fractions[1])) * viewport_size, Vector2(float(fractions[2]), float(fractions[3])) * viewport_size)
+		elif OS.has_feature("mobile"):
 			var window := control.get_window()
 			var physical := Rect2(DisplayServer.get_display_safe_area())
 			physical = physical.intersection(Rect2(Vector2(window.position), Vector2(window.size)))

@@ -16,14 +16,24 @@ func setup(controller: Control) -> void:
 	host = controller
 	layer = 105
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	screen = Control.new()
-	add_child(screen)
-	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Full-screen shade, but a centered fixed-size stage for pause/settings.
+	# CanvasLayer does not inherit the match controller's centered position.
+	var surface := Control.new()
+	add_child(surface)
+	surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var shade := ColorRect.new()
-	screen.add_child(shade)
+	surface.add_child(shade)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.color = Color(0.133333, 0.121569, 0.168627, 0.85)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	screen = Control.new()
+	surface.add_child(screen)
+	screen.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	screen.offset_left = -960
+	screen.offset_top = -540
+	screen.offset_right = 960
+	screen.offset_bottom = 540
+	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	actions = Control.new()
 	screen.add_child(actions)
 	actions.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

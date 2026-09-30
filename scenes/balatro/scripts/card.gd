@@ -43,10 +43,21 @@ func set_card_data(value: CardData) -> void:
 		_apply_card_data()
 
 func _apply_card_data() -> void:
-	card_texture.texture = BACK if face_down else data.texture
-	var settings := get_node_or_null("/root/GameSettings")
-	if not face_down and settings:
-		card_texture.texture = settings.front_texture(data.colour, data.number)
+	if data == null:
+		return
+
+	if face_down:
+		card_texture.texture = BACK
+	else:
+		# Fallback sicuro al fronte originale della carta.
+		card_texture.texture = data.texture
+
+		var settings := get_node_or_null("/root/GameSettings")
+		if settings:
+			var custom_front: Texture2D = settings.front_texture(data.colour, data.number)
+			if custom_front != null:
+				card_texture.texture = custom_front
+
 	set_holo(holo_active)
 	tooltip_text = "" if face_down else data.display_name
 
@@ -110,20 +121,20 @@ func _process(delta: float) -> void:
 	follow_mouse(delta)
 	rotate_velocity(delta)
 	handle_shadow(delta)
-	
+
 func rotate_velocity(delta: float) -> void:
 	if not following_mouse: return
 	# Compute the velocity
 	velocity = (position - last_pos) / maxf(delta, 0.0001)
 	last_pos = position
-	
+
 	oscillator_velocity += velocity.normalized().x * velocity_multiplier
-	
+
 	# Oscillator stuff
 	var force = -spring * displacement - damp * oscillator_velocity
 	oscillator_velocity += force * delta
 	displacement += oscillator_velocity * delta
-	
+
 	rotation = displacement
 
 func handle_shadow(_delta: float) -> void:
@@ -134,7 +145,7 @@ func handle_shadow(_delta: float) -> void:
 	shadow.self_modulate.a = 0.35
 	var center: Vector2 = get_viewport_rect().size / 2.0
 	var distance: float = global_position.x - center.x
-	
+
 	shadow.position.x = lerp(0.0, -sign(distance) * max_offset_shadow, abs(distance/(center.x)))
 
 func follow_mouse(delta: float) -> void:
@@ -147,7 +158,7 @@ func handle_mouse_click(event: InputEvent) -> void:
 	if is_played or is_dealing: return
 	if not event is InputEventMouseButton: return
 	if event.button_index != MOUSE_BUTTON_LEFT: return
-	
+
 	if event.is_pressed():
 		if following_mouse:
 			return
@@ -193,13 +204,13 @@ func _finish_drag(cancelled: bool = false) -> void:
 
 func _on_gui_input(event: InputEvent) -> void:
 	if is_played or is_dealing: return
-	
+
 	handle_mouse_click(event)
-	
+
 	# Don't compute rotation when moving the card
 	if following_mouse: return
 	if not event is InputEventMouseMotion: return
-	
+
 	# Handles rotation
 	# Get local mouse pos
 	var mouse_pos: Vector2 = get_local_mouse_position()
@@ -216,7 +227,7 @@ func _on_gui_input(event: InputEvent) -> void:
 	var rot_y: float = rad_to_deg(lerp_angle(angle_y_max, -angle_y_max, lerp_val_y))
 	#print("Rot x: ", rot_x)
 	#print("Rot y: ", rot_y)
-	
+
 	card_texture.material.set_shader_parameter("x_rot", rot_y)
 	card_texture.material.set_shader_parameter("y_rot", rot_x)
 
@@ -237,7 +248,7 @@ func _on_mouse_exited() -> void:
 	tween_rot = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK).set_parallel(true)
 	tween_rot.tween_property(card_texture.material, "shader_parameter/x_rot", 0.0, 0.5)
 	tween_rot.tween_property(card_texture.material, "shader_parameter/y_rot", 0.0, 0.5)
-	
+
 	# Keep the play preview stable even when rotation triggers mouse exit.
 	var target_scale := played_scale if is_played else (0.95 if play_preview else 1.0)
 	_animate_scale(Vector2.ONE * target_scale)

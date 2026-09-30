@@ -12,10 +12,10 @@ const RoundedSquareButton = preload("res://scenes/balatro/scripts/rounded_square
 # Layout HOME su base 1920 x 1080: UI a sinistra, personaggio a destra.
 # Posizione e rotazione INDIPENDENTI dei pulsanti principali.
 # Le coordinate sono rispetto alla viewport di progetto 1920x1080.
-const PLAY_BUTTON_SIZE := Vector2(440, 108)
-const SINGLE_BUTTON_POSITION := Vector2(300, 450)
+const PLAY_BUTTON_SIZE := Vector2(450, 118)
+const SINGLE_BUTTON_POSITION := Vector2(295, 450)
 const SINGLE_BUTTON_ROTATION := 0.0 # Gradi: es. -5 inclina verso sinistra.
-const MULTI_BUTTON_POSITION := Vector2(300, 600)
+const MULTI_BUTTON_POSITION := Vector2(295, 600)
 const MULTI_BUTTON_ROTATION := 0.0 # Gradi: es. 5 inclina verso destra.
 const TITLE_FONT_SIZE := 164
 const SUBTITLE_FONT_SIZE := 52
@@ -40,12 +40,12 @@ const SECOND_CHARACTER_POSITION := Vector2(500, 300)
 const SECOND_CHARACTER_SIZE := Vector2(800, 1050)
 const SETUP_ELEMENTS_POSITION := Vector2(640, 530)
 const SETUP_ELEMENTS_SIZE := Vector2(640, 540)
-const MENU_BUTTON_HEIGHT := 96.0
-const ROUND_BUTTON_SIZE := 96.0
+const MENU_BUTTON_HEIGHT := 108.0
+const ROUND_BUTTON_SIZE := 108.0
 const ROUND_ICON_SIZE := 54.0
 # Discord: pulsante circolare in alto a sinistra, sotto INFO.
-const DISCORD_BUTTON_SIZE := 96.0
-const DISCORD_POSITION := Vector2(40, 156)
+const DISCORD_BUTTON_SIZE := 108.0
+const DISCORD_POSITION := Vector2(40, 40)
 const DISCORD_INVITE_URL := "https://discord.gg/ZdRv3gVf8"
 # Icona e testo centrati insieme nei pulsanti principali.
 const PLAY_ICON_SIZE := 54.0
@@ -59,19 +59,19 @@ const HOME_DECK_POSITION := Vector2(1520, 600)
 const HOME_DECK_SCALE := 1.0
 # Foto profilo e campo nome nella HOME, sotto MULTIPLAYER.
 # La foto usa una scala ridotta: il pulsante originale misura 260x260.
-const HOME_PROFILE_POSITION := Vector2(115, 720)
+const HOME_PROFILE_POSITION := Vector2(90, 740)
 const HOME_PROFILE_SCALE := 0.8
-const HOME_NAME_POSITION := Vector2(265, 780)
-const HOME_NAME_SIZE := Vector2(650, 148)
+const HOME_NAME_POSITION := Vector2(210, 785)
+const HOME_NAME_SIZE := Vector2(690, 174)
 const HOME_NAME_TEXT_SHIFT := 20.0 # Pixel verso destra per testo e placeholder, solo HOME
 # CONTATORE MONETE: in alto a destra, sopra Settings.
 # La posizione e' relativa al bordo destro della viewport.
 const COINS_RIGHT_MARGIN := 40.0
 const COINS_TOP_MARGIN := 32.0
-const COINS_SIZE := Vector2(320, 96) # larghezza totale e altezza del contatore
+const COINS_SIZE := Vector2(320, 108) # larghezza totale e altezza del contatore
 const COINS_BAR_HEIGHT := 72.0
-const COINS_ICON_SIZE := 96.0 # grandezza di coin.png, senza sfondo circolare
-const COINS_FONT_SIZE := 36
+const COINS_ICON_SIZE := 108.0 # grandezza di coin.png, senza sfondo circolare
+const COINS_FONT_SIZE := 46
 const COINS_ICON_PATH := "res://scenes/balatro/trick_asset/ui_bisca/coin.svg"
 const LexispellStyle = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const BUTTON_PURPLE := LexispellStyle.NORMAL
@@ -312,7 +312,7 @@ func _ready() -> void:
 	get_node("/root/FriendsManager").changed.connect(_refresh_friends_dot)
 	_refresh_friends_dot()
 	var info := _round_icon_button(home_persistent_ui, "info.svg", "Info", _show_home_info)
-	info.position = Vector2(40,40)
+	info.position = Vector2(40,168)
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info)
 	info.size = Vector2.ONE * ROUND_BUTTON_SIZE
 

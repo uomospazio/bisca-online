@@ -68,12 +68,12 @@ func connect_account() -> void:
 		"apikey: " + PUBLIC_KEY, "Content-Type: application/json"
 	]), HTTPClient.METHOD_POST, JSON.stringify(payload))
 	if error != OK:
-		_fail("Account non raggiungibile; puoi continuare a giocare offline.")
+		_fail("Account non raggiungibile (avvio richiesta: %s); puoi continuare offline." % error_string(error))
 		return
 	var response: Array = await _request.request_completed
 	_busy = false
 	if int(response[0]) != HTTPRequest.RESULT_SUCCESS:
-		_fail("Connessione account non riuscita; sessione conservata.")
+		_fail("Connessione account non riuscita (rete %s, HTTP %s); sessione conservata." % [response[0], response[1]])
 		return
 	var data = JSON.parse_string(response[3].get_string_from_utf8())
 	if not data is Dictionary or int(response[1]) < 200 or int(response[1]) >= 300:

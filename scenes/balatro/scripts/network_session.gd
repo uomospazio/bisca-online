@@ -56,7 +56,8 @@ var voice_token_rate: Dictionary = {}
 const LiveKitAuth = preload("res://scenes/balatro/scripts/livekit_auth.gd")
 
 func default_endpoint() -> String:
-	return str(ProjectSettings.get_setting("bisca/network/server_url", "")) if OS.has_feature("web") else "127.0.0.1"
+	# I dispositivi mobili usano lo stesso server pubblico della versione Web.
+	return str(ProjectSettings.get_setting("bisca/network/server_url", "")) if OS.has_feature("web") or OS.has_feature("mobile") else "127.0.0.1"
 
 func _ready() -> void:
 	dedicated = OS.get_cmdline_user_args().has("--server")
@@ -96,7 +97,7 @@ func _ready() -> void:
 			room_code = cfg.get_value("session", "room", "")
 			token = cfg.get_value("session", "token", "")
 			endpoint = cfg.get_value("session", "endpoint", endpoint)
-		if OS.has_feature("web") and not endpoint.begins_with("wss://") and not endpoint.begins_with("ws://"):
+		if (OS.has_feature("web") or OS.has_feature("mobile")) and not endpoint.begins_with("wss://") and not endpoint.begins_with("ws://"):
 			endpoint = default_endpoint()
 
 func connect_room(address: String, command: Dictionary) -> void:
@@ -182,6 +183,9 @@ func _ensure_local_server() -> bool:
 	return true
 
 func send(command: Dictionary) -> void:
+	# OfflineMultiplayerPeer risulta "connected", ma non ha un server remoto.
+	if multiplayer.multiplayer_peer is OfflineMultiplayerPeer or multiplayer.get_unique_id() == 1:
+		return
 	if multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		request.rpc_id(1, command)
 

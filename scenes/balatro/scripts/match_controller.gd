@@ -120,6 +120,7 @@ func _ready() -> void:
 	pause_button.size = Vector2(80, 64)
 	_set_button_radius(pause_button, 32)
 	pause_button.z_index = 200
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(pause_button)
 	var card_info = preload("res://scenes/balatro/scripts/card_info.gd").new()
 	add_child(card_info)
 	card_info.setup(self)
@@ -132,6 +133,7 @@ func _ready() -> void:
 	info_button.offset_top = 24
 	info_button.offset_bottom = 88
 	info_button.z_index = 200
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info_button, true)
 	var voice = get_node("/root/VoiceChat")
 	var voice_button: Button = menu._button(game_ui, "CHAT", voice.open_panel)
 	voice_button.expand_icon = true
@@ -145,6 +147,7 @@ func _ready() -> void:
 	voice_button.offset_top = 104
 	voice_button.offset_bottom = 168
 	voice_button.z_index = 200
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(voice_button, true)
 	voice_button.tooltip_text = "Attiva la chat vocale e regola i volumi dei giocatori"
 	var update_voice_icon := func():
 		var mic_active: bool = voice.enabled and not voice.muted and not voice.pending
@@ -283,6 +286,18 @@ func _fit_screen() -> void:
 			if child is Control:
 				child.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 				child.size = size
+	# Dimming belongs to the whole screen, not to the fixed table layout.
+	if is_instance_valid(damage_shade):
+		_fit_full_screen_shade(damage_shade, screen_size)
+	if is_instance_valid(overlay) and is_instance_valid(overlay.overlay_shade):
+		_fit_full_screen_shade(overlay.overlay_shade, screen_size)
+
+func _fit_full_screen_shade(shade: Control, screen_size: Vector2) -> void:
+	shade.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	# Convert the screen origin through the parent, avoiding offset accumulation.
+	var parent := shade.get_parent() as CanvasItem
+	shade.position = parent.get_global_transform_with_canvas().affine_inverse() * Vector2.ZERO
+	shade.size = screen_size
 
 func _show_menu() -> void:
 	if solo_connecting:
@@ -1006,13 +1021,19 @@ func _play_human(card: Control, high: bool) -> void:
 		busy = false
 	_drive()
 
+func _badge_card_origin(badge: Control, card: Control) -> Vector2:
+	# Badges live in a CanvasLayer; cards live in the table canvas. Convert
+	# through screen coordinates so both launch and capture share one space.
+	var screen_center := badge.get_global_transform_with_canvas() * Vector2(80, 128)
+	return card.get_canvas_transform().affine_inverse() * screen_center
+
 func _show_bot_card(id: int) -> void:
 	var entry: Dictionary = rules.trick.back()
 	var card = CardScene.instantiate()
 	add_child(card)
 	card.set_card_data(catalog[entry.card])
 	var badge = scores.get_child(id)
-	card.global_position = badge.global_position + Vector2(80, 128) * badge.scale - card.size / 2.0
+	card.global_position = _badge_card_origin(badge, card) - card.size / 2.0
 	card.set_meta("seat_id", _visual_seat_for_player(id))
 	card.rotation = table.landing_rotation(card)
 	card.scale = Vector2.ONE * 0.5
@@ -1059,7 +1080,7 @@ func _animate_trick_capture() -> void:
 	# Then the complete stack flies to the winner's player badge.
 	GameAudio.play(self, GameAudio.SWIPE, -12.0)
 	var badge = scores.get_child(winner_id)
-	var destination: Vector2 = badge.global_position + Vector2(80, 128) * badge.scale
+	var destination := _badge_card_origin(badge, winner_card)
 	var capture := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	for index in range(ordered_cards.size()):
 		var card := ordered_cards[index]

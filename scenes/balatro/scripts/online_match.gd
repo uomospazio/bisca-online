@@ -138,7 +138,7 @@ func _apply(value: Dictionary) -> void:
 			else:
 				card = host.CardScene.instantiate()
 				host.add_child(card)
-				card.global_position = host.scores.get_child(entry.player).global_position + Vector2(80, 128) * host.scores.get_child(entry.player).scale - card.size / 2.0
+				card.global_position = host._badge_card_origin(host.scores.get_child(entry.player), card) - card.size / 2.0
 			if entry.card >= 0:
 				card.set_card_data(host.catalog[entry.card])
 			else:

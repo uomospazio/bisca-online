@@ -51,6 +51,10 @@ func setup(menu: Control) -> void:
 	# Stessa geometria e risorse della home, senza duplicare il saldo.
 	var counter: Control = menu.home_persistent_ui.get_node("CoinsCounter").duplicate()
 	add_child(counter)
+	if counter.has_meta("safe_edge"):
+		counter.position -= Vector2(counter.get_meta("safe_edge"))
+		counter.remove_meta("safe_edge")
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
 
 	coins_amount = counter.get_node("CoinBar/CoinsAmount")
 
@@ -153,6 +157,7 @@ func setup(menu: Control) -> void:
 	)
 
 	reload_button.position = Vector2(320, 40)
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(reload_button)
 
 
 	for button in [back, reload_button]:

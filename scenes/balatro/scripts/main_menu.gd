@@ -274,6 +274,7 @@ func _ready() -> void:
 
 	# Pulsanti circolari indipendenti in alto a destra: SHOP, SETTINGS, INFO.
 	var round_buttons := Control.new()
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach.call_deferred(round_buttons, true)
 	home_persistent_ui.add_child(round_buttons)
 	round_buttons.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	round_buttons.offset_left = -ROUND_BUTTON_SIZE - ROUND_BUTTONS_RIGHT_MARGIN
@@ -306,11 +307,13 @@ func _ready() -> void:
 	_refresh_friends_dot()
 	var info := _round_icon_button(home_persistent_ui, "info.svg", "Info", _show_home_info)
 	info.position = Vector2(40,40)
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info)
 	info.size = Vector2.ONE * ROUND_BUTTON_SIZE
 
 	# Discord: sotto INFO, in alto a sinistra.
 	var discord := _round_icon_button(home_persistent_ui, "discord.svg", "Discord", _open_discord)
 	discord.position = DISCORD_POSITION
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(discord)
 	discord.size = Vector2.ONE * DISCORD_BUTTON_SIZE
 
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
@@ -862,6 +865,8 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.add_theme_color_override("font_pressed_color", BUTTON_TEXT)
 	button.add_theme_color_override("font_disabled_color", LexispellStyle.DISABLED_TEXT)
 	parent.add_child(button)
+	if text.to_lower() == "indietro":
+		preload("res://scenes/balatro/scripts/safe_edges.gd").attach(button)
 	button.pressed.connect(callback)
 	return button
 
@@ -957,6 +962,7 @@ func _build_coin_counter(parent: Control) -> void:
 	counter.name = "CoinsCounter"
 	counter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(counter)
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
 	counter.anchor_left = 1.0
 	counter.anchor_right = 1.0
 	counter.anchor_top = 0.0

@@ -366,6 +366,8 @@ func _back() -> void:
 		menu.show_home()
 
 func _update(state: Dictionary) -> void:
+	if state.get("singleplayer", false):
+		return
 	if state.stage != "lobby":
 		invite_box.hide()
 		profile_picker.close()

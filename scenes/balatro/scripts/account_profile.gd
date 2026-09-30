@@ -22,6 +22,13 @@ var _account: Node
 var _settings: Node
 var _owner := ""
 
+func needs_username() -> bool:
+	if _account == null or _account.user_id.is_empty() or str(profile.get("id", "")) != _account.user_id:
+		return false
+	var username := str(profile.get("username") if profile.get("username") != null else "").strip_edges()
+	var code := str(profile.get("public_id") if profile.get("public_id") != null else "").strip_edges()
+	return username.is_empty() and not code.is_empty()
+
 func account_display_name() -> String:
 	var username := str(profile.get("username") if profile.get("username") != null else "").strip_edges()
 	if not username.is_empty():

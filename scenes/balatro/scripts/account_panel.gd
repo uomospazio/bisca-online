@@ -208,7 +208,9 @@ func _show(next: String) -> void:
 		var display_name: String = cloud.account_display_name()
 		if not display_name.is_empty():
 			_text("PROFILO: " + display_name)
-		_button("MODIFICA USERNAME", func(): _show("username"))
+		var username_button := _button("MODIFICA USERNAME", func(): _show("username"))
+		var dot: Panel = menu._notification_dot(username_button)
+		dot.visible = cloud.needs_username()
 
 		if cloud.profile.has("public_id"):
 			var public_id := str(

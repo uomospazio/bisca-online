@@ -14,6 +14,7 @@ var voice_start: Button
 var voice_stop: Button
 var mic_toggle: CheckButton
 var voice_signature := ""
+var account_dot: Panel
 
 func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settings: bool = false) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -63,8 +64,14 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 		add_child(account_panel)
 		account_panel.setup(menu)
 	)
-	account_button.custom_minimum_size = Vector2(0, 64)
+	account_button.custom_minimum_size = Vector2(320, 64)
+	account_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rows.move_child(account_button, 0)
 	_set_button_radius(account_button, 32)
+	account_dot = menu._notification_dot(account_button)
+	get_node("/root/AccountProfile").changed.connect(_refresh_account_dot)
+	get_node("/root/AccountSession").changed.connect(_refresh_account_dot)
+	_refresh_account_dot()
 	# Cambiare identita' durante una partita interromperebbe l'associazione al profilo.
 	account_button.disabled = back_action.is_valid()
 	account_button.tooltip_text = "Gestisci l'account dai Settings del menu principale."
@@ -83,6 +90,10 @@ func setup(menu: Control, back_action: Callable = Callable(), multiplayer_settin
 	_set_button_radius(reset, 40)
 	settings.changed.connect(_sync)
 	_sync()
+
+func _refresh_account_dot() -> void:
+	if is_instance_valid(account_dot):
+		account_dot.visible = get_node("/root/AccountProfile").needs_username()
 
 func _set_button_radius(button: Button, radius: int) -> void:
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:

@@ -91,6 +91,7 @@ var home_persistent_ui: Control
 var coins_label: Label
 var friends_page: Control
 var friends_dot: Panel
+var username_dot: Panel
 var account_default_name := ""
 var home_intro_buttons: Array[Button] = []
 var home_intro: Tween
@@ -285,6 +286,10 @@ func _ready() -> void:
 	var settings := _round_icon_button(round_buttons, "setting.svg", "Settings", _show_settings)
 	settings.position = Vector2(0, ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING)
 	settings.size = Vector2.ONE * ROUND_BUTTON_SIZE
+	username_dot = _notification_dot(settings)
+	account_profile.changed.connect(_refresh_username_dot)
+	get_node("/root/AccountSession").changed.connect(_refresh_username_dot)
+	_refresh_username_dot()
 	var friends := _round_icon_button(round_buttons, "friends.svg", "Amici", _show_friends)
 	friends.position = Vector2(0, (ROUND_BUTTON_SIZE + ROUND_BUTTONS_SPACING) * 2.0)
 	friends.size = Vector2.ONE * ROUND_BUTTON_SIZE
@@ -672,6 +677,26 @@ func _show_network() -> void:
 func _refresh_friends_dot() -> void:
 	if is_instance_valid(friends_dot):
 		friends_dot.visible = get_node("/root/FriendsManager").pending_count() > 0
+
+static func _notification_dot(button: Control) -> Panel:
+	var dot := Panel.new()
+	dot.name = "UsernameNotification"
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(dot)
+	dot.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	dot.offset_left = -24
+	dot.offset_right = -2
+	dot.offset_top = 0
+	dot.offset_bottom = 22
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("ed4155")
+	style.set_corner_radius_all(11)
+	dot.add_theme_stylebox_override("panel", style)
+	return dot
+
+func _refresh_username_dot() -> void:
+	if is_instance_valid(username_dot):
+		username_dot.visible = get_node("/root/AccountProfile").needs_username()
 
 func _show_friends() -> void:
 	title.hide()

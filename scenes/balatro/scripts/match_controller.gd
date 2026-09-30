@@ -161,7 +161,7 @@ func _ready() -> void:
 	game_ui.visibility_changed.connect(func():
 		$GameBackground.show()
 		$GameBackground.material = table_background if game_ui.visible else menu_background
-		voice_button.visible = online
+		voice_button.visible = online and not get_node("/root/NetworkSession").latest.get("singleplayer", false)
 		if not game_ui.visible:
 			voice._call("closePanel")
 	)
@@ -197,6 +197,21 @@ func _ready() -> void:
 	net.avatars_changed.connect(_refresh_profile_photos)
 	online_match.setup(self, net)
 	net.updated.connect(func(state):
+		if solo_connecting:
+			if not menu.setup_page.is_visible_in_tree():
+				_solo_offline_fallback()
+				return
+			if not state.get("singleplayer", false):
+				_solo_offline_fallback()
+				return
+			if state.stage == "lobby":
+				if not solo_ready_sent:
+					solo_ready_sent = true
+					net.send({"op": "profile", "avatar": menu.profile_avatar})
+					net.send({"op": "ready", "ready": true})
+				return
+			solo_connecting = false
+			solo_generation += 1
 		if state.stage == "lobby" and online:
 			online = false
 			online_match.queue.clear()
@@ -226,6 +241,9 @@ func _ready() -> void:
 			turn_clock.visible = seconds >= 0 and not busy and rules.current == 0
 	)
 	net.connection_lost.connect(func():
+		if solo_connecting:
+			_solo_offline_fallback()
+			return
 		if online:
 			busy = true
 			hand.allow_play = false
@@ -243,6 +261,10 @@ func _ready() -> void:
 		_menu_start.call_deferred(restart.name, restart.count)
 
 func _show_menu() -> void:
+	if solo_connecting:
+		solo_connecting = false
+		solo_generation += 1
+		get_node("/root/NetworkSession").leave()
 	local_bot_generation += 1
 	presented_damage_round = -1
 	if online:
@@ -265,10 +287,53 @@ func _show_menu() -> void:
 	menu.show_home()
 
 func _menu_start(display_name: String, count: int) -> void:
+	if solo_connecting:
+		return
 	local_name = display_name
 	rules.configure(menu.match_options.values())
 	rules.force_local_joker = false
+	var account := get_node("/root/AccountSession")
+	if not account.is_authenticated():
+		_start_solo_offline(count)
+		return
+	solo_connecting = true
+	solo_ready_sent = false
+	solo_count = count
+	solo_generation += 1
+	var generation := solo_generation
+	var net := get_node("/root/NetworkSession")
+	var command: Dictionary = menu.match_options.values().duplicate()
+	command.merge({"op": "create", "name": display_name, "singleplayer": true, "bots": true, "bot_count": count - 1}, true)
+	net.connect_room(net.default_endpoint(), command)
+	await get_tree().create_timer(12.0).timeout
+	if solo_connecting and solo_generation == generation:
+		_solo_offline_fallback()
+
+var solo_connecting := false
+var solo_ready_sent := false
+var solo_count := 2
+var solo_generation := 0
+
+func _solo_offline_fallback() -> void:
+	if not solo_connecting:
+		return
+	solo_connecting = false
+	solo_generation += 1
+	get_node("/root/NetworkSession").leave()
+	if menu.setup_page.is_visible_in_tree():
+		_start_solo_offline(solo_count)
+
+func _start_solo_offline(count: int) -> void:
+	online = false
 	_start(count)
+	var notice := Label.new()
+	notice.text = "SOLITARIA OFFLINE · SENZA PREMI"
+	notice.position = Vector2(620, 30)
+	notice.add_theme_color_override("font_color", Color("f3effe"))
+	notice.add_theme_font_size_override("font_size", 26)
+	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	game_ui.add_child(notice)
+	get_tree().create_timer(6.0).timeout.connect(notice.queue_free)
 
 func _name_of(id: int) -> String:
 	if online and id >= 0 and id < online_match.names.size():
@@ -714,7 +779,7 @@ func _refresh() -> void:
 func _show_victory() -> void:
 	var winner_id: int = rules.winner
 	var avatar: Texture2D = scores.get_child(winner_id).profile_texture
-	overlay.show_victory(_name_of(winner_id), avatar, rules.players[winner_id], online, not online or online_match.local_id == 0)
+	overlay.show_victory(_name_of(winner_id), avatar, rules.players[winner_id], online and not online_match.state.get("singleplayer", false), not online or online_match.local_id == 0)
 
 func _play_turn_sound() -> void:
 	if rules.current != 0 or not rules.phase in ["prediction", "play"]:

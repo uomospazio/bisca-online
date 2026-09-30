@@ -56,7 +56,8 @@ func start_match(room: Dictionary) -> void:
 			distinct[uid] = true
 			room.reward_users[i] = uid
 	var accounts_valid: bool = not REQUIRE_THREE_DISTINCT_ACCOUNTS or (distinct.size() >= 3 and distinct.size() == room.reward_users.size())
-	room.reward_eligible = enabled() and int(room.options.get("starting_cards", 5)) == 5 and accounts_valid
+	var solo: bool = bool(room.get("singleplayer", false))
+	room.reward_eligible = enabled() and (solo or (int(room.options.get("starting_cards", 5)) == 5 and accounts_valid))
 	room.reward_sent = {}
 
 func observe(room: Dictionary) -> void:

@@ -1,5 +1,11 @@
 # Premi partita: attivazione
 
+## Solitaria online (aggiornamento)
+
+Gioca in singleplayer prova automaticamente una stanza server privata con soli bot se la sessione account e' autenticata. Non mostra la lobby e invia una sola conferma pronta. Altri giocatori non possono entrare. Il server calcola risultati e premi tramite la stessa RPC sicura: 30 alla conclusione per eliminazione, 50 totali alla vittoria, con QUALSIASI numero di carte iniziali. Sono registrate anche le statistiche. La regola delle 5 carte rimane per il multiplayer normale.
+
+Se l'account non e' disponibile o il collegamento al server fallisce/non completa l'avvio entro 12 secondi, avvio automatico locale senza premi, con breve avviso non bloccante. Una partita locale non viene convertita in premiata se torna Internet; una partita server gia' iniziata usa la riconnessione esistente e non crea una seconda partita locale. Rigioca mantiene la solitaria privata. Nessuna nuova migrazione SQL oltre a 010 e 011: distribuire server e client aggiornati.
+
 1. Eseguire `010_match_rewards.sql` e poi `011_match_statistics.sql` nel SQL Editor Supabase. Se 010 e' gia' applicato, basta 011. Applicare 011 prima di distribuire il nuovo server: ora usa `bisca_record_match`.
 2. Nel servizio **server Godot** su Render, Environment, aggiungere `SUPABASE_SECRET_KEY` con una secret key `sb_secret_...` del progetto Supabase (Settings > API Keys). NON aggiungerla a Godot client, GitHub o file esportati. NON usare la publishable key.
 3. Distribuire il server aggiornato (Dockerfile incluso) e riesportare/distribuire il client.

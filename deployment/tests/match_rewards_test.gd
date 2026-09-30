@@ -47,6 +47,13 @@ func run() -> void:
 	rewards.observe(room)
 	assert(not rewards.pending.is_empty()) # statistiche anche senza premio
 	assert(not rewards.pending.values()[0].p_reward)
+	room.singleplayer = true
+	rewards.start_match(room)
+	assert(room.reward_eligible) # solitaria online: qualsiasi numero di carte
+	rewards.pending.clear()
+	rewards.observe(room)
+	assert(rewards.pending.values()[0].p_reward)
+	room.singleplayer = false
 	room.options.starting_cards = 5
 	rewards.start_match(room)
 	assert(room.reward_eligible) # temporaneamente ammessi anche due umani

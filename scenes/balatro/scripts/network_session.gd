@@ -367,6 +367,18 @@ func request(command: Dictionary) -> void:
 			_reject(peer, "Stanza non trovata")
 			return
 		var room: Dictionary = rooms[code]
+		if op == "create":
+			room["singleplayer"] = bool(command.get("singleplayer", false))
+			if room.singleplayer:
+				room.bots = true
+		if op == "join" and room.get("singleplayer", false):
+			_reject(peer, "Partita solitaria privata")
+			return
+		if room.get("singleplayer", false) and account_id.is_empty():
+			if op == "create":
+				rooms.erase(code)
+			_reject(peer, "Account online non disponibile per la solitaria")
+			return
 		var slot := -1
 		if op == "rejoin":
 			slot = _rejoin_slot(room, str(command.get("token", "")))
@@ -480,12 +492,14 @@ func request(command: Dictionary) -> void:
 		_reset_ready(room)
 		_broadcast(room)
 		return
-	if op == "restart":
+	if op == "restart" and not room.get("singleplayer", false):
 		if slot != 0:
 			_reject(peer, "Solo il creatore puo' proporre una nuova partita")
 			return
 		op = "return_lobby"
 	if op == "return_lobby":
+		if room.get("singleplayer", false):
+			return
 		if room.rules == null or room.rules.phase != "finished" or room.stage != "turn":
 			return
 		# Return the whole group to the same room, keeping identities and photos.
@@ -595,6 +609,7 @@ func _broadcast(room: Dictionary) -> void:
 		if not _peer_connected(person.peer):
 			continue
 		var state := {"code": room.code, "you": id, "rev": room.rev, "stage": room.stage, "capacity": room.capacity, "bots": room.bots, "people": []}
+		state["singleplayer"] = bool(room.get("singleplayer", false))
 		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
 		state["bot_count"] = room.get("bot_count", 2)
 		for p in room.people:

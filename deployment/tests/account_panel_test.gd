@@ -6,6 +6,8 @@ class UnconfirmedSession extends "res://scenes/balatro/scripts/account_session.g
 		return reply
 
 class Host extends Control:
+	func _notification_dot(button: Control) -> Panel:
+		return preload("res://scenes/balatro/scripts/main_menu.gd")._notification_dot(button)
 	func _button(parent: Node, text: String, action: Callable) -> Button:
 		var button := Button.new()
 		button.text = text
@@ -22,6 +24,31 @@ func run() -> void:
 	var panel := preload("res://scenes/balatro/scripts/account_panel.gd").new()
 	host.add_child(panel)
 	panel.setup(host)
+	var cloud = root.get_node("AccountProfile")
+	var session = root.get_node("AccountSession")
+	var original_profile: Dictionary = cloud.profile
+	var original_account: Node = cloud._account
+	cloud._account = session
+	var original_uid: String = session.user_id
+	session.user_id = "notification-test"
+	cloud.profile = {"id": session.user_id, "public_id": "ABC123", "username": null}
+	assert(cloud.needs_username())
+	panel._show("home")
+	var dots := panel.find_children("UsernameNotification", "Panel", true, false)
+	assert(dots.size() == 1 and dots[0].visible)
+	cloud.profile.username = "Space"
+	cloud.changed.emit()
+	dots = panel.find_children("UsernameNotification", "Panel", true, false)
+	assert(dots.size() == 1 and not dots[0].visible)
+	cloud.profile.username = "  "
+	assert(cloud.needs_username())
+	cloud.profile.id = "another-account"
+	assert(not cloud.needs_username())
+	cloud.profile = {}
+	assert(not cloud.needs_username())
+	cloud.profile = original_profile
+	cloud._account = original_account
+	session.user_id = original_uid
 	for mode in ["home", "link", "verify", "password", "login", "logout"]:
 		panel._show(mode)
 		await process_frame

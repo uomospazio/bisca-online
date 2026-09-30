@@ -89,6 +89,11 @@ func _ready() -> void:
 	if get_node("/root/NetworkSession").dedicated:
 		set_process(false)
 		return
+	# Keep the existing table/menu coordinates in a centered design area.
+	# Only the background expands; cards and controls retain their proportions.
+	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	get_viewport().size_changed.connect(_fit_screen)
+	_fit_screen()
 	# Slightly enlarge only the player's hand; table cards and the deck keep
 	# their existing proportions.
 	hand.scale = Vector2.ONE * 1.7
@@ -255,10 +260,29 @@ func _ready() -> void:
 			turn_clock.text = message
 			turn_clock.show()
 	)
+	_fit_screen()
 	if get_tree().has_meta("bisca_restart"):
 		var restart: Dictionary = get_tree().get_meta("bisca_restart")
 		get_tree().remove_meta("bisca_restart")
 		_menu_start.call_deferred(restart.name, restart.count)
+
+func _fit_screen() -> void:
+	var screen_size := get_viewport_rect().size
+	size = Vector2(1920, 1080)
+	position = (screen_size - size) * 0.5
+	var background: Control = $GameBackground
+	background.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	background.position = -position
+	background.size = screen_size
+	# CanvasLayer does not inherit this Control's position. Keep its UI roots
+	# in the same fixed design area, rather than anchoring them to the viewport.
+	if is_instance_valid(game_ui) and game_ui.get_parent() is CanvasLayer:
+		var ui_layer := game_ui.get_parent() as CanvasLayer
+		ui_layer.offset = position
+		for child in ui_layer.get_children():
+			if child is Control:
+				child.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+				child.size = size
 
 func _show_menu() -> void:
 	if solo_connecting:
@@ -369,10 +393,12 @@ func _box(parent: Node, position_value: Vector2, size_value: Vector2, horizontal
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	layer.offset = position
 	var ui := Control.new()
 	game_ui = ui
 	layer.add_child(ui)
-	ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ui.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	ui.size = size
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	turn_clock = Label.new()
 	ui.add_child(turn_clock)
@@ -614,7 +640,7 @@ func _animate_round_damage() -> void:
 		var shade_tween := create_tween()
 		shade_tween.tween_property(damage_shade, "modulate:a", 1.0, 0.18)
 		await shade_tween.finished
-		var viewport_size := get_viewport_rect().size
+		var viewport_size := size
 		# Calculate the row from the real rendered widths. Using a fixed
 		# top-left offset made badges with different scales appear misaligned.
 		# Every target center now shares exactly the same Y coordinate.

@@ -55,6 +55,8 @@ begin
     delete from public.bisca_friendships where user_a=a and user_b=b and requester=target and status='pending';
   elsif action = 'cancel' then
     delete from public.bisca_friendships where user_a=a and user_b=b and requester=me and status='pending';
+  elsif action = 'remove' then
+    delete from public.bisca_friendships where user_a=a and user_b=b and status='accepted';
   else raise exception 'INVALID_ACTION';
   end if;
 end; $$;

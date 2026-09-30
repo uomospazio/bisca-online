@@ -241,6 +241,19 @@ func act(target: String, action: String) -> void:
 	notice.text = "Operazione completata." if response.ok else response.message
 	manager.refresh()
 
+func _ask_remove_friend(target: String, display_name: String) -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "RIMUOVI AMICO"
+	dialog.dialog_text = "Vuoi rimuovere %s dagli amici?" % display_name
+	dialog.ok_button_text = "RIMUOVI"
+	dialog.cancel_button_text = "ANNULLA"
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		dialog.queue_free()
+		act(target, "remove"))
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered(Vector2i(620, 220))
+
 func answer_invite(sender: String, accept: bool) -> void:
 	if working:
 		return
@@ -318,6 +331,18 @@ func update_contacts() -> void:
 		identity_rows.size_flags_horizontal = SIZE_EXPAND_FILL
 		line.add_child(identity_rows)
 		label(manager.display_name(row),identity_rows)
+		if row.status == "accepted":
+			var remove := Button.new()
+			remove.text = "×"
+			remove.tooltip_text = "Rimuovi dagli amici"
+			remove.custom_minimum_size = Vector2(58, 58)
+			remove.size_flags_vertical = SIZE_SHRINK_CENTER
+			remove.add_theme_font_override("font", menu.KIDS_FONT)
+			remove.add_theme_font_size_override("font_size", 38)
+			remove.add_theme_color_override("font_color", menu.BUTTON_TEXT)
+			_set_button_radius(remove, 29)
+			remove.pressed.connect(_ask_remove_friend.bind(str(row.id), manager.display_name(row)))
+			line.add_child(remove)
 
 		if row.has("invite_code"):
 			label("Invito alla lobby " + str(row.invite_code),identity_rows)

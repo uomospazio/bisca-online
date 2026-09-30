@@ -23,7 +23,7 @@ func run() -> void:
 	manager.entries[0]["invite_code"] = "ABC123"
 	manager.changed.emit()
 	assert(menu.friends_dot.visible)
-	assert(menu.friends_page.contacts.get_child(1).get_child(0).get_child_count() == 4)
+	assert(menu.friends_page.contacts.get_child(1).get_child(0).get_child_count() == 5)
 	assert(manager.display_name({"username":null,"public_id":"ABC123"}) == "#ABC123")
 	manager.entries.clear()
 	manager.changed.emit()

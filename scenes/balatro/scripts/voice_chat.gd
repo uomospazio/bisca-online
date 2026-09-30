@@ -9,6 +9,7 @@ var pending := false
 var muted := false
 var volumes: Dictionary = {}
 var bridge: JavaScriptObject
+var native_bridge: Object
 var network_session: Node
 var current_room := ""
 
@@ -58,19 +59,24 @@ func _ready() -> void:
 		print("VOICE OK: BiscaVoice inizializzato")
 		status = "Chat vocale pronta."
 
+	elif Engine.has_singleton("BiscaVoice"):
+		native_bridge = Engine.get_singleton("BiscaVoice")
+		status = "Chat vocale pronta."
+	else:
+		status = "Chat vocale non disponibile in questa versione dell'app." if OS.has_feature("mobile") else "Chat vocale disponibile nella versione browser HTTPS (PC e mobile)."
+	if available():
 		get_node("/root/GameSettings").changed.connect(_sync_master)
 		_sync_master()
-
-	else:
-		status = "Chat vocale disponibile nella versione browser HTTPS (PC e mobile)."
 
 	changed.emit()
 
 func available() -> bool:
-	return bridge != null
+	return bridge != null or native_bridge != null
 
 func _call(method: String, args: Array = []) -> void:
-	if bridge != null:
+	if native_bridge != null:
+		native_bridge.call("invoke", method, JSON.stringify(args))
+	elif bridge != null:
 		var encoded: Array[String] = []
 		for arg in args:
 			encoded.append(JSON.stringify(arg))
@@ -105,7 +111,11 @@ func activate() -> void:
 	open_panel()
 
 func open_panel() -> void:
-	if bridge != null:
+	if native_bridge != null:
+		# I controlli microfono e volume sono gia' presenti nei Settings Godot.
+		if not enabled and not pending:
+			toggle_audio()
+	elif bridge != null:
 		_call("openPanel")
 	else:
 		var dialog := AcceptDialog.new()
@@ -119,7 +129,7 @@ func open_panel() -> void:
 func toggle_audio() -> void:
 	if enabled or pending:
 		stop()
-	elif bridge == null:
+	elif not available():
 		open_panel()
 	elif my_slot < 0 or my_slot >= people.size() or people[my_slot].get("id", "").is_empty():
 		status = "Entra prima in una lobby multiplayer."
@@ -167,15 +177,22 @@ func set_player_volume(id: String, value: float) -> void:
 func handle_signal(_sender_slot: int, data: Dictionary) -> void:
 	_call("receive", [data])
 
+func _server_connected() -> bool:
+	if network_session == null:
+		return false
+	var peer: MultiplayerPeer = network_session.multiplayer.multiplayer_peer
+	return peer != null and not peer is OfflineMultiplayerPeer and network_session.multiplayer.get_unique_id() != 1 and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+
 func _process(_delta: float) -> void:
-	if bridge == null:
+	if not available():
 		return
-	var events = JSON.parse_string(str(bridge.drain()))
+	var payload: String = str(native_bridge.call("drain")) if native_bridge != null else str(bridge.drain())
+	var events = JSON.parse_string(payload)
 	if not events is Array:
 		return
 	for event in events:
 		if event.op == "token":
-			if network_session.multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+			if _server_connected():
 				network_session.request_voice_token.rpc_id(1, int(event.id))
 			else:
 				_call("credentials", [event.id, {"error": "Connessione alla partita assente."}])
@@ -183,7 +200,7 @@ func _process(_delta: float) -> void:
 			volumes[str(event.id)] = float(event.value)
 			changed.emit()
 		elif event.op == "signal":
-			if network_session.multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+			if _server_connected():
 				network_session.voice_signal.rpc_id(1, int(event.slot), event.data)
 		elif event.op == "status":
 			status = str(event.text)
@@ -196,3 +213,8 @@ func _process(_delta: float) -> void:
 
 func _exit_tree() -> void:
 	_call("stop")
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED and native_bridge != null:
+		# Il microfono si riattiva solo con un nuovo gesto esplicito dopo il ritorno.
+		stop()

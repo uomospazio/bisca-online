@@ -24,7 +24,9 @@ func setup(host: Control) -> void:
 	z_index = 100
 
 	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.85)
+	# Overlay coerente con il fondo dark del menu: il nero opaco rende visibile
+	# il rettangolo dell'area logica 1920x1080 sui display piu' larghi.
+	shade.color = Color("171324", 0.62)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
 

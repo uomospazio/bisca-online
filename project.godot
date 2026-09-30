@@ -18,6 +18,8 @@ config/name="Bisca"
 config/tags=PackedStringArray("experiment")
 run/main_scene="res://scenes/balatro/balatro.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0.09019608, 0.07450981, 0.14117648, 1)
+boot_splash/image="uid://dnqnk4yvqig7e"
 config/icon="uid://cjkt2olulqgac"
 
 [audio]

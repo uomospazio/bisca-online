@@ -89,11 +89,6 @@ func _ready() -> void:
 	if get_node("/root/NetworkSession").dedicated:
 		set_process(false)
 		return
-	var boot: CanvasLayer
-	if not get_tree().has_meta("bisca_boot_shown"):
-		get_tree().set_meta("bisca_boot_shown", true)
-		boot = preload("res://scenes/balatro/scripts/boot_splash.gd").new()
-		add_child(boot)
 	# Keep the existing table/menu coordinates in a centered design area.
 	# Only the background expands; cards and controls retain their proportions.
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
@@ -274,8 +269,6 @@ func _ready() -> void:
 		var restart: Dictionary = get_tree().get_meta("bisca_restart")
 		get_tree().remove_meta("bisca_restart")
 		_menu_start.call_deferred(restart.name, restart.count)
-	if is_instance_valid(boot):
-		boot.finish()
 
 func _style_new_button(node: Node) -> void:
 	if node is Button and node is not CheckButton and node is not CheckBox:

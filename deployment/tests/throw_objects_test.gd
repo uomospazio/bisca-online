@@ -24,6 +24,15 @@ func run() -> void:
 	assert(throws.items.size() == 3)
 	assert(throws.items[1].visible and not throws.items[2].visible)
 	assert(throws.items[1].mouse_filter == Control.MOUSE_FILTER_STOP)
+	var settings := root.get_node("GameSettings")
+	var original: Array = settings.values.throw_slots.duplicate()
+	settings.values.throw_slots = [1, -1, 0]
+	throws._refresh_equipped()
+	assert(throws.items[0].texture == throws.textures[1])
+	assert(not throws.items[1].visible)
+	assert(throws.items[2].texture == throws.textures[0])
+	settings.values.throw_slots = original
+	throws._refresh_equipped()
 	for slot in throws.slots:
 		assert(slot.visible and slot.scale.is_equal_approx(Vector2.ONE))
 	var children: int = throws.get_child_count()

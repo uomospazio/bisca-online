@@ -21,6 +21,58 @@ var _queued := false
 var _account: Node
 var _http: HTTPRequest
 var purchasing := false
+var daily_error := ""
+var _daily_ids: Array = []
+var _daily_loading := false
+var _daily_until := 0
+
+func get_daily_items() -> Array:
+	var result: Array = []
+	for id in _daily_ids:
+		var item := get_item(str(id))
+		if not item.is_empty() and item.is_available:
+			result.append(item)
+	return result
+
+func refresh_daily() -> void:
+	if DisplayServer.get_name() == "headless" or _daily_loading:
+		return
+	if Time.get_ticks_msec() < _daily_until:
+		return
+	_daily_ids.clear()
+	if _account == null or not _account.is_authenticated():
+		daily_error = "MARKET GIORNALIERO: CONNETTITI A INTERNET."
+		changed.emit()
+		return
+	_daily_loading = true
+	daily_error = "CARICAMENTO MARKET..."
+	changed.emit()
+	var request := HTTPRequest.new()
+	request.timeout = 15.0
+	request.accept_gzip = not OS.has_feature("web")
+	add_child(request)
+	var error := request.request(_account.PROJECT_URL + "/rest/v1/rpc/bisca_daily_shop", _account.database_headers(), HTTPClient.METHOD_POST, "{}")
+	var response: Array = []
+	if error == OK:
+		response = await request.request_completed
+	request.queue_free()
+	_daily_loading = false
+	daily_error = "MARKET NON DISPONIBILE. Verifica la migrazione 012_daily_shop.sql."
+	if response.size() == 4 and response[0] == HTTPRequest.RESULT_SUCCESS and response[1] == 200:
+		var data = JSON.parse_string(response[3].get_string_from_utf8())
+		if data is Dictionary and data.get("items") is Array and _integer(data.get("refresh_after")) and int(data.refresh_after) > 0:
+			var valid: bool = data.items.size() <= 6
+			var unique: Array = []
+			for id in data.items:
+				if not id is String or unique.has(id): valid = false
+				unique.append(id)
+			if valid:
+				_daily_ids = unique
+				daily_error = ""
+				var seconds := clampi(int(data.refresh_after), 1, 86400)
+				_daily_until = Time.get_ticks_msec() + seconds * 1000
+				get_tree().create_timer(seconds).timeout.connect(refresh_daily)
+	changed.emit()
 
 ## Il client invia solo ID e prezzo confermato. Saldo e proprieta' decide il server.
 func purchase_item(item_id: String, expected_price: int) -> Dictionary:
@@ -158,6 +210,7 @@ func refresh() -> void:
 	catalog_loaded.emit()
 	inventory_loaded.emit()
 	changed.emit()
+	refresh_daily()
 	_restart_queued()
 
 func _current(generation: int, owner: String) -> bool:

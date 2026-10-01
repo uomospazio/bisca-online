@@ -8,8 +8,11 @@ const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 
 # Area visibile degli oggetti.
-const ITEMS_POSITION := Vector2(220, 180)
-const ITEMS_SIZE := Vector2(1560, 900)
+const ITEMS_POSITION := Vector2(60, 185)
+const ITEMS_SIZE := Vector2(1800, 895)
+
+# Spostamento comune di market, titolo SHOP e articoli (X destra, Y basso).
+const MARKET_OFFSET := Vector2(0, -50)
 
 # Distanza che il dito deve percorrere prima che il gesto
 # venga considerato uno scroll.
@@ -22,6 +25,8 @@ var reload_button: Button
 var menu_owner: Control
 var coins_amount: Label
 var shop_scroll: ScrollContainer
+var content: Control
+var throw_selector: Control
 
 # Aree cliccabili degli articoli. Gestite globalmente così lo ScrollContainer
 # resta libero di ricevere e gestire gli swipe su mobile.
@@ -57,6 +62,9 @@ func setup(menu: Control) -> void:
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
 
 	coins_amount = counter.get_node("CoinBar/CoinsAmount")
+	# Cresce verso sinistra, mantenendo il margine destro della safe area.
+	counter.pivot_offset = Vector2(counter.size.x, 0)
+	counter.scale = Vector2.ONE * 1.12
 
 	manager = get_node("/root/ShopManager")
 
@@ -65,9 +73,9 @@ func setup(menu: Control) -> void:
 	# TITOLO
 	# ---------------------------------------------------------
 
-	var title := _label("SHOP", 58)
+	var title := _label("SHOP", 70)
 
-	add_child(title)
+	# Il titolo viene posizionato sull'insegna del market nello scroll.
 
 	title.anchor_left = 0.5
 	title.anchor_right = 0.5
@@ -79,7 +87,6 @@ func setup(menu: Control) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
-	intro_controls.append(title)
 
 
 	# ---------------------------------------------------------
@@ -108,6 +115,30 @@ func setup(menu: Control) -> void:
 
 	shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	shop_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	content = Control.new()
+	content.mouse_filter = Control.MOUSE_FILTER_PASS
+	content.custom_minimum_size = Vector2(1760, 1810 + maxf(MARKET_OFFSET.y, 0.0))
+	shop_scroll.add_child(content)
+	var market := TextureRect.new()
+	market.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/market.png")
+	market.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	market.stretch_mode = TextureRect.STRETCH_SCALE
+	market.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	market.position = Vector2(40, 640) + MARKET_OFFSET
+	market.size = Vector2(1680, 1133)
+	content.add_child(market)
+	content.add_child(title)
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	title.position = Vector2(620, 745) + MARKET_OFFSET
+	title.size = Vector2(520, 120)
+	throw_selector = preload("res://scenes/balatro/scripts/shop_throw_selector.gd").new()
+	content.add_child(throw_selector)
+	throw_selector.position = Vector2(310, 90)
+	throw_selector.scale = Vector2.ONE * 1.45
+	throw_selector.setup(menu)
+	status.reparent(content, false)
+	status.position = Vector2(80, 540)
+	status.size = Vector2(1600, 100)
 
 
 	# ---------------------------------------------------------
@@ -116,11 +147,11 @@ func setup(menu: Control) -> void:
 
 	grid = GridContainer.new()
 
-	grid.columns = 4
+	grid.columns = 3
 
 	grid.add_theme_constant_override(
 		"h_separation",
-		120
+		40
 	)
 
 	grid.add_theme_constant_override(
@@ -128,7 +159,8 @@ func setup(menu: Control) -> void:
 		30
 	)
 
-	shop_scroll.add_child(grid)
+	content.add_child(grid)
+	grid.position = Vector2(420, 1060) + MARKET_OFFSET
 
 
 	# ---------------------------------------------------------
@@ -157,12 +189,13 @@ func setup(menu: Control) -> void:
 	)
 
 	reload_button.position = Vector2(320, 40)
+	reload_button.hide()
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(reload_button)
 
 
 	for button in [back, reload_button]:
-		button.custom_minimum_size = Vector2(260, 96)
-		button.size = Vector2(260, 96)
+		button.custom_minimum_size = Vector2(296, 108)
+		button.size = Vector2(296, 108)
 
 		for state in [
 			"normal",
@@ -175,7 +208,7 @@ func setup(menu: Control) -> void:
 			var pill := button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
 
 			if pill:
-				pill.set_corner_radius_all(48)
+				pill.set_corner_radius_all(54)
 
 				button.add_theme_stylebox_override(
 					state,
@@ -183,7 +216,6 @@ func setup(menu: Control) -> void:
 				)
 
 
-	intro_controls.append(reload_button)
 
 
 	# ---------------------------------------------------------
@@ -266,6 +298,11 @@ func _input(event: InputEvent) -> void:
 
 
 func _item_at_position(viewport_position: Vector2) -> String:
+	if not is_visible_in_tree() or purchase_dialog.visible or result_dialog.visible:
+		return ""
+	var local := shop_scroll.get_global_transform_with_canvas().affine_inverse() * viewport_position
+	if not Rect2(Vector2.ZERO, shop_scroll.size).has_point(local):
+		return ""
 	for item_id in item_previews:
 		var preview: Control = item_previews[item_id]
 
@@ -275,7 +312,7 @@ func _item_at_position(viewport_position: Vector2) -> String:
 		if not preview.is_visible_in_tree():
 			continue
 
-		if preview.get_global_rect().has_point(viewport_position):
+		if Rect2(Vector2.ZERO, preview.size).has_point(preview.get_global_transform_with_canvas().affine_inverse() * viewport_position):
 			return str(item_id)
 
 	return ""
@@ -339,6 +376,15 @@ func _purchase_confirmed() -> void:
 
 
 func open() -> void:
+	shop_scroll.scroll_vertical = 0
+	var deck: Control = menu_owner.deck_selector
+	deck.reparent(content, false)
+	deck.position = Vector2(1070, 180)
+	deck.scale = Vector2.ONE * 1.4
+	deck.show()
+	deck.reset_preview()
+	throw_selector.refresh()
+	manager.refresh_daily()
 	coins_amount.text = menu_owner.coins_label.text
 
 	_update()
@@ -461,7 +507,10 @@ func _update() -> void:
 	# ITEMS
 	# ---------------------------------------------------------
 
-	var items: Array = manager.get_items()
+	if not manager.daily_error.is_empty():
+		status.text += "\n" + manager.daily_error
+		status.show()
+	var items: Array = manager.get_daily_items()
 
 	var snapshot: Array = []
 
@@ -507,7 +556,7 @@ func _update() -> void:
 
 		panel.custom_minimum_size = Vector2(
 			280,
-			365
+			265
 		)
 
 
@@ -557,7 +606,7 @@ func _update() -> void:
 
 			preview.custom_minimum_size = Vector2(
 				0,
-				240
+				170
 			)
 
 			preview.size_flags_vertical = (

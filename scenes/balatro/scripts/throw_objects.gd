@@ -10,6 +10,7 @@ const Catalog = preload("res://scenes/balatro/scripts/throw_catalog.gd")
 var textures: Array[Texture2D] = []
 var items: Array[TextureRect] = []
 var selected := 0
+var equipped: Array = [0, 1, -1]
 const SLOT_RADIUS := 110.0
 const SLOT_ANGLES := [-60.0, -10.0, 40.0]
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
@@ -30,6 +31,7 @@ func setup(controller: Control) -> void:
 	z_index = 210
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	poop = _svg("res://scenes/balatro/resources/poop.svg")
+	equipped = get_node("/root/GameSettings").values.throw_slots.duplicate()
 	for filename in Catalog.FILES:
 		var path: String = "res://scenes/balatro/resources/" + filename
 		textures.append(load(path) as Texture2D if not filename.is_empty() and ResourceLoader.exists(path) else null)
@@ -50,21 +52,22 @@ func setup(controller: Control) -> void:
 		slot.size = Vector2(76, 76)
 		slot.pivot_offset = slot.size / 2
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var style := Style.button_style(Style.NORMAL if textures[index] != null else Style.DISABLED)
+		var style := Style.button_style(Style.NORMAL if Catalog.enabled(equipped[index]) else Style.DISABLED)
 		style.set_corner_radius_all(38)
 		slot.add_theme_stylebox_override("panel", style)
 		add_child(slot)
 		slot.hide()
 		slots.append(slot)
 	for index in range(3):
-		var icon := _image(index)
+		var object_id: int = equipped[index]
+		var icon := _image(object_id)
 		items.append(icon)
-		icon.mouse_filter = Control.MOUSE_FILTER_STOP if textures[index] != null else Control.MOUSE_FILTER_IGNORE
+		icon.mouse_filter = Control.MOUSE_FILTER_STOP if Catalog.enabled(object_id) else Control.MOUSE_FILTER_IGNORE
 		icon.hide()
 		icon.gui_input.connect(func(event):
-			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and remaining <= 0 and textures[index] != null:
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and remaining <= 0 and Catalog.enabled(equipped[index]):
 				if motion and motion.is_valid(): motion.kill()
-				selected = index
+				selected = equipped[index]
 				item = icon
 				dragging = true
 				drag_origin = item.position
@@ -73,6 +76,22 @@ func setup(controller: Control) -> void:
 		)
 	item = items[0]
 	get_node("/root/NetworkSession").object_thrown.connect(_received)
+	get_node("/root/GameSettings").changed.connect(_refresh_equipped)
+
+func _refresh_equipped() -> void:
+	var next: Array = get_node("/root/GameSettings").values.throw_slots
+	if equipped == next:
+		return
+	equipped = next.duplicate()
+	dragging = false
+	for index in items.size():
+		var id: int = equipped[index]
+		items[index].texture = textures[id] if Catalog.enabled(id) else null
+		items[index].mouse_filter = Control.MOUSE_FILTER_STOP if Catalog.enabled(id) else Control.MOUSE_FILTER_IGNORE
+		items[index].visible = opened and Catalog.enabled(id)
+		var style := Style.button_style(Style.NORMAL if Catalog.enabled(id) else Style.DISABLED)
+		style.set_corner_radius_all(38)
+		slots[index].add_theme_stylebox_override("panel", style)
 
 func _svg(path: String) -> Texture2D:
 	return load(path) as Texture2D
@@ -81,7 +100,7 @@ func _image(object_id := 0) -> TextureRect:
 	var image := TextureRect.new()
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	image.texture = textures[object_id]
+	image.texture = textures[object_id] if object_id >= 0 and object_id < textures.size() else null
 	image.size = Vector2(64, 64)
 	image.pivot_offset = image.size / 2
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -129,7 +148,7 @@ func _open(value: bool) -> void:
 	motion = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT if value else Tween.EASE_IN)
 	for index in range(items.size()):
 		var icon := items[index]
-		icon.visible = textures[index] != null
+		icon.visible = Catalog.enabled(equipped[index])
 		icon.position = _object_position(index, icon.size)
 		icon.scale = Vector2.ONE * (0.5 if value else 1.0)
 		motion.tween_property(icon, "scale", Vector2.ONE if value else Vector2.ONE * 0.5, 0.28 if value else 0.18)

@@ -287,7 +287,7 @@ func _ready() -> void:
 	round_buttons.offset_top = ROUND_BUTTONS_TOP_MARGIN
 	round_buttons.offset_right = -ROUND_BUTTONS_RIGHT_MARGIN
 	round_buttons.offset_bottom = ROUND_BUTTONS_TOP_MARGIN + ROUND_BUTTON_SIZE * 3.0 + ROUND_BUTTONS_SPACING * 2.0
-	var shop := _round_icon_button(round_buttons, "shop.svg", "Shop", _show_shop)
+	var shop := _round_icon_button(round_buttons, "brush.svg", "Personalizza e Shop", _show_shop)
 	shop.position = Vector2.ZERO
 	shop.size = Vector2.ONE * ROUND_BUTTON_SIZE
 	var settings := _round_icon_button(round_buttons, "setting.svg", "Settings", _show_settings)
@@ -605,6 +605,7 @@ func _place_deck_selector_home() -> void:
 		deck_selector.reparent(home_persistent_ui, false)
 	deck_selector.position = HOME_DECK_POSITION
 	deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
+	deck_selector.hide()
 
 # Chiamate dalla pagina multiplayer quando si entra/esce dalla lobby reale.
 func show_network_entry_extras() -> void:
@@ -620,6 +621,7 @@ func hide_network_entry_extras() -> void:
 	second_character.hide()
 
 func _place_deck_selector_profile() -> void:
+	deck_selector.show()
 	if deck_selector.get_parent() != profile_panel:
 		deck_selector.reparent(profile_panel, false)
 	deck_selector.position = Vector2(485, 270)

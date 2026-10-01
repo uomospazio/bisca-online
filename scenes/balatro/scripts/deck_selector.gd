@@ -9,6 +9,7 @@ var edit_button: Button
 var editing_controls: Array[Control] = []
 var selected := 1
 var switching := false
+var editing := false
 var selected_front := 0
 var showing_front := false
 var flip_button: Button
@@ -33,7 +34,7 @@ func _ready() -> void:
 		Vector2(246, -24),
 		Vector2(64, 64),
 		"edit",
-		func(): _edit(true)
+		_toggle_edit
 	)
 
 	editing_controls.append(
@@ -57,14 +58,6 @@ func _ready() -> void:
 	flip_button = _button(Vector2(60, 294), Vector2(240, 54), "", _flip)
 	flip_button.text = "FRONT"
 	editing_controls.append(flip_button)
-	var confirm := _button(
-		Vector2(60, 364),
-		Vector2(240, 64),
-		"",
-		_confirm
-	)
-	confirm.text = "CONFERMA"
-	editing_controls.append(confirm)
 
 	reset_preview()
 	var shop := get_node_or_null("/root/ShopManager")
@@ -73,7 +66,7 @@ func _ready() -> void:
 	var cloud := get_node_or_null("/root/AccountProfile")
 	if cloud:
 		cloud.preferences_loaded.connect(func():
-			if edit_button.visible and not switching and not flipping:
+			if not editing and not switching and not flipping:
 				reset_preview()
 		)
 
@@ -150,7 +143,7 @@ func _owned_backs() -> Array[int]:
 
 func _refresh_owned_backs() -> void:
 	var backs := _owned_backs()
-	if edit_button.visible:
+	if not editing:
 		var saved := int(get_node("/root/GameSettings").values.deck_back)
 		if backs.has(saved):
 			selected = saved
@@ -159,22 +152,32 @@ func _refresh_owned_backs() -> void:
 	_update_texture()
 
 
+func _toggle_edit() -> void:
+	if switching or flipping:
+		return
+	if editing:
+		_confirm()
+	else:
+		_edit(true)
+
+
 func _edit(value: bool, animate := true) -> void:
 	if switching and animate:
 		return
+	editing = value
+	edit_button.show()
+	edit_button.tooltip_text = "Conferma mazzo" if editing else "Modifica mazzo"
 
 	var outgoing: Array[Control] = []
 	var incoming: Array[Control] = []
 
 	if value:
-		outgoing.append(edit_button)
 		incoming = editing_controls
 	else:
 		outgoing = editing_controls
-		incoming.append(edit_button)
 
 	if not animate:
-		edit_button.visible = not value
+		edit_button.visible = true
 		edit_button.scale = Vector2.ONE
 
 		for control in editing_controls:

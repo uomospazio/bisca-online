@@ -30,7 +30,18 @@ func run() -> void:
 	assert(menu.shop_page.grid.get_child_count() == 6)
 	assert(menu.deck_selector.get_parent() == menu.shop_page.content)
 	assert(menu.deck_selector.is_visible_in_tree())
-	assert(menu.shop_page.grid.position.y > menu.shop_page.shop_scroll.size.y)
+	assert(is_equal_approx(menu.shop_page.content.position.y, float(menu.shop_page.scroll_padding.get_theme_constant("margin_top"))))
+	assert(is_equal_approx(menu.shop_page.shop_scroll.size.y, root.get_visible_rect().size.y))
+	var hud: Control = menu.shop_page.fixed_controls[0]
+	var hud_position := hud.global_position
+	var before_scroll: Vector2 = menu.shop_page.content.global_position
+	menu.shop_page.shop_scroll.scroll_vertical = 200
+	await process_frame
+	await process_frame
+	assert(menu.shop_page.content.global_position.y < before_scroll.y)
+	assert(hud.global_position == hud_position)
+	assert(menu.shop_page._item_at_position(hud.get_global_transform_with_canvas() * (hud.size / 2.0)) == "")
+	menu.shop_page.shop_scroll.scroll_vertical = 0
 	assert(menu.shop_page.shop_scroll.scroll_vertical == 0)
 	assert(not menu.home_persistent_ui.visible)
 	assert(not menu.title.visible)

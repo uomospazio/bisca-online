@@ -1,322 +1,177 @@
 extends Control
 
-## UI Shop.
-## Il tap su un oggetto apre l'acquisto.
-## Su mobile lo ScrollContainer gestisce automaticamente tap vs trascinamento.
-
+## Vetrina fissa: due articoli grandi e due piccoli, senza scorrimento.
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
+const MARKET_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/market_four.png")
+const PRICE_TAG_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/market_price_tag.png")
+const PRICE_COLOR := Color("#340602")
 
-# Area visibile degli oggetti.
-const ITEMS_POSITION := Vector2(60, 185)
-const ITEMS_SIZE := Vector2(1800, 895)
-
-# Spostamento comune di market, titolo SHOP e articoli (X destra, Y basso).
-const MARKET_OFFSET := Vector2(0, -50)
-
-# Distanza che il dito deve percorrere prima che il gesto
-# venga considerato uno scroll.
+# Banco, insegna e articoli si spostano insieme.
+const MARKET_OFFSET := Vector2.ZERO
+const MARKET_POSITION := Vector2(400, 50)
+const MARKET_SIZE := Vector2(1700, 1050)
+const DECK_POSITION := Vector2(60, 300)
+const DECK_SCALE := 1.25
+const OBJECTS_POSITION := Vector2(40, 650)
+const OBJECTS_SCALE := 1.25
+# Coordinate relative alla grafica del banco.
+const ITEM_RECTS := [
+	Rect2(475, 460, 260, 300),
+	Rect2(835, 460, 260, 300),
+	Rect2(1185, 452, 145, 112),
+	Rect2(1185, 682, 145, 112),
+]
+const TAG_RECTS := [
+	Rect2(500, 755, 205, 102.5),
+	Rect2(860, 755, 205, 102.5),
+	Rect2(1190, 538, 140, 70),
+	Rect2(1190, 777, 140, 70),
+]
 const TAP_MOVE_THRESHOLD := 18.0
+const ITEM_SHADOW_COLOR := Color(0.10, 0.055, 0.025, 0.48)
+const ITEM_SHADOW_OFFSET := Vector2(5, 10)
+const ITEM_SHADOW_SOFTNESS := 14
 
 var manager: Node
 var status: Label
-var grid: GridContainer
-var reload_button: Button
+var grid: Control
 var menu_owner: Control
 var coins_amount: Label
-var shop_scroll: ScrollContainer
+var fixed_controls: Array[Control] = []
 var content: Control
 var throw_selector: Control
-
-# Aree cliccabili degli articoli. Gestite globalmente così lo ScrollContainer
-# resta libero di ricevere e gestire gli swipe su mobile.
 var item_previews: Dictionary = {}
 var touch_item_id := ""
 var touch_start_position := Vector2.ZERO
-var touch_start_scroll := 0
 var touch_dragged := false
-
-var intro_controls: Array[Control] = []
-var intro_tween: Tween
 var rendered_items: Array = []
-
 var purchase_dialog: ConfirmationDialog
 var result_dialog: AcceptDialog
-
 var pending_item := ""
 var pending_price := 0
 var pending_user := ""
 
-
 func setup(menu: Control) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
 	menu_owner = menu
+	manager = get_node("/root/ShopManager")
+	content = Control.new()
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(content)
 
-	# Stessa geometria e risorse della home, senza duplicare il saldo.
+	var market := TextureRect.new()
+	market.name = "Market"
+	market.texture = MARKET_TEXTURE
+	market.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	market.stretch_mode = TextureRect.STRETCH_SCALE
+	market.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	market.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	market.position = MARKET_POSITION + MARKET_OFFSET
+	market.size = MARKET_SIZE
+	content.add_child(market)
+	var title := _label("SHOP", 60)
+	title.position = Vector2(670, 142)
+	title.size = Vector2(475, 83)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	market.add_child(title)
+
+	grid = Control.new()
+	grid.name = "Offers"
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.size = MARKET_SIZE
+	market.add_child(grid)
+
+	throw_selector = preload("res://scenes/balatro/scripts/shop_throw_selector.gd").new()
+	content.add_child(throw_selector)
+	throw_selector.position = OBJECTS_POSITION
+	throw_selector.scale = Vector2.ONE * OBJECTS_SCALE
+	throw_selector.setup(menu)
+
+	status = _label("", 20)
+	status.position = Vector2(70, 910)
+	status.size = Vector2(410, 145)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(status)
+
+	# Conserva geometria, scala e safe area del precedente HUD.
 	var counter: Control = menu.home_persistent_ui.get_node("CoinsCounter").duplicate()
 	add_child(counter)
 	if counter.has_meta("safe_edge"):
 		counter.position -= Vector2(counter.get_meta("safe_edge"))
 		counter.remove_meta("safe_edge")
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
-
 	coins_amount = counter.get_node("CoinBar/CoinsAmount")
-	# Cresce verso sinistra, mantenendo il margine destro della safe area.
 	counter.pivot_offset = Vector2(counter.size.x, 0)
 	counter.scale = Vector2.ONE * 1.12
-
-	manager = get_node("/root/ShopManager")
-
-
-	# ---------------------------------------------------------
-	# TITOLO
-	# ---------------------------------------------------------
-
-	var title := _label("SHOP", 70)
-
-	# Il titolo viene posizionato sull'insegna del market nello scroll.
-
-	title.anchor_left = 0.5
-	title.anchor_right = 0.5
-	title.offset_left = -160
-	title.offset_right = 160
-	title.offset_top = 40
-	title.offset_bottom = 136
-
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-
-
-
-	# ---------------------------------------------------------
-	# STATUS
-	# ---------------------------------------------------------
-
-	status = _label("", 23)
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-
-	add_child(status)
-
-	status.position = Vector2(180, 160)
-	status.size = Vector2(1540, 100)
-
-
-	# ---------------------------------------------------------
-	# SCROLL SHOP
-	# ---------------------------------------------------------
-
-	shop_scroll = ScrollContainer.new()
-
-	add_child(shop_scroll)
-
-	shop_scroll.position = ITEMS_POSITION
-	shop_scroll.size = ITEMS_SIZE
-
-	shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	shop_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	content = Control.new()
-	content.mouse_filter = Control.MOUSE_FILTER_PASS
-	content.custom_minimum_size = Vector2(1760, 1810 + maxf(MARKET_OFFSET.y, 0.0))
-	shop_scroll.add_child(content)
-	var market := TextureRect.new()
-	market.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/market.png")
-	market.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	market.stretch_mode = TextureRect.STRETCH_SCALE
-	market.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	market.position = Vector2(40, 640) + MARKET_OFFSET
-	market.size = Vector2(1680, 1133)
-	content.add_child(market)
-	content.add_child(title)
-	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	title.position = Vector2(620, 745) + MARKET_OFFSET
-	title.size = Vector2(520, 120)
-	throw_selector = preload("res://scenes/balatro/scripts/shop_throw_selector.gd").new()
-	content.add_child(throw_selector)
-	throw_selector.position = Vector2(310, 90)
-	throw_selector.scale = Vector2.ONE * 1.45
-	throw_selector.setup(menu)
-	status.reparent(content, false)
-	status.position = Vector2(80, 540)
-	status.size = Vector2(1600, 100)
-
-
-	# ---------------------------------------------------------
-	# GRIGLIA
-	# ---------------------------------------------------------
-
-	grid = GridContainer.new()
-
-	grid.columns = 3
-
-	grid.add_theme_constant_override(
-		"h_separation",
-		40
-	)
-
-	grid.add_theme_constant_override(
-		"v_separation",
-		30
-	)
-
-	content.add_child(grid)
-	grid.position = Vector2(420, 1060) + MARKET_OFFSET
-
-
-	# ---------------------------------------------------------
-	# INDIETRO
-	# ---------------------------------------------------------
-
-	var back: Button = menu._button(
-		self,
-		"INDIETRO",
-		menu.show_home
-	)
-
+	var back: Button = menu._button(self, "INDIETRO", menu.show_home)
 	back.position = Vector2(40, 40)
-
-	intro_controls.append(back)
-
-
-	# ---------------------------------------------------------
-	# AGGIORNA
-	# ---------------------------------------------------------
-
-	reload_button = menu._button(
-		self,
-		"AGGIORNA",
-		manager.refresh
-	)
-
-	reload_button.position = Vector2(320, 40)
-	reload_button.hide()
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(reload_button)
-
-
-	for button in [back, reload_button]:
-		button.custom_minimum_size = Vector2(296, 108)
-		button.size = Vector2(296, 108)
-
-		for state in [
-			"normal",
-			"hover",
-			"pressed",
-			"hover_pressed",
-			"focus",
-			"disabled"
-		]:
-			var pill := button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
-
-			if pill:
-				pill.set_corner_radius_all(54)
-
-				button.add_theme_stylebox_override(
-					state,
-					pill
-				)
-
-
-
-
-	# ---------------------------------------------------------
-	# SIGNAL
-	# ---------------------------------------------------------
-
-	manager.changed.connect(_update)
-	visibility_changed.connect(_update)
-
-
-	# ---------------------------------------------------------
-	# DIALOG ACQUISTO
-	# ---------------------------------------------------------
+	back.custom_minimum_size = Vector2(296, 108)
+	back.size = Vector2(296, 108)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var pill := back.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+		if pill:
+			pill.set_corner_radius_all(54)
+			back.add_theme_stylebox_override(state, pill)
+	fixed_controls = [back, counter]
 
 	purchase_dialog = ConfirmationDialog.new()
-
 	purchase_dialog.title = "CONFERMA ACQUISTO"
 	purchase_dialog.ok_button_text = "ACQUISTA"
 	purchase_dialog.cancel_button_text = "ANNULLA"
-
 	add_child(purchase_dialog)
-
-	purchase_dialog.confirmed.connect(
-		_purchase_confirmed
-	)
-
-
-	# ---------------------------------------------------------
-	# DIALOG RISULTATO
-	# ---------------------------------------------------------
-
+	purchase_dialog.confirmed.connect(_purchase_confirmed)
 	result_dialog = AcceptDialog.new()
-
 	add_child(result_dialog)
+	manager.changed.connect(_update)
+	visibility_changed.connect(_update)
 
+func open() -> void:
+	var deck: Control = menu_owner.deck_selector
+	deck.reparent(content, false)
+	deck.position = DECK_POSITION
+	deck.scale = Vector2.ONE * DECK_SCALE
+	deck.show()
+	deck.reset_preview()
+	throw_selector.refresh()
+	coins_amount.text = menu_owner.coins_label.text
+	_update()
+	manager.refresh_daily()
+	if not manager.inventory_ready or manager.stale or not manager.last_error.is_empty():
+		manager.refresh()
 
 func _input(event: InputEvent) -> void:
-	# TOUCH MOBILE
-	if event is InputEventScreenTouch:
+	if not is_visible_in_tree():
+		touch_item_id = ""
+		return
+	if event is InputEventScreenTouch or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
+		if event is InputEventMouseButton and DisplayServer.is_touchscreen_available():
+			return
 		if event.pressed:
 			touch_item_id = _item_at_position(event.position)
 			touch_start_position = event.position
-			touch_start_scroll = shop_scroll.scroll_vertical if shop_scroll else 0
 			touch_dragged = false
 		else:
-			var released_item := _item_at_position(event.position)
-			var scroll_changed := false
-
-			if shop_scroll:
-				scroll_changed = abs(shop_scroll.scroll_vertical - touch_start_scroll) > 1
-
-			if (
-				not touch_item_id.is_empty()
-				and released_item == touch_item_id
-				and not touch_dragged
-				and not scroll_changed
-			):
+			if not touch_dragged and not touch_item_id.is_empty() and touch_item_id == _item_at_position(event.position):
 				_ask_purchase(touch_item_id)
-
 			touch_item_id = ""
-			touch_dragged = false
-
-	elif event is InputEventScreenDrag:
-		if (
-			not touch_item_id.is_empty()
-			and event.position.distance_to(touch_start_position) > TAP_MOVE_THRESHOLD
-		):
+	elif event is InputEventScreenDrag or event is InputEventMouseMotion:
+		if event.position.distance_to(touch_start_position) > TAP_MOVE_THRESHOLD:
 			touch_dragged = true
-
-	# MOUSE DESKTOP
-	# Su dispositivi touch ignoriamo gli eventi mouse emulati dal dito.
-	elif event is InputEventMouseButton:
-		if DisplayServer.is_touchscreen_available():
-			return
-
-		if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
-			var item_id := _item_at_position(event.position)
-			if not item_id.is_empty():
-				_ask_purchase(item_id)
-
 
 func _item_at_position(viewport_position: Vector2) -> String:
 	if not is_visible_in_tree() or purchase_dialog.visible or result_dialog.visible:
 		return ""
-	var local := shop_scroll.get_global_transform_with_canvas().affine_inverse() * viewport_position
-	if not Rect2(Vector2.ZERO, shop_scroll.size).has_point(local):
-		return ""
+	for control in fixed_controls:
+		if control.is_visible_in_tree() and Rect2(Vector2.ZERO, control.size).has_point(control.get_global_transform_with_canvas().affine_inverse() * viewport_position):
+			return ""
 	for item_id in item_previews:
-		var preview: Control = item_previews[item_id]
-
-		if not is_instance_valid(preview):
-			continue
-
-		if not preview.is_visible_in_tree():
-			continue
-
-		if Rect2(Vector2.ZERO, preview.size).has_point(preview.get_global_transform_with_canvas().affine_inverse() * viewport_position):
-			return str(item_id)
-
+		for target in item_previews[item_id]:
+			if is_instance_valid(target) and target.is_visible_in_tree() and Rect2(Vector2.ZERO, target.size).has_point(target.get_global_transform_with_canvas().affine_inverse() * viewport_position):
+				return str(item_id)
 	return ""
-
 
 func _ask_purchase(item_id: String) -> void:
 	if manager.purchasing:
@@ -375,423 +230,118 @@ func _purchase_confirmed() -> void:
 	)
 
 
-func open() -> void:
-	shop_scroll.scroll_vertical = 0
-	var deck: Control = menu_owner.deck_selector
-	deck.reparent(content, false)
-	deck.position = Vector2(1070, 180)
-	deck.scale = Vector2.ONE * 1.4
-	deck.show()
-	deck.reset_preview()
-	throw_selector.refresh()
-	manager.refresh_daily()
-	coins_amount.text = menu_owner.coins_label.text
 
-	_update()
-
-
-	# ---------------------------------------------------------
-	# ANIMAZIONE ENTRATA
-	# ---------------------------------------------------------
-
-	if intro_tween and intro_tween.is_valid():
-		intro_tween.kill()
-
-	intro_tween = create_tween().set_parallel(true)
-
-	var elements: Array[Control] = intro_controls.duplicate()
-
-	# Gli oggetti dello shop sono già presenti senza pop: si animano solo
-	# titolo e pulsanti della schermata.
-
-	for index in elements.size():
-		var element := elements[index]
-
-		element.pivot_offset = element.size / 2.0
-
-		intro_tween.tween_property(
-			element,
-			"scale",
-			Vector2.ONE,
-			0.35
-		).from(
-			Vector2.ZERO
-		).set_delay(
-			index * 0.035
-		).set_trans(
-			Tween.TRANS_BACK
-		).set_ease(
-			Tween.EASE_OUT
-		)
-
-
-	# ---------------------------------------------------------
-	# REFRESH
-	# ---------------------------------------------------------
-
-	if (
-		not manager.inventory_ready
-		or manager.stale
-		or not manager.last_error.is_empty()
-	):
-		manager.refresh()
-
-
-func _label(
-	text: String,
-	font_size := 22
-) -> Label:
-
+func _label(text: String, font_size := 22) -> Label:
 	var label := Label.new()
-
 	label.text = text
-
-	label.add_theme_font_override(
-		"font",
-		FONT
-	)
-
-	label.add_theme_font_size_override(
-		"font_size",
-		font_size
-	)
-
-	label.add_theme_color_override(
-		"font_color",
-		Style.TEXT
-	)
-
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", Style.TEXT)
 	return label
 
-
 func _update() -> void:
-	if grid == null:
+	if grid == null or not is_visible_in_tree():
 		return
-
-	if not is_visible_in_tree():
-		return
-
-
-	# ---------------------------------------------------------
-	# STATO
-	# ---------------------------------------------------------
-
-	reload_button.disabled = (
-		manager.loading
-		or manager.purchasing
-	)
-
 	status.text = ""
-
-
 	if manager.loading:
-		status.text += "\nCARICAMENTO..."
-
+		status.text = "CARICAMENTO..."
 	elif not manager.last_error.is_empty():
-		status.text += "\n" + manager.last_error
-
+		status.text = manager.last_error
 	elif manager.stale:
-		status.text += (
-			"\nOFFLINE: DATI DELL'ULTIMA LETTURA, "
-			+ "NON AGGIORNATI."
-		)
-
+		status.text = "OFFLINE: DATI NON AGGIORNATI."
 	elif not manager.inventory_ready:
-		status.text += "\nIN ATTESA DELL'ACCOUNT."
-
-
-	status.visible = not status.text.is_empty()
-
-
-	# ---------------------------------------------------------
-	# ITEMS
-	# ---------------------------------------------------------
-
+		status.text = "IN ATTESA DELL'ACCOUNT."
 	if not manager.daily_error.is_empty():
 		status.text += "\n" + manager.daily_error
-		status.show()
+	status.visible = not status.text.is_empty()
 	var items: Array = manager.get_daily_items()
-
 	var snapshot: Array = []
-
-
 	for item in items:
-		snapshot.append(
-			[
-				item,
-				manager.owns_item(item.id)
-			]
-		)
-
-
-	# Gli aggiornamenti di rete non ricreano
-	# gli elementi già visibili se non è cambiato nulla.
-	if snapshot == rendered_items:
+		snapshot.append([item, manager.owns_item(item.id)])
+	if rendered_items == snapshot:
 		return
-
-
 	rendered_items = snapshot.duplicate(true)
-
-
-	# ---------------------------------------------------------
-	# PULIZIA GRIGLIA
-	# ---------------------------------------------------------
-
 	item_previews.clear()
-
 	for child in grid.get_children():
 		grid.remove_child(child)
 		child.queue_free()
-
-
-	# ---------------------------------------------------------
-	# CREAZIONE CARTE SHOP
-	# ---------------------------------------------------------
-
-	for item in items:
-
-		var panel := PanelContainer.new()
-		# PanelContainer usa STOP di default: lo swipe deve raggiungere lo scroll.
-		panel.mouse_filter = Control.MOUSE_FILTER_PASS
-
-		panel.custom_minimum_size = Vector2(
-			280,
-			265
-		)
-
-
-		var box_style := Style.button_style(
-			Style.PANEL,
-			Style.HOVER,
-			3
-		)
-
-		box_style.bg_color.a = 0.0
-		box_style.border_color.a = 0.0
-		box_style.shadow_color.a = 0.0
-
-		panel.add_theme_stylebox_override(
-			"panel",
-			box_style
-		)
-
-		grid.add_child(panel)
-
-
-		# -----------------------------------------------------
-		# CONTENUTO CARTA
-		# -----------------------------------------------------
-
-		var rows := VBoxContainer.new()
-
-		rows.add_theme_constant_override(
-			"separation",
-			8
-		)
-
-		panel.add_child(rows)
-
-
-		# -----------------------------------------------------
-		# PREVIEW DORSO
-		# -----------------------------------------------------
-
-		if (
-			str(item.id).begins_with("deck_back_")
-			and item.asset_id >= 1
-			and item.asset_id <= 12
-		):
-
-			var preview := TextureRect.new()
-
-			preview.custom_minimum_size = Vector2(
-				0,
-				170
-			)
-
-			preview.size_flags_vertical = (
-				Control.SIZE_EXPAND
-				| Control.SIZE_SHRINK_CENTER
-			)
-
-			preview.expand_mode = (
-				TextureRect.EXPAND_IGNORE_SIZE
-			)
-
-			preview.stretch_mode = (
-				TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			)
-
-			preview.texture_filter = (
-				CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			)
-
-			preview.texture = get_node(
-				"/root/GameSettings"
-			).back_texture(
-				item.asset_id
-			)
-
-			rows.add_child(preview)
-
-
-			# -------------------------------------------------
-			# AREA CLICCABILE
-			# -------------------------------------------------
-
-			# Nessun Button invisibile sopra la carta: in questo modo
-			# lo ScrollContainer riceve sempre il trascinamento.
-			preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-			if not manager.owns_item(item.id) and item.is_available:
-				item_previews[str(item.id)] = preview
-
-
-		# -----------------------------------------------------
-		# FOOTER
-		# -----------------------------------------------------
-
-		var footer := Control.new()
-		footer.mouse_filter = Control.MOUSE_FILTER_PASS
-
-		footer.custom_minimum_size.y = 80
-
-		rows.add_child(footer)
-
-
-		var center := CenterContainer.new()
-
-		footer.add_child(center)
-
-		center.set_anchors_and_offsets_preset(
-			Control.PRESET_FULL_RECT
-		)
-
-
-		# Alza prezzo / posseduto senza cambiare
-		# dimensioni e posizione dell'immagine.
-		center.offset_top = -20
-		center.offset_bottom = -20
-
-
-		# -----------------------------------------------------
-		# POSSEDUTO
-		# -----------------------------------------------------
-
-		if manager.owns_item(item.id):
-
-			var owned := Button.new()
-
-			owned.text = "POSSEDUTO"
-
-			owned.custom_minimum_size = Vector2(
-				240,
-				54
-			)
-
-			owned.mouse_filter = (
-				Control.MOUSE_FILTER_IGNORE
-			)
-
-			owned.focus_mode = (
-				Control.FOCUS_NONE
-			)
-
-
-			owned.add_theme_font_override(
-				"font",
-				FONT
-			)
-
-
-			owned.add_theme_font_size_override(
-				"font_size",
-				24
-			)
-
-
-			owned.add_theme_color_override(
-				"font_color",
-				Style.TEXT
-			)
-
-
-			var pill := Style.button_style(
-				Style.NORMAL
-			)
-
-			pill.set_corner_radius_all(27)
-
-
-			owned.add_theme_stylebox_override(
-				"normal",
-				pill
-			)
-
-
-			center.add_child(owned)
-
-
-		# -----------------------------------------------------
-		# PREZZO
-		# -----------------------------------------------------
-
-		else:
-
-			var price_row := HBoxContainer.new()
-
-			price_row.add_theme_constant_override(
-				"separation",
-				10
-			)
-
-			center.add_child(price_row)
-
-
-			var coin := TextureRect.new()
-
-			coin.custom_minimum_size = Vector2(
-				42,
-				42
-			)
-
-			coin.expand_mode = (
-				TextureRect.EXPAND_IGNORE_SIZE
-			)
-
-			coin.stretch_mode = (
-				TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			)
-
-			coin.texture_filter = (
-				CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			)
-
-			coin.texture = load(
-				menu_owner.COINS_ICON_PATH
-			)
-
-
-			price_row.add_child(coin)
-
-
-			price_row.add_child(
-				_label(
-					str(item.price),
-					38
-				)
-			)
-
-
-		# -----------------------------------------------------
-		# TOOLTIP
-		# -----------------------------------------------------
-
-		panel.tooltip_text = "%s · %s" % [
-			item.rarity,
-			(
-				"Disponibile"
-				if item.is_available
-				else "Non disponibile"
-			)
-		]
+	for index in mini(items.size(), 4):
+		_build_offer(items[index], index)
+
+func _build_offer(item: Dictionary, index: int) -> void:
+	var offer := Control.new()
+	offer.name = "Offer%d" % index
+	offer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.add_child(offer)
+	var bounds: Rect2 = ITEM_RECTS[index]
+	var preview := TextureRect.new()
+	preview.name = "Preview"
+	preview.position = bounds.position
+	preview.size = bounds.size
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if str(item.id).begins_with("deck_back_") and item.asset_id >= 1 and item.asset_id <= 12:
+		preview.texture = get_node("/root/GameSettings").back_texture(item.asset_id)
+	offer.add_child(preview)
+	if preview.texture:
+		_add_item_shadow(preview)
+	else:
+		var caption := _label(str(item.name), 22)
+		caption.position = bounds.position
+		caption.size = bounds.size
+		caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		offer.add_child(caption)
+
+	var tag := TextureRect.new()
+	tag.name = "PriceTag"
+	tag.texture = PRICE_TAG_TEXTURE
+	tag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tag.stretch_mode = TextureRect.STRETCH_SCALE
+	tag.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.position = TAG_RECTS[index].position
+	tag.size = TAG_RECTS[index].size
+	offer.add_child(tag)
+	var owned: bool = manager.owns_item(item.id)
+	var price := _label("POSSEDUTO" if owned else str(item.price), 34 if index < 2 else 23)
+	price.name = "Price"
+	price.add_theme_color_override("font_color", PRICE_COLOR)
+	# Solo testo: la moneta fa gia' parte della grafica dell'etichetta.
+	price.position = tag.size * Vector2(0.28, 0.40)
+	price.size = tag.size * Vector2(0.56, 0.38)
+	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	price.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var font_size := 34 if index < 2 else 23
+	while FONT.get_string_size(price.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > price.size.x and font_size > 10:
+		font_size -= 1
+	price.add_theme_font_size_override("font_size", font_size)
+	tag.add_child(price)
+	if not owned and item.is_available:
+		item_previews[str(item.id)] = [preview, tag]
+
+func _add_item_shadow(preview: TextureRect) -> void:
+	var shadow := Control.new()
+	shadow.name = "ItemShadow"
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.show_behind_parent = true
+	preview.add_child(shadow)
+	shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.TRANSPARENT
+	style.shadow_color = ITEM_SHADOW_COLOR
+	style.shadow_size = ITEM_SHADOW_SOFTNESS
+	style.shadow_offset = ITEM_SHADOW_OFFSET
+	style.set_corner_radius_all(10)
+	shadow.draw.connect(func():
+		if preview.texture == null or preview.size.x <= 0 or preview.size.y <= 0:
+			return
+		# Segue la carta effettiva (KEEP_ASPECT), non tutta la cella della griglia.
+		var texture_size := preview.texture.get_size()
+		var fitted := texture_size * minf(preview.size.x / texture_size.x, preview.size.y / texture_size.y)
+		shadow.draw_style_box(style, Rect2((preview.size - fitted) / 2.0, fitted))
+	)
+	preview.resized.connect(shadow.queue_redraw)

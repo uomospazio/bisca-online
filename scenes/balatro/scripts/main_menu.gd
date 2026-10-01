@@ -10,23 +10,27 @@ const RoundedSquareButton = preload("res://scenes/balatro/scripts/rounded_square
 # Modifica questi valori per spostare o ridimensionare gli elementi senza
 # dover intervenire sulla gerarchia dei contenitori.
 # Layout HOME su base 1920 x 1080: UI a sinistra, personaggio a destra.
+# Spostamento comune HOME: positivo verso destra, negativo verso sinistra.
+# Include personaggio, foto, nome, titolo/sottotitolo e i due pulsanti di gioco.
+const HOME_CONTENT_OFFSET_X := 80.0
+const HOME_CONTENT_OFFSET := Vector2(HOME_CONTENT_OFFSET_X, 0)
 # Posizione e rotazione INDIPENDENTI dei pulsanti principali.
 # Le coordinate sono rispetto alla viewport di progetto 1920x1080.
 const PLAY_BUTTON_SIZE := Vector2(450, 118)
-const SINGLE_BUTTON_POSITION := Vector2(295, 450)
+const SINGLE_BUTTON_POSITION := Vector2(295, 450) + HOME_CONTENT_OFFSET
 const SINGLE_BUTTON_ROTATION := 0.0 # Gradi: es. -5 inclina verso sinistra.
-const MULTI_BUTTON_POSITION := Vector2(295, 600)
+const MULTI_BUTTON_POSITION := Vector2(295, 600) + HOME_CONTENT_OFFSET
 const MULTI_BUTTON_ROTATION := 0.0 # Gradi: es. 5 inclina verso destra.
 const TITLE_FONT_SIZE := 164
 const SUBTITLE_FONT_SIZE := 52
-const TITLE_POSITION := Vector2(25, 170)
-const SUBTITLE_POSITION := Vector2(25, 350)
+const TITLE_POSITION := Vector2(25, 170) + HOME_CONTENT_OFFSET
+const SUBTITLE_POSITION := Vector2(25, 350) + HOME_CONTENT_OFFSET
 const TITLE_WIDTH := 1000.0
 const HOME_BUTTONS_POSITION := Vector2(70, 785)
 const HOME_BUTTONS_SIZE := Vector2(820, 204)
 # Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
 const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
-const HOME_CHARACTER_POSITION := Vector2(600, 150)
+const HOME_CHARACTER_POSITION := Vector2(600, 150) + HOME_CONTENT_OFFSET
 const HOME_CHARACTER_SIZE := Vector2(1320, 1310)
 const SOLO_CHARACTER_POSITION := Vector2(-60, 150)
 const MULTI_CHARACTER_POSITION := SOLO_CHARACTER_POSITION + Vector2(-150, 0)
@@ -59,9 +63,9 @@ const HOME_DECK_POSITION := Vector2(1520, 600)
 const HOME_DECK_SCALE := 1.0
 # Foto profilo e campo nome nella HOME, sotto MULTIPLAYER.
 # La foto usa una scala ridotta: il pulsante originale misura 260x260.
-const HOME_PROFILE_POSITION := Vector2(90, 740)
+const HOME_PROFILE_POSITION := Vector2(90, 740) + HOME_CONTENT_OFFSET
 const HOME_PROFILE_SCALE := 0.8
-const HOME_NAME_POSITION := Vector2(210, 785)
+const HOME_NAME_POSITION := Vector2(210, 785) + HOME_CONTENT_OFFSET
 const HOME_NAME_SIZE := Vector2(690, 174)
 const HOME_NAME_TEXT_SHIFT := 20.0 # Pixel verso destra per testo e placeholder, solo HOME
 # CONTATORE MONETE: in alto a destra, sopra Settings.

@@ -502,6 +502,8 @@ func _update() -> void:
 	for item in items:
 
 		var panel := PanelContainer.new()
+		# PanelContainer usa STOP di default: lo swipe deve raggiungere lo scroll.
+		panel.mouse_filter = Control.MOUSE_FILTER_PASS
 
 		panel.custom_minimum_size = Vector2(
 			280,
@@ -601,6 +603,7 @@ func _update() -> void:
 		# -----------------------------------------------------
 
 		var footer := Control.new()
+		footer.mouse_filter = Control.MOUSE_FILTER_PASS
 
 		footer.custom_minimum_size.y = 80
 

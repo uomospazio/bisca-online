@@ -91,14 +91,23 @@ def main():
     for config in configs:
         settings = objects[config]["buildSettings"]
         settings["CLANG_CXX_LANGUAGE_STANDARD"] = "c++17"
-        for key in ["HEADER_SEARCH_PATHS", "GCC_PREPROCESSOR_DEFINITIONS"]:
+        for key in ["HEADER_SEARCH_PATHS", "SYSTEM_HEADER_SEARCH_PATHS", "GCC_PREPROCESSOR_DEFINITIONS"]:
             old = settings.get(key, ["$(inherited)"])
             if isinstance(old, str):
                 old = [old]
             settings[key] = old
-        append(settings, "HEADER_SEARCH_PATHS", '"' + str(source) + '"')
-        append(settings, "HEADER_SEARCH_PATHS", '"' + str(source / "platform/ios") + '"')
-        append(settings, "HEADER_SEARCH_PATHS", '"' + str(generated) + '"')
+        # Godot headers are external dependencies; retain warnings in our bridge.
+        for path in [source, source / "platform/ios", generated]:
+            quoted = '"' + str(path) + '"'
+            settings["HEADER_SEARCH_PATHS"] = [
+                p for p in settings["HEADER_SEARCH_PATHS"] if p not in [quoted, str(path)]]
+            append(settings, "SYSTEM_HEADER_SEARCH_PATHS", quoted)
+        # Automatic signing chooses development provisioning when building;
+        # Xcode handles distribution signing at archive export time.
+        if settings.get("CODE_SIGN_STYLE") == "Automatic":
+            for key in list(settings):
+                if key == "CODE_SIGN_IDENTITY" or key.startswith("CODE_SIGN_IDENTITY["):
+                    settings[key] = "Apple Development"
         definitions = ["IOS_ENABLED", "UNIX_ENABLED", "THREADS_ENABLED", "CLIPPER2_ENABLED"]
         settings["GCC_PREPROCESSOR_DEFINITIONS"] = [
             d for d in settings["GCC_PREPROCESSOR_DEFINITIONS"]

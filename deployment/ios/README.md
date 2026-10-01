@@ -39,8 +39,13 @@ headers with Godot's own generators, adds SPM, adds the microphone usage string,
 and adds calls to the exported native initialization/deinitialization hooks.
 It preserves other plugins and the existing SDL workaround in `dummy.cpp`.
 First-run backups sit alongside the modified Xcode project and `dummy.cpp`.
-It does not change or export `Bisca.pck`, Godot scripts, signing, or provisioning.
-The pack still needs the native GDScript adapter from the main task.
+It does not change or export `Bisca.pck` or Godot scripts. For targets already
+using automatic signing it sets the build identity to `Apple Development`,
+leaving team and provisioning unchanged; distribution signing happens during
+archive export. Manual signing is preserved. Godot headers are configured as
+system headers, retaining compiler warnings in the bridge's own source.
+The pack must be exported again after changing `voice_chat.gd`; updating only
+the native sources does not update the game's scripts.
 
 This uses a post-export source integration rather than shipping a prebuilt
 `.gdip` archive. Although newer Godot plugin documentation describes SPM package
@@ -94,6 +99,15 @@ Automatic session deactivation is disabled so Godot audio can continue; the
 previous category, mode, options and buffer duration are restored after teardown.
 
 ## Device acceptance checks
+
+The current Desktop export has also been integrated and successfully built
+unsigned: `/Users/iosonospace/Desktop/Bisca_iOS_test/index.xcodeproj`, scheme
+`index`. Its `index.pck` includes the updated Godot adapter. Open that project
+and Run on the iPhone to install with your existing signing configuration.
+The existing `.ipa`/`.xcarchive` files were not regenerated.
+
+GDScript routing/lifecycle test: `deployment/tests/native_voice_test.gd` passed.
+Browser transport regression: `node deployment/tests/livekit_transport_test.cjs` passed.
 
 Verified 2026-10-01: unsigned `Debug-iphoneos` arm64 build succeeded with
 Xcode 26.5 against the existing `/private/tmp/bisca-ios-SZlWjY/Bisca.xcodeproj`.

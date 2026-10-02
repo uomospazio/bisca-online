@@ -177,22 +177,23 @@ func _ready() -> void:
 	for suit in ["denari", "coppe", "spade", "bastoni"]:
 		menu_background.set_shader_parameter(suit, load("res://scenes/balatro/resources/%s.png" % suit))
 	menu_background.set_shader_parameter("surface_size", $GameBackground.size)
-	var table_background := ShaderMaterial.new()
-	table_background.shader = preload("res://scenes/balatro/shaders/cartoon_felt.gdshader")
-	table_background.set_shader_parameter("surface_size", $GameBackground.size)
+	var table_image: TextureRect = $TableBackground
 	$GameBackground.resized.connect(func():
-		table_background.set_shader_parameter("surface_size", $GameBackground.size)
 		menu_background.set_shader_parameter("surface_size", $GameBackground.size)
 	)
 	game_ui.visibility_changed.connect(func():
 		$GameBackground.show()
-		$GameBackground.material = table_background if game_ui.visible else menu_background
+		table_image.visible = game_ui.visible
+		$GameBackground.material = null if game_ui.visible else menu_background
+		$GameBackground.color = Color.BLACK if game_ui.visible else Color.WHITE
 		voice_button.visible = online and not get_node("/root/NetworkSession").latest.get("singleplayer", false)
 		if not game_ui.visible:
 			voice._call("closePanel")
 	)
 	$GameBackground.show()
-	$GameBackground.material = table_background if game_ui.visible else menu_background
+	table_image.visible = game_ui.visible
+	$GameBackground.material = null if game_ui.visible else menu_background
+	$GameBackground.color = Color.BLACK if game_ui.visible else Color.WHITE
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
 	overlay.replay_requested.connect(func():
@@ -305,6 +306,12 @@ func _fit_screen() -> void:
 	background.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	background.position = -position
 	background.size = screen_size
+	var table_background: Control = $TableBackground
+	table_background.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	# Fit the full table art to the device viewport without cropping or
+	# distorting it. Wider phones show more of the image; unused areas stay black.
+	table_background.position = -position
+	table_background.size = screen_size
 	# CanvasLayer does not inherit this Control's position. Keep its UI roots
 	# in the same fixed design area, rather than anchoring them to the viewport.
 	if is_instance_valid(game_ui) and game_ui.get_parent() is CanvasLayer:
@@ -354,27 +361,12 @@ func _show_menu() -> void:
 	menu.show_home()
 
 func _menu_start(display_name: String, count: int) -> void:
-	if solo_connecting:
-		return
 	local_name = display_name
 	rules.configure(menu.match_options.values())
 	rules.force_local_joker = false
-	var account := get_node("/root/AccountSession")
-	if not account.is_authenticated():
-		_start_solo_offline(count)
-		return
-	solo_connecting = true
-	solo_ready_sent = false
-	solo_count = count
-	solo_generation += 1
-	var generation := solo_generation
-	var net := get_node("/root/NetworkSession")
-	var command: Dictionary = menu.match_options.values().duplicate()
-	command.merge({"op": "create", "name": display_name, "singleplayer": true, "bots": true, "bot_count": count - 1}, true)
-	net.connect_room(net.default_endpoint(), command)
-	await get_tree().create_timer(12.0).timeout
-	if solo_connecting and solo_generation == generation:
-		_solo_offline_fallback()
+	# Singleplayer is always local: do not wait for authentication or the
+	# multiplayer server. Local matches never earn cloud rewards.
+	_start_solo_offline(count)
 
 var solo_connecting := false
 var solo_ready_sent := false
@@ -394,7 +386,7 @@ func _start_solo_offline(count: int) -> void:
 	online = false
 	_start(count)
 	var notice := Label.new()
-	notice.text = "SOLITARIA OFFLINE · SENZA PREMI"
+	notice.text = "SOLITARIA · SENZA PREMI"
 	notice.position = Vector2(620, 30)
 	notice.add_theme_color_override("font_color", Color("f3effe"))
 	notice.add_theme_font_size_override("font_size", 26)

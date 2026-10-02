@@ -184,6 +184,10 @@ func _draw() -> void:
 		frame.shadow_offset = Vector2.ZERO
 		draw_style_box(frame, Rect2(12, 60, 136, 136))
 	var avatar := Vector2(80, 128)
+	# A faint offset shadow anchors the circular portrait to the table instead
+	# of making it look like a flat sticker; keep it subtle beneath the rim.
+	draw_circle(avatar + Vector2(1, 7), 61, Color(0.025, 0.018, 0.045, 0.10), true, -1, true)
+	draw_circle(avatar + Vector2(0, 4), 58, Color(0.025, 0.018, 0.045, 0.12), true, -1, true)
 	draw_circle(avatar, 59, Color.BLACK, true, -1, true)
 	draw_circle(avatar, 56, Color("efecfa"), true, -1, true)
 	if profile_texture:
@@ -199,8 +203,8 @@ func _draw() -> void:
 	var number_text := str(lives)
 	var number_size := 20
 	var number_width := COUNTER_FONT.get_string_size(number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size).x
-	var baseline := heart_center + Vector2(-number_width / 2.0, (COUNTER_FONT.get_ascent(number_size) - COUNTER_FONT.get_descent(number_size)) / 2.0)
-	draw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1, number_size, Color("fdfdfb"))
+	var baseline := heart_center + Vector2(-number_width / 2.8, (COUNTER_FONT.get_ascent(number_size) - COUNTER_FONT.get_descent(number_size)) / 2.0)
+	draw_string(COUNTER_FONT, baseline, number_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, number_size, Color("fdfdfb"))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	var prediction_box := StyleBoxFlat.new()
 	prediction_box.bg_color = Color("2a2438")

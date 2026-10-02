@@ -5,3 +5,10 @@
 .env
 .env.*
 __pycache__/
+
+# Generated Godot Android export and Gradle build artifacts
+/android/build/
+/addons/bisca_voice/android/build/
+/addons/bisca_voice/android/.gradle/
+/addons/bisca_voice/android/plugin/.gradle/
+/addons/bisca_voice/android/plugin/build/

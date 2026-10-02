@@ -58,7 +58,7 @@ movie_writer/movie_file="result.avi"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/web_covers/plugin.cfg")
+enabled=PackedStringArray("res://addons/web_covers/plugin.cfg", "res://addons/bisca_voice/plugin.cfg")
 
 [gui]
 

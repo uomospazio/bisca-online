@@ -11,10 +11,6 @@ const PRICE_COLOR := Color("#340602")
 const MARKET_OFFSET := Vector2.ZERO
 const MARKET_POSITION := Vector2(400, 50)
 const MARKET_SIZE := Vector2(1700, 1050)
-const DECK_POSITION := Vector2(60, 300)
-const DECK_SCALE := 1.25
-const OBJECTS_POSITION := Vector2(40, 650)
-const OBJECTS_SCALE := 1.25
 # Coordinate relative alla grafica del banco.
 const ITEM_RECTS := [
 	Rect2(475, 460, 260, 300),
@@ -40,7 +36,6 @@ var menu_owner: Control
 var coins_amount: Label
 var fixed_controls: Array[Control] = []
 var content: Control
-var throw_selector: Control
 var item_previews: Dictionary = {}
 var touch_item_id := ""
 var touch_start_position := Vector2.ZERO
@@ -84,12 +79,6 @@ func setup(menu: Control) -> void:
 	grid.size = MARKET_SIZE
 	market.add_child(grid)
 
-	throw_selector = preload("res://scenes/balatro/scripts/shop_throw_selector.gd").new()
-	content.add_child(throw_selector)
-	throw_selector.position = OBJECTS_POSITION
-	throw_selector.scale = Vector2.ONE * OBJECTS_SCALE
-	throw_selector.setup(menu)
-
 	status = _label("", 20)
 	status.position = Vector2(70, 910)
 	status.size = Vector2(410, 145)
@@ -105,16 +94,9 @@ func setup(menu: Control) -> void:
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
 	coins_amount = counter.get_node("CoinBar/CoinsAmount")
 	counter.pivot_offset = Vector2(counter.size.x, 0)
-	counter.scale = Vector2.ONE * 1.12
-	var back: Button = menu._button(self, "INDIETRO", menu.show_home)
-	back.position = Vector2(40, 40)
-	back.custom_minimum_size = Vector2(296, 108)
-	back.size = Vector2(296, 108)
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var pill := back.get_theme_stylebox(state).duplicate() as StyleBoxFlat
-		if pill:
-			pill.set_corner_radius_all(54)
-			back.add_theme_stylebox_override(state, pill)
+	counter.scale = Vector2.ONE
+	var back: Button = menu._button(self, "INDIETRO", menu._show_personalization)
+	menu.match_singleplayer_back(back)
 	fixed_controls = [back, counter]
 
 	purchase_dialog = ConfirmationDialog.new()
@@ -129,13 +111,6 @@ func setup(menu: Control) -> void:
 	visibility_changed.connect(_update)
 
 func open() -> void:
-	var deck: Control = menu_owner.deck_selector
-	deck.reparent(content, false)
-	deck.position = DECK_POSITION
-	deck.scale = Vector2.ONE * DECK_SCALE
-	deck.show()
-	deck.reset_preview()
-	throw_selector.refresh()
 	coins_amount.text = menu_owner.coins_label.text
 	_update()
 	manager.refresh_daily()

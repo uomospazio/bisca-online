@@ -260,20 +260,9 @@ func setup(owner_menu: Control) -> void:
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_size_override("font_size", 24)
 	info.add_theme_color_override("font_color", Color("f3effe"))
-	var back_row := VBoxContainer.new()
-	add_child(back_row)
-	back_row.position = Vector2(40, 40)
-	back_row.size.x = 260
-	var back_button: Button = menu._button(back_row, "Indietro", _back)
+	var back_button: Button = menu._button(self, "Indietro", _back)
+	menu.match_singleplayer_back(back_button)
 	entry_buttons.append(back_button)
-	back_button.custom_minimum_size.y = menu.MENU_BUTTON_HEIGHT
-	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var base_style := back_button.get_theme_stylebox(state)
-		if base_style is StyleBoxFlat:
-			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
-			style.set_corner_radius_all(int(menu.MENU_BUTTON_HEIGHT / 2.0))
-			back_button.add_theme_stylebox_override(state, style)
 	net.updated.connect(_update)
 	net.problem.connect(func(message): info.text = message)
 	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)

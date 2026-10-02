@@ -30,6 +30,7 @@ const HOME_BUTTONS_POSITION := Vector2(70, 785)
 const HOME_BUTTONS_SIZE := Vector2(820, 204)
 # Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
 const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
+const SHOP_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_shop.png"
 const HOME_CHARACTER_POSITION := Vector2(600, 150) + HOME_CONTENT_OFFSET
 const HOME_CHARACTER_SIZE := Vector2(1320, 1310)
 const SOLO_CHARACTER_POSITION := Vector2(-60, 150)
@@ -73,10 +74,10 @@ const HOME_NAME_TEXT_SHIFT := 20.0 # Pixel verso destra per testo e placeholder,
 const COINS_RIGHT_MARGIN := 40.0
 const COINS_TOP_MARGIN := 32.0
 const COINS_SIZE := Vector2(320, 108) # larghezza totale e altezza del contatore
-const COINS_BAR_HEIGHT := 72.0
+const COINS_BAR_HEIGHT := 92.0
 const COINS_ICON_SIZE := 108.0 # grandezza di coin.png, senza sfondo circolare
-const COINS_FONT_SIZE := 46
-const COINS_ICON_PATH := "res://scenes/balatro/trick_asset/ui_bisca/coin.svg"
+const COINS_FONT_SIZE := 48
+const COINS_ICON_PATH := "res://scenes/balatro/trick_asset/ui_bisca/coin.png"
 const LexispellStyle = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const BUTTON_PURPLE := LexispellStyle.NORMAL
 const BUTTON_PURPLE_PRESSED := LexispellStyle.NORMAL
@@ -125,6 +126,9 @@ var menu_content: Control
 var active_page: Control
 var settings_page: Control
 var shop_page: Control
+var personalization_page: Control
+var shop_character: TextureRect
+var customization_character_ready := false
 var deck_selector: Control
 const PageTransition = preload("res://scenes/balatro/scripts/page_transition.gd")
 
@@ -137,7 +141,9 @@ func _switch_page(next: Control, backwards := false) -> void:
 	if is_instance_valid(home_persistent_ui):
 		home_persistent_ui.visible = show_home_extras
 	if is_instance_valid(home_character):
-		home_character.visible = show_home_extras or next == setup_page or network_entry
+		home_character.visible = show_home_extras or next == setup_page or network_entry or (next == personalization_page and not customization_character_ready)
+	if is_instance_valid(shop_character):
+		shop_character.visible = next == personalization_page and customization_character_ready
 	# Foto e nome seguono la HOME o il pannello di configurazione.
 	if is_instance_valid(profile_button) and is_instance_valid(name_input):
 		if show_home_extras:
@@ -151,7 +157,7 @@ func _switch_page(next: Control, backwards := false) -> void:
 			_place_deck_selector_profile()
 		profile_panel.visible = next == network_page and network_page.session_controls.visible
 		deck_selector.reset_preview()
-	if network_entry or next == home_page or next == setup_page or next == shop_page or next == friends_page:
+	if network_entry or next == home_page or next == setup_page or next == shop_page or next == personalization_page or next == friends_page:
 		# L'ingresso Multiplayer usa solo il pop dei pulsanti, senza traslare la pagina.
 		if has_meta("page_transition_cleanup"):
 			get_meta("page_transition_cleanup").call()
@@ -237,6 +243,19 @@ func _ready() -> void:
 		menu_content.add_child(mascot)
 		mascot.position = HOME_CHARACTER_POSITION
 		mascot.size = HOME_CHARACTER_SIZE
+	shop_character = TextureRect.new()
+	shop_character.name = "ShopCharacter"
+	shop_character.texture = load(SHOP_CHARACTER_PATH) as Texture2D
+	shop_character.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shop_character.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	shop_character.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	shop_character.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_character.position = HOME_CHARACTER_POSITION + Vector2(0, 0)
+	shop_character.size = HOME_CHARACTER_SIZE * 1.1
+	shop_character.pivot_offset = shop_character.size * 0.5
+	shop_character.rotation_degrees = 0.0
+	shop_character.hide()
+	menu_content.add_child(shop_character)
 	# Mantieni i pulsanti della HOME sopra il disegno decorativo.
 	second_character = TextureRect.new()
 	second_character.texture = preload("res://scenes/balatro/resources/p2_menu.png")
@@ -291,7 +310,7 @@ func _ready() -> void:
 	round_buttons.offset_top = ROUND_BUTTONS_TOP_MARGIN
 	round_buttons.offset_right = -ROUND_BUTTONS_RIGHT_MARGIN
 	round_buttons.offset_bottom = ROUND_BUTTONS_TOP_MARGIN + ROUND_BUTTON_SIZE * 3.0 + ROUND_BUTTONS_SPACING * 2.0
-	var shop := _round_icon_button(round_buttons, "brush.svg", "Personalizza e Shop", _show_shop)
+	var shop := _round_icon_button(round_buttons, "brush.svg", "Personalizza e Shop", _show_personalization)
 	shop.position = Vector2.ZERO
 	shop.size = Vector2.ONE * ROUND_BUTTON_SIZE
 	var settings := _round_icon_button(round_buttons, "setting.svg", "Settings", _show_settings)
@@ -732,6 +751,17 @@ func _show_friends() -> void:
 	_switch_page(friends_page)
 	friends_page.open()
 
+func _show_personalization() -> void:
+	title.hide()
+	friends_subtitle.hide()
+	if not is_instance_valid(personalization_page):
+		personalization_page = preload("res://scenes/balatro/scripts/personalization_page.gd").new()
+		add_child(personalization_page)
+		personalization_page.setup(self)
+	_switch_page(personalization_page)
+	personalization_page.open()
+	_enter_customization_character()
+
 func _show_shop() -> void:
 	title.hide()
 	friends_subtitle.hide()
@@ -741,6 +771,8 @@ func _show_shop() -> void:
 		shop_page.setup(self)
 	_switch_page(shop_page)
 	shop_page.open()
+	if is_instance_valid(shop_character):
+		shop_character.hide()
 
 
 func _show_settings() -> void:
@@ -761,8 +793,15 @@ func _show_menu_title(with_friends: bool = false) -> void:
 	friends_subtitle.modulate.a = 1.0
 	friends_subtitle.scale = Vector2.ONE
 	if is_instance_valid(home_character):
+		home_character.texture = load(HOME_CHARACTER_PATH) as Texture2D
 		home_character.show()
 		home_character.position = HOME_CHARACTER_POSITION
+		home_character.modulate.a = 1.0
+	if is_instance_valid(shop_character):
+		shop_character.hide()
+		shop_character.position = HOME_CHARACTER_POSITION
+		shop_character.modulate.a = 1.0
+	customization_character_ready = false
 	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)
 	friends_subtitle.text = "WITH YOUR FRIENDS"
 	friends_subtitle.position = SUBTITLE_POSITION
@@ -874,6 +913,16 @@ func _style_input(input: LineEdit, font_size: int) -> void:
 	input.add_theme_color_override("font_color", LexispellStyle.TEXT)
 	input.add_theme_color_override("font_placeholder_color", LexispellStyle.MUTED_TEXT)
 	input.add_theme_color_override("caret_color", LexispellStyle.TEXT)
+
+func match_singleplayer_back(button: Button) -> void:
+	# Un solo riferimento per dimensioni, stile e posizione di tutti gli Indietro.
+	var reference: Button = solo_buttons[0]
+	button.custom_minimum_size = reference.custom_minimum_size
+	button.size = reference.size
+	button.position = reference.position - Vector2(reference.get_meta("safe_edge", Vector2.ZERO)) + Vector2(button.get_meta("safe_edge", Vector2.ZERO))
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state, reference.get_theme_stylebox(state).duplicate())
+
 
 func _button(parent: Node, text: String, callback: Callable) -> Button:
 	var button := RoundedSquareButton.new()
@@ -1069,7 +1118,7 @@ func _build_coin_counter(parent: Control) -> void:
 		coin_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		coin_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		counter.add_child(coin_icon)
-		coin_icon.position = Vector2(0.0, (COINS_SIZE.y - COINS_ICON_SIZE) / 2.0)
+		coin_icon.position = Vector2(20.0, (COINS_SIZE.y - COINS_ICON_SIZE) / 2.0)
 		coin_icon.size = Vector2.ONE * COINS_ICON_SIZE
 	else:
 		push_warning("Immagine delle monete non trovata: " + COINS_ICON_PATH)
@@ -1088,6 +1137,8 @@ func set_coins_amount(amount: int) -> void:
 		coins_label.text = str(maxi(amount, 0))
 	if is_instance_valid(shop_page) and is_instance_valid(shop_page.coins_amount):
 		shop_page.coins_amount.text = str(maxi(amount, 0))
+	if is_instance_valid(personalization_page):
+		personalization_page.set_coins_amount(maxi(amount, 0))
 
 
 func _menu_button_style(
@@ -1180,25 +1231,72 @@ func show_home() -> void:
 		for item in [previous, title, friends_subtitle]:
 			item.hide()
 		previous.scale = Vector2.ONE
+	var was_customizing := customization_character_ready
 	var character_position := HOME_CHARACTER_POSITION
-	if is_instance_valid(home_character):
+	if was_customizing and is_instance_valid(shop_character):
+		character_position = shop_character.position
+	elif is_instance_valid(home_character):
 		character_position = home_character.position
 	var second_was_visible := second_character.visible
 	_show_menu_title(true)
 	_switch_page(home_page, true)
+	const CHARACTER_TRANSITION_DURATION := 0.42
 	var entrance := create_tween().set_parallel(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	if is_instance_valid(home_character):
-		home_character.position = character_position
-		entrance.tween_property(home_character, "position", HOME_CHARACTER_POSITION, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		# Ripercorriamo al contrario le posizioni finali della transizione verso lo shop.
+		home_character.position = SOLO_CHARACTER_POSITION if was_customizing else character_position
+		home_character.modulate.a = 0.0 if was_customizing else 1.0
+		entrance.tween_property(home_character, "position", HOME_CHARACTER_POSITION, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		if was_customizing:
+			entrance.tween_property(home_character, "modulate:a", 1.0, CHARACTER_TRANSITION_DURATION).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if was_customizing and is_instance_valid(shop_character):
+		shop_character.position = SOLO_CHARACTER_POSITION + Vector2(-80, -30)
+		shop_character.modulate.a = 1.0
+		shop_character.show()
+		entrance.tween_property(shop_character, "position", HOME_CHARACTER_POSITION, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		entrance.tween_property(shop_character, "modulate:a", 0.0, CHARACTER_TRANSITION_DURATION).from(1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		entrance.tween_callback(shop_character.hide).set_delay(CHARACTER_TRANSITION_DURATION)
 	if second_was_visible:
 		second_character.show()
-		entrance.tween_property(second_character, "position:x", 1920.0, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		entrance.tween_callback(second_character.hide).set_delay(0.55)
+		entrance.tween_property(second_character, "position:x", 1920.0, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		entrance.tween_callback(second_character.hide).set_delay(CHARACTER_TRANSITION_DURATION)
 	for heading in [title, friends_subtitle]:
 		heading.scale = Vector2.ZERO
 		entrance.tween_property(heading, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await entrance.finished
+	customization_character_ready = false
 	returning_home = false
+
+func _enter_customization_character() -> void:
+	if customization_character_ready:
+		if is_instance_valid(shop_character):
+			shop_character.show()
+		if is_instance_valid(personalization_page):
+			personalization_page.play_intro()
+		return
+	if not is_instance_valid(home_character) or not is_instance_valid(shop_character):
+		return
+	if solo_transition and solo_transition.is_valid():
+		solo_transition.kill()
+	var start_position := home_character.position
+	shop_character.position = start_position
+	shop_character.modulate.a = 0.0
+	shop_character.show()
+	home_character.show()
+	home_character.modulate.a = 1.0
+	const CHARACTER_TRANSITION_DURATION := 0.42
+	var tween := create_tween().set_parallel(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	solo_transition = tween
+	tween.tween_property(home_character, "position", SOLO_CHARACTER_POSITION, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(shop_character, "position", SOLO_CHARACTER_POSITION + Vector2(-80, -30), CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(home_character, "modulate:a", 0.0, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(shop_character, "modulate:a", 1.0, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_callback(func():
+		if active_page == personalization_page:
+			home_character.hide()
+			customization_character_ready = true
+			personalization_page.play_intro()
+	)
 
 func _start() -> void:
 	_lock_landscape_web()

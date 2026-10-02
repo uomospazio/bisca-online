@@ -1,7 +1,7 @@
 extends CanvasLayer
 ## Mostra solo ricevute confermate dal server, mai accrediti calcolati in locale.
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
-const COIN = preload("res://scenes/balatro/trick_asset/ui_bisca/coin.svg")
+const COIN = preload("res://scenes/balatro/trick_asset/ui_bisca/coin.png")
 const COIN_SOUND = preload("res://scenes/balatro/audio/coin.mp3")
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 static var seen: Dictionary = {}

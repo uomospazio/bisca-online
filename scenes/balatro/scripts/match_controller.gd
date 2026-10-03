@@ -591,21 +591,23 @@ func _deal_round() -> void:
 	var own: Array = rules.view_for(0).players[0].hand
 	hand.conceal_hand = rules.hand_size == 1
 	if rules.hand_size == 1:
+		var delivery = Deck.new()
+		delivery.cards.clear()
+		for id in own:
+			if id < 0:
+				var hidden = preload("res://scenes/balatro/scripts/card_data.gd").new()
+				hidden.texture = BACK
+				delivery.cards.append(hidden)
+			else:
+				delivery.cards.append(catalog[id])
+		delivery.cards.reverse()
 		hand.rebuild(own.size())
-		for card in hand.cards:
-			card.set_face_down(true)
-			card.disabled = true
 		_refresh()
 		status.set_mixed_text("Una carta · Preparazione del tavolo…")
 		if not own.is_empty():
-			pile.card_count = 40
-			await get_tree().create_timer(1.0, false).timeout
-			await pile.prepare_deal()
+			await hand.deal_from(delivery, pile, rules.active_ids().size(), true)
 		_place_blind_cards(not own.is_empty())
 		pile.card_count = rules.remaining_deck.size()
-		if not own.is_empty():
-			await get_tree().create_timer(0.4, false).timeout
-			await pile.return_home()
 		busy = false
 		_drive()
 		return

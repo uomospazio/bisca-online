@@ -4,22 +4,27 @@ const Catalog = preload("res://scenes/balatro/scripts/throw_catalog.gd")
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const ButtonStyle = preload("res://scenes/balatro/scripts/rounded_square_button.gd")
 
+const SLOT_SIZE := 120.0
+const SLOT_GAP := 24.0
+
 var menu: Control
 var buttons: Array[Button] = []
+var vertical_layout := false
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	size = Vector2(324, 88)
+	var step := SLOT_SIZE + SLOT_GAP
+	size = Vector2(SLOT_SIZE + 8.0, SLOT_SIZE * 3.0 + SLOT_GAP * 2.0) if vertical_layout else Vector2(SLOT_SIZE * 3.0 + SLOT_GAP * 2.0, SLOT_SIZE + 8.0)
 	for index in range(3):
 		var button := ButtonStyle.new()
-		button.size = Vector2(80, 80)
-		button.position = Vector2(index * 122, 0)
+		button.size = Vector2.ONE * SLOT_SIZE
+		button.position = Vector2(0, index * step) if vertical_layout else Vector2(index * step, 0)
 		button.expand_icon = true
-		button.add_theme_constant_override("icon_max_width", 60)
+		button.add_theme_constant_override("icon_max_width", 110)
 		for state in ["normal", "hover", "pressed", "focus"]:
 			var style := Style.button_style(Style.NORMAL)
-			style.set_corner_radius_all(40)
+			style.set_corner_radius_all(SLOT_SIZE * 0.5)
 			button.add_theme_stylebox_override(state, style)
 		add_child(button)
 		button.pressed.connect(func(): _cycle(index))

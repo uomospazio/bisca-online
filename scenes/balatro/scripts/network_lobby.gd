@@ -203,10 +203,11 @@ func setup(owner_menu: Control) -> void:
 	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	session_controls.add_child(lobby_options)
 	lobby_options.position = Vector2(1050, 370)
-	lobby_options.size = Vector2(540, 561)
+	lobby_options.size = Vector2(640, 560)
 	lobby_options.setup(menu, true)
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.value_changed.connect(func(_value): _send_options())
+	lobby_options.turn_timer.item_selected.connect(func(_index): _send_options())
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	var participant_panel := PanelContainer.new()
 	session_controls.add_child(participant_panel)
@@ -241,7 +242,7 @@ func setup(owner_menu: Control) -> void:
 		if own >= 0 and own < people.size():
 			net.send({"op": "ready", "ready": not bool(people[own].get("ready", false))})
 	)
-	start_button.position = Vector2(1300, 800)
+	start_button.position = Vector2(1430, 940)
 	start_button.size = Vector2(260, 80)
 	start_button.custom_minimum_size.y = 80
 	# PLAY a capsula: radius = meta della sua altezza (Y/2).
@@ -268,6 +269,7 @@ func setup(owner_menu: Control) -> void:
 	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)
 
 func open() -> void:
+	match_options.reset_multiplayer()
 	menu.show_network_entry_extras()
 	show()
 	entry.show()
@@ -748,10 +750,11 @@ func _sync_options(state: Dictionary) -> void:
 	lobby_options.rounds.value = options.get("starting_cards", 5)
 	lobby_options.bot_count.value = state.get("bot_count", 2)
 	lobby_options.fill_bots.button_pressed = state.get("bots", false)
-	lobby_options.bot_count.get_parent().visible = lobby_options.fill_bots.button_pressed
+	lobby_options.turn_timer.select(lobby_options.TURN_TIMES.find(int(options.get("turn_seconds", 30))))
+	lobby_options.turn_timer.disabled = not is_host
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.editable = is_host
-	lobby_options.fill_bots.disabled = not is_host
+	lobby_options.update_bot_limit(maxi(0, 8 - state.people.size()), is_host)
 	syncing_options = false
 
 func _update_lobby_photos() -> void:

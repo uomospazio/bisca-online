@@ -52,7 +52,6 @@ var pause_menu: CanvasLayer
 var damage_shade: ColorRect
 var last_turn_notice := ""
 var last_turn_sound := ""
-const TURN_SECONDS := 30.0
 var turn_time_left := 0.0
 var timed_turn := ""
 var turn_clock: Label
@@ -146,7 +145,12 @@ func _ready() -> void:
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info_button, true)
 
 	var voice = get_node("/root/VoiceChat")
-	var voice_button: Button = menu._round_icon_button(game_ui, "mic-off.svg", "Chat vocale", voice.open_panel)
+	var voice_button: Button = menu._round_icon_button(game_ui, "mic-off.svg", "Chat vocale", func():
+		if not get_node("/root/GameSettings").values.push_to_talk or not voice.enabled:
+			voice.open_panel()
+	)
+	voice_button.button_down.connect(func(): voice.set_talk_held(true))
+	voice_button.button_up.connect(func(): voice.set_talk_held(false))
 	voice_button.size = Vector2.ONE * match_round_size
 	voice_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	voice_button.offset_left = -match_round_right_margin - match_round_size
@@ -222,6 +226,7 @@ func _ready() -> void:
 	_show_menu()
 	var net = get_node("/root/NetworkSession")
 	net.avatars_changed.connect(_refresh_profile_photos)
+	net.presence_notice.connect(_show_presence_notice)
 	online_match.setup(self, net)
 	net.updated.connect(func(state):
 		if solo_connecting:
@@ -865,33 +870,11 @@ func _position_turn_clock() -> void:
 	var ui_point: Vector2 = game_ui.get_global_transform_with_canvas().affine_inverse() * canvas_point
 	turn_clock.position = ui_point + Vector2(30.0, -turn_clock.size.y / 0.8)
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	_position_turn_clock()
-	if online:
-		return
-	if not is_instance_valid(turn_clock):
-		return
-	var waiting: bool = not busy and game_ui.visible and rules.current == 0 and rules.phase in ["prediction", "play"]
-	if not waiting:
+	# Multiplayer receives its clock from the server. Local play has no deadline.
+	if not online and is_instance_valid(turn_clock):
 		turn_clock.hide()
-		return
-	var key := "%d:%s:%d" % [rules.round_number, rules.phase, rules.completed_tricks]
-	if timed_turn != key:
-		timed_turn = key
-		turn_time_left = TURN_SECONDS
-	turn_time_left = maxf(0.0, turn_time_left - delta)
-	turn_clock.text = "%d" % ceili(turn_time_left)
-	turn_clock.show()
-	if turn_time_left <= 0.0:
-		turn_clock.hide()
-		if rules.phase == "prediction":
-			var bids: Array = rules.legal_bids(0)
-			if not bids.is_empty():
-				_predict(bids.pick_random())
-		elif pending_joker:
-			_on_joker_hold_completed(randf() < 0.5)
-		elif not hand.cards.is_empty():
-			_play_human(hand.cards.pick_random(), randf() < 0.5)
 
 func _predict(bid: int) -> void:
 	if online:
@@ -1210,3 +1193,22 @@ func _drive() -> void:
 func _next_round() -> void:
 	if not busy and rules.begin_round():
 		_deal_round()
+
+func _show_presence_notice(player_name: String, connected: bool) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 120
+	var offset := get_tree().get_nodes_in_group("presence_notices").size()
+	add_child(layer)
+	layer.add_to_group("presence_notices")
+	var notice := Label.new()
+	layer.add_child(notice)
+	var english: bool = get_node("/root/GameSettings").values.language == "en"
+	notice.text = player_name + ((" reconnected" if connected else " disconnected") if english else (" si è ricollegato" if connected else " si è disconnesso"))
+	notice.position = Vector2(300, 40 + offset * 68)
+	notice.size = Vector2(1320, 64)
+	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	notice.add_theme_font_size_override("font_size", 28)
+	notice.add_theme_color_override("font_color", Color.WHITE)
+	notice.add_theme_color_override("font_outline_color", Color.BLACK)
+	notice.add_theme_constant_override("outline_size", 8)
+	get_tree().create_timer(5.0).timeout.connect(layer.queue_free)

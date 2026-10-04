@@ -165,7 +165,6 @@ class BiscaVoicePlugin(godot: Godot) : GodotPlugin(godot) {
         generation++
         permissionRequestCode = MICROPHONE_REQUEST_BASE + (generation % 10000)
         isPending = true
-        isMuted = false
         status("Consenti il microfono per attivare la chat vocale…")
 
         val activity = activity

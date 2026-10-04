@@ -77,8 +77,19 @@ func setup(controller: Control) -> void:
 	item = items[0]
 	get_node("/root/NetworkSession").object_thrown.connect(_received)
 	get_node("/root/GameSettings").changed.connect(_refresh_equipped)
+	_refresh_equipped()
 
 func _refresh_equipped() -> void:
+	var show_objects: bool = get_node("/root/GameSettings").values.show_thrown_objects
+	visible = show_objects
+	if not show_objects:
+		dragging = false
+		opened = false
+		for icon in items: icon.hide()
+		for slot in slots: slot.hide()
+		for child in get_children():
+			if child.has_meta("throw_effect"):
+				child.queue_free()
 	var next: Array = get_node("/root/GameSettings").values.throw_slots
 	if equipped == next:
 		return
@@ -197,9 +208,11 @@ func _received(sender: int, target: int, object_id := 0) -> void:
 	_launch(host.online_match.seat(sender, count), host.online_match.seat(target, count), Vector2.INF, object_id)
 
 func _launch(sender: int, target: int, local_origin := Vector2.INF, object_id := 0) -> void:
+	if not get_node("/root/GameSettings").values.show_thrown_objects: return
 	if sender < 0 or target < 0 or maxi(sender, target) >= host.scores.get_child_count(): return
 	if object_id < 0 or object_id >= textures.size() or textures[object_id] == null: return
 	var projectile := _image(object_id)
+	projectile.set_meta("throw_effect", true)
 	var origin := _point(host.scores.get_child(sender), Vector2(80, 128)) - projectile.size / 2
 	if local_origin != Vector2.INF:
 		origin = local_origin
@@ -214,14 +227,14 @@ func _launch(sender: int, target: int, local_origin := Vector2.INF, object_id :=
 	get_node("/root/GameSettings").configure_sfx(flight_audio, -10.0)
 	projectile.add_child(flight_audio)
 	flight_audio.play()
-	var flight := create_tween()
+	var flight := projectile.create_tween()
 	flight.tween_method(func(progress: float):
 		projectile.position = origin.lerp(destination, progress) + Vector2(0, -120 * sin(progress * PI))
 		projectile.rotation = progress * TAU
 	, 0.0, 1.0, flight_duration)
 	flight.tween_callback(func():
 		flight_audio.stop()
-		GameAudio.play(self, IMPACT, -10.0)
+		GameAudio.play(projectile, IMPACT, -10.0)
 	)
 	flight.tween_property(projectile, "scale", Vector2(1.3, 0.8), 0.12)
 	flight.tween_property(projectile, "scale", Vector2.ONE, 0.15)

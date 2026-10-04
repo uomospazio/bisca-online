@@ -1174,6 +1174,7 @@ func chosen_name() -> String:
 	return "Giocatore" if value.is_empty() else value
 
 func show_setup() -> void:
+	match_options.reset_singleplayer()
 	profile_panel.reparent(menu_content, false)
 	menu_content.move_child(profile_panel, 0)
 	profile_panel.position = Vector2(60, 140)

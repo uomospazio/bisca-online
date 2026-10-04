@@ -1,6 +1,8 @@
 extends SceneTree
 
 class MenuStub extends Control:
+	func _notification_dot(button: Control) -> Panel:
+		return preload("res://scenes/balatro/scripts/main_menu.gd")._notification_dot(button)
 	func show_home() -> void:
 		pass
 	func _button(parent: Node, caption: String, callback: Callable) -> Button:
@@ -33,16 +35,13 @@ func _run() -> void:
 	root.add_child(page)
 	page.setup(menu, menu.show_home, true)
 	await process_frame
-	assert(page.voice_rows.get_child_count() == 7)
-	var slider: HSlider = page.voice_rows.get_child(0).get_child(1)
-	slider.value = 25
+	assert(page.tabs.get_tab_count() == 5)
+	assert(page.sliders.size() == 2) # Menu preferences never contain participant volumes.
+	voice.set_player_volume("id1", 25)
 	assert(voice.player_volume("id1") == 25)
 	voice._on_network_updated({"code": "TEST", "you": 0, "people": people})
 	assert(voice.player_volume("id1") == 25)
-	people[2].bot = true
-	voice._on_network_updated({"code": "TEST", "you": 0, "people": people})
-	assert(page.voice_rows.get_child_count() == 6)
 	voice.leave()
 	assert(voice.people.is_empty() and voice.volumes.is_empty())
-	print("PASS: validation, 7 player sliders, individual volume, lobby persistence, bot exclusion, cleanup")
+	print("PASS: validation, menu tabs without participant sliders, lobby volume persistence, cleanup")
 	quit()

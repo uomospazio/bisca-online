@@ -108,7 +108,9 @@ import LiveKit
     private func start() {
         guard !pending && !enabled else { return }
         guard !lobby.isEmpty && !me.isEmpty else { status("Entra prima in una lobby multiplayer."); return }
+        let keepMuted = muted
         stop()
+        muted = keepMuted
         pending = true
         let epoch = generation, previousCleanup = cleanup
         status("Consenti il microfono per attivare la chat vocale…")

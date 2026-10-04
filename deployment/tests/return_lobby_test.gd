@@ -1,5 +1,9 @@
 extends SceneTree
 
+class RewardsStub extends Node:
+	func start_match(_room: Dictionary) -> void: pass
+	func observe(_room: Dictionary) -> void: pass
+
 class Session extends "res://scenes/balatro/scripts/network_session.gd":
 	func _ready() -> void:
 		set_process(false)
@@ -24,6 +28,8 @@ func _run() -> void:
 	assert(transport.create_server(18923, "127.0.0.1") == OK)
 	var server := session("Server", transport)
 	server.dedicated = true
+	server.rewards = RewardsStub.new()
+	server.add_child(server.rewards)
 	var client_peer := WebSocketMultiplayerPeer.new()
 	assert(client_peer.create_client("ws://127.0.0.1:18923") == OK)
 	var client := session("Client", client_peer)
@@ -60,12 +66,22 @@ func _run() -> void:
 	await create_timer(0.2).timeout
 	assert(server.rooms.TEST.people[0].avatar == "")
 	assert(client.avatar_for_slot(0) == null)
-	client.send({"op": "settings", "lives": 5, "starting_cards": 2, "bots": true, "bot_count": 2})
+	client.send({"op": "settings", "lives": 5, "starting_cards": 2, "bots": true, "bot_count": 2, "turn_seconds": 60})
 	await create_timer(0.2).timeout
+	assert(client.latest.options.turn_seconds == 60)
+	var notices: Array = []
+	client.presence_notice.connect(func(display_name, connected): notices.append([display_name, connected]))
+	server._announce_presence(server.rooms.TEST, 0, false)
+	server._announce_presence(server.rooms.TEST, 0, true)
+	await create_timer(0.2).timeout
+	assert(notices == [["Nuovo nome", false], ["Nuovo nome", true]])
 	client.send({"op": "ready", "ready": true})
 	await create_timer(0.2).timeout
 	assert(client.latest.stage == "deal" and client.latest.people.size() == 3)
 	assert(client.latest.hand_size == 2 and client.latest.players[0].lives == 5)
+	client.send({"op": "settings", "lives": 1, "turn_seconds": 15})
+	await create_timer(0.2).timeout
+	assert(server.rooms.TEST.options.turn_seconds == 60 and server.rooms.TEST.options.lives == 5)
 	client_peer.close()
 	transport.close()
 	print("PASS: return to same lobby, preserved profile, editable settings, fresh bots and restart")

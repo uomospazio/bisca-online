@@ -128,7 +128,7 @@
       if(!this.room||!this.me){this.status('Entra prima in una lobby multiplayer.');return;}
       if(!window.LivekitClient){this.status('Modulo LiveKit mancante. Aggiorna il gioco.');return;}
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){this.status('Apri il gioco tramite HTTPS in un browser aggiornato.');return;}
-      this.stop();
+      const keepMuted=this.muted;this.stop();this.muted=keepMuted;
       this.lastError='';this.disconnectReason=null;this.stage='microfono';
       const generation=this.generation;
       this.starting=true;this.status('Consenti il microfono: connessione a LiveKit…');
@@ -139,7 +139,7 @@
         this.context.resume().catch(()=>{});
         const stream=await navigator.mediaDevices.getUserMedia({video:false,audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
         if(generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return;}
-        this.stream=stream;
+        this.stream=stream;stream.getAudioTracks().forEach(t=>{t.enabled=!this.muted;});
         try {if(navigator.audioSession)navigator.audioSession.type='play-and-record';} catch(_) {}
         stream.getAudioTracks()[0].onended=()=>{
           if(generation===this.generation){this.stop();this.status('Microfono scollegato. Premi ATTIVA AUDIO.');}

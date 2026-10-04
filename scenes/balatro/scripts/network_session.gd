@@ -4,6 +4,8 @@ signal updated(state: Dictionary)
 signal clock_updated(seconds: float)
 signal problem(message: String)
 signal connection_lost
+signal presence_notice(player_name: String, connected: bool)
+
 signal avatars_changed
 signal object_thrown(sender: int, target: int, object_id: int)
 
@@ -240,7 +242,8 @@ func _disconnected(peer_id: int) -> void:
 	room.touched = Time.get_ticks_msec()
 	# Switch an already-running human turn to the normal bot timing too.
 	if room.rules != null and room.stage == "turn" and room.rules.current == ref.slot and room.rules.phase in ["prediction", "play"]:
-		room.deadline = mini(int(room.deadline), Time.get_ticks_msec() + 900)
+		_set_turn(room)
+	_announce_presence(room, int(ref.slot), false)
 	_broadcast(room)
 
 func _rejoin_slot(room: Dictionary, credential: String) -> int:
@@ -290,8 +293,8 @@ func _process(delta: float) -> void:
 		var remaining: float = maxf(0, room.deadline - now) / 1000.0
 		for person in room.people:
 			if _peer_connected(person.peer):
-				clock.rpc_id(person.peer, remaining if room.stage == "turn" and rules.phase != "finished" else -1.0)
-		if now < room.deadline or rules.phase == "finished" and room.stage == "turn":
+				clock.rpc_id(person.peer, remaining if room.stage == "turn" and room.deadline > 0 and rules.phase != "finished" else -1.0)
+		if room.deadline == 0 or now < room.deadline or rules.phase == "finished" and room.stage == "turn":
 			continue
 		if room.stage == "deal":
 			_set_turn(room)
@@ -322,14 +325,29 @@ func _process(delta: float) -> void:
 			_after_action(room)
 		_broadcast(room)
 
+func _turn_seconds(value: Variant) -> int:
+	return int(value) if value is int and value in [0, 15, 30, 60] else 30
+
+@rpc("authority", "call_remote", "reliable")
+func presence(player_name: String, connected: bool) -> void:
+	presence_notice.emit(player_name, connected)
+
+func _announce_presence(room: Dictionary, slot: int, connected: bool) -> void:
+	for person in room.people:
+		if _peer_connected(person.peer):
+			presence.rpc_id(person.peer, str(room.people[slot].name), connected)
+
 func _set_turn(room: Dictionary) -> void:
 	room.stage = "turn"
 	var actor: int = room.rules.current
-	var delay := 30000
-	if actor >= 0 and (room.people[actor].bot or room.people[actor].peer == 0):
-		delay = 900
-	if room.rules.hand_size == 1 and room.rules.phase == "play":
-		delay = 600
+	var seconds := _turn_seconds(room.get("options", {}).get("turn_seconds", 30))
+	var delay := seconds * 1000
+	var automated: bool = actor >= 0 and (room.people[actor].bot or room.people[actor].peer == 0)
+	if automated:
+		delay = 300 if room.rules.phase == "prediction" else 100
+	elif seconds == 0:
+		room.deadline = 0
+		return
 	room.deadline = Time.get_ticks_msec() + delay
 
 func _after_action(room: Dictionary) -> void:
@@ -366,7 +384,7 @@ func request(command: Dictionary) -> void:
 			code = Crypto.new().generate_random_bytes(3).hex_encode().to_upper()
 			while rooms.has(code):
 				code = Crypto.new().generate_random_bytes(3).hex_encode().to_upper()
-			rooms[code] = {"code": code, "people": [], "rules": null, "capacity": 8, "bots": bool(command.get("bots", false)), "bot_count": clampi(int(command.get("bot_count", 2)), 1, 7), "options": {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5)}, "stage": "lobby", "deadline": 0, "rev": 0, "touched": Time.get_ticks_msec()}
+			rooms[code] = {"code": code, "people": [], "rules": null, "capacity": 8, "bots": bool(command.get("bots", false)), "bot_count": clampi(int(command.get("bot_count", 2)), 1, 7), "options": {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5), "turn_seconds": _turn_seconds(command.get("turn_seconds", 30))}, "stage": "lobby", "deadline": 0, "rev": 0, "touched": Time.get_ticks_msec()}
 		if not rooms.has(code):
 			_reject(peer, "Stanza non trovata")
 			return
@@ -417,6 +435,8 @@ func request(command: Dictionary) -> void:
 			_set_turn(room)
 		members[peer] = {"code": code, "slot": slot}
 		room.touched = Time.get_ticks_msec()
+		if op == "rejoin":
+			_announce_presence(room, slot, true)
 		joined.rpc_id(peer, code, room.people[slot].token)
 		_broadcast(room)
 		# Images travel separately, once on entry/update, not in every snapshot.
@@ -490,9 +510,9 @@ func request(command: Dictionary) -> void:
 		if slot != 0 or room.stage != "lobby" or room.rules != null:
 			_reject(peer, "Solo il creatore puo' modificare la lobby")
 			return
-		room.options = {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5)}
+		room.options = {"lives": clampi(int(command.get("lives", 3)), 1, 10), "starting_cards": clampi(int(command.get("starting_cards", 5)), 1, 5), "turn_seconds": _turn_seconds(command.get("turn_seconds", 30))}
 		room.bots = bool(command.get("bots", false))
-		room.bot_count = clampi(int(command.get("bot_count", 2)), 1, 7)
+		room.bot_count = clampi(int(command.get("bot_count", 2)), 0, maxi(0, 8 - room.people.size()))
 		_reset_ready(room)
 		_broadcast(room)
 		return
@@ -601,6 +621,9 @@ func _all_ready(room: Dictionary) -> bool:
 	return humans > 0
 
 func _broadcast(room: Dictionary) -> void:
+	if room.rules == null:
+		var free_seats := maxi(0, 8 - room.people.size())
+		room.bot_count = clampi(int(room.get("bot_count", 2)), mini(1, free_seats), free_seats)
 	if rewards:
 		rewards.observe(room)
 	room.rev += 1

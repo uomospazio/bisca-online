@@ -9,6 +9,8 @@ var rounds: Stepper
 var bot_count: Stepper
 var fill_bots: CheckButton
 var compact_rows := false
+var turn_timer: OptionButton
+const TURN_TIMES := [15, 30, 60, 0]
 
 func setup(menu: Control, multiplayer_game: bool) -> void:
 	compact_rows = not multiplayer_game
@@ -41,17 +43,57 @@ func setup(menu: Control, multiplayer_game: bool) -> void:
 		fill_bots.add_theme_icon_override("unchecked", preload("res://scenes/balatro/visuals/settings_toggle_off.svg"))
 		content.add_child(fill_bots)
 		preload("res://scenes/balatro/scripts/rounded_square_button.gd").ButtonAudio.attach(fill_bots)
-	bot_count = _stepper(menu, "BOT", 1, 7, 2)
+	bot_count = _stepper(menu, "BOT", 1, 7, 2 if multiplayer_game else 7)
 	if multiplayer_game:
-		bot_count.get_parent().hide()
-		fill_bots.toggled.connect(func(on): bot_count.get_parent().visible = on)
+		turn_timer = OptionButton.new()
+		for caption in ["15 s", "30 s", "60 s", "Senza limite"]:
+			turn_timer.add_item(caption)
+		turn_timer.select(1)
+		turn_timer.add_theme_font_override("font", menu.KIDS_FONT)
+		turn_timer.add_theme_font_size_override("font_size", 24)
+		var timer_label := Label.new()
+		timer_label.text = "TEMPO PER TURNO"
+		timer_label.add_theme_font_override("font", menu.KIDS_FONT)
+		timer_label.add_theme_font_size_override("font_size", 22)
+		content.add_child(timer_label)
+		content.add_child(turn_timer)
+		fill_bots.toggled.connect(func(_on): update_bot_limit(int(bot_count.max_value), true))
+		update_bot_limit(7, true)
+
+func update_bot_limit(free_seats: int, can_edit: bool) -> void:
+	bot_count.min_value = 0 if free_seats == 0 else 1
+	bot_count.max_value = maxi(0, free_seats)
+	bot_count.value = mini(bot_count.value, free_seats)
+	bot_count.editable = can_edit and free_seats > 0 and fill_bots.button_pressed
+	fill_bots.disabled = not can_edit or free_seats == 0
+
+func reset_multiplayer() -> void:
+	if compact_rows: return
+	lives.value = 3
+	rounds.value = 5
+	fill_bots.button_pressed = false
+	update_bot_limit(7, true)
+	bot_count.value = 2
+	turn_timer.select(1)
+
+func reset_singleplayer() -> void:
+	if not compact_rows: return
+	lives.value = 3
+	rounds.value = 5
+	bot_count.value = 7
+	var english: bool = get_node("/root/GameSettings").values.language == "en"
+	content.get_child(0).text = "SINGLEPLAYER SETTINGS" if english else "IMPOSTAZIONI SOLITARIA"
+	lives.get_parent().get_child(0).tooltip_text = "Starting lives" if english else "Vite iniziali"
+	rounds.get_parent().get_child(0).text = "STARTING CARDS" if english else "CARTE DI PARTENZA"
 
 func values() -> Dictionary:
-	return {"lives": int(lives.value), "starting_cards": int(rounds.value),
+	var result := {"lives": int(lives.value), "starting_cards": int(rounds.value),
 		"bots": fill_bots == null or fill_bots.button_pressed, "bot_count": int(bot_count.value)}
+	if turn_timer != null: result["turn_seconds"] = TURN_TIMES[turn_timer.selected]
+	return result
 
 func _stepper(menu: Control, caption: String, minimum: int, maximum: int, initial: int) -> Stepper:
-	var row: BoxContainer = HBoxContainer.new() if compact_rows else VBoxContainer.new()
+	var row: BoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	content.add_child(row)
 	var label := Label.new()
@@ -75,9 +117,8 @@ func _stepper(menu: Control, caption: String, minimum: int, maximum: int, initia
 		label.free()
 	else:
 		row.add_child(label)
-		if compact_rows:
-			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var selector := Stepper.new()
 	selector.min_value = minimum
 	selector.max_value = maximum

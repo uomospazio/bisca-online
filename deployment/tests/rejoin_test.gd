@@ -26,6 +26,25 @@ func _initialize() -> void:
 	room.people[0].peer = 99
 	net._set_turn(room)
 	assert(room.deadline - Time.get_ticks_msec() > 29000)
+	for seconds in [0, 15, 30, 60]:
+		room["options"] = {"turn_seconds": seconds}
+		for phase in ["prediction", "play"]:
+			rules.phase = phase
+			room.people[0].peer = 99
+			net._set_turn(room)
+			if seconds == 0:
+				assert(room.deadline == 0)
+			else:
+				assert(abs(room.deadline - Time.get_ticks_msec() - seconds * 1000) < 100)
+			room.people[0].peer = 0
+			net._set_turn(room)
+			assert(room.deadline > 0)
+			assert(room.deadline - Time.get_ticks_msec() <= (300 if phase == "prediction" else 100))
+			room.people[0].peer = 99
+			net._set_turn(room)
+			assert(room.deadline == 0 if seconds == 0 else room.deadline > Time.get_ticks_msec() + 14000)
+	assert(net._turn_seconds(-1) == 30)
+	assert(net._turn_seconds("60") == 30)
 	net.free()
 	print("PASS: stale/offline seat recovery, invalid token rejection, human identity and state preserved")
 	quit()

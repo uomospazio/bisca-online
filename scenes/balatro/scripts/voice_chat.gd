@@ -12,6 +12,8 @@ var bridge: JavaScriptObject
 var native_bridge: Object
 var network_session: Node
 var current_room := ""
+var talk_held := false
+var last_microphone_preferences: Array = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -84,6 +86,11 @@ func _call(method: String, args: Array = []) -> void:
 
 func _sync_master() -> void:
 	_call("setMaster", [float(get_node("/root/GameSettings").values.main) / 100.0])
+	var preferences: Dictionary = get_node("/root/GameSettings").values
+	var next := [preferences.microphone_enabled, preferences.push_to_talk]
+	if next != last_microphone_preferences:
+		last_microphone_preferences = next
+		_apply_microphone_preferences()
 
 func _on_network_updated(state: Dictionary) -> void:
 	var room := str(state.get("code", ""))
@@ -127,6 +134,7 @@ func open_panel() -> void:
 		dialog.popup_centered(Vector2i(520, 180))
 
 func toggle_audio() -> void:
+	_apply_microphone_preferences()
 	if enabled or pending:
 		stop()
 	elif not available():
@@ -183,6 +191,22 @@ func _server_connected() -> bool:
 	var peer: MultiplayerPeer = network_session.multiplayer.multiplayer_peer
 	return peer != null and not peer is OfflineMultiplayerPeer and network_session.multiplayer.get_unique_id() != 1 and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
 
+func set_talk_held(value: bool) -> void:
+	talk_held = value
+	_apply_microphone_preferences()
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.physical_keycode == KEY_V and not event.echo:
+		var focus := get_viewport().gui_get_focus_owner()
+		if event.pressed and (focus is LineEdit or focus is TextEdit): return
+		set_talk_held(event.pressed)
+
+func _apply_microphone_preferences() -> void:
+	var preferences: Dictionary = get_node("/root/GameSettings").values
+	var must_mute: bool = not preferences.microphone_enabled or (preferences.push_to_talk and not talk_held)
+	if muted != must_mute:
+		set_muted(must_mute)
+
 func _process(_delta: float) -> void:
 	if not available():
 		return
@@ -207,6 +231,9 @@ func _process(_delta: float) -> void:
 			enabled = bool(event.enabled)
 			pending = bool(event.get("pending", false))
 			muted = bool(event.muted)
+			var preferences: Dictionary = get_node("/root/GameSettings").values
+			if not preferences.microphone_enabled or preferences.push_to_talk:
+				_apply_microphone_preferences()
 			if network_session != null:
 				network_session.send({"op": "voice_state", "active": enabled and not muted and not pending})
 			changed.emit()
@@ -215,6 +242,8 @@ func _exit_tree() -> void:
 	_call("stop")
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		set_talk_held(false)
 	if what == NOTIFICATION_APPLICATION_PAUSED and native_bridge != null:
 		# Il microfono si riattiva solo con un nuovo gesto esplicito dopo il ritorno.
 		stop()

@@ -35,3 +35,7 @@ Prima del rilascio verificare sul database con due utenti che ciascuno legga
 solo la propria riga e non possa inserire/modificare quella dell'altro; verificare
 anche che una richiesta senza sessione non possa leggere o scrivere profili.
 I test locali non sostituiscono queste verifiche RLS sul progetto Supabase.
+
+### Ricerca amici per nome parziale
+
+Eseguire `013_friends_prefix_search.sql` nel SQL Editor dopo `006_friends.sql`. La ricerca autenticata restituisce fino a 20 profili per prefisso del nome (almeno 2 caratteri), ignorando maiuscole/minuscole. Il codice pubblico resta una corrispondenza esatta. Aggiornare il client insieme alla migrazione.

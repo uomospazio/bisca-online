@@ -47,7 +47,7 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings = get_node("/root/GameSettings")
 	var title := _label("", 66)
-	_translated(title, "IMPOSTAZIONI", "SETTINGS")
+	_translated(title, "SETTINGS", "SETTINGS")
 	add_child(title)
 	title.position = Vector2(240, 125)
 	title.size = Vector2(1440, 95)

@@ -9,7 +9,7 @@ var notice: Label
 var working := false
 var search_generation := 0
 var identity := ""
-var search_box: Panel
+var friends_box: Panel
 var search_timer: Timer
 
 func setup(host: Control) -> void:
@@ -17,7 +17,7 @@ func setup(host: Control) -> void:
 	manager = get_node("/root/FriendsManager")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var back: Button = menu._button(self, "INDIETRO", menu.show_home)
-	back.position = Vector2(40,40)
+	back.position = Vector2(40, 1080 - 40 - 96)
 	back.size = Vector2(260,96)
 	_set_button_radius(back, 48)
 
@@ -35,7 +35,7 @@ func setup(host: Control) -> void:
 	query.position = Vector2(180,180)
 	query.size = Vector2(1050,70)
 	query.custom_minimum_size.y = 70
-	query.placeholder_text = "Username completo o #codice"
+	query.placeholder_text = "Cerca un amico per nome o #codice"
 	query.max_length = 64
 	query.add_theme_font_size_override("font_size",30)
 	_set_line_edit_radius(query, 35)
@@ -50,7 +50,10 @@ func setup(host: Control) -> void:
 	query.text_changed.connect(func(_text):
 		search_generation += 1
 		search_timer.stop()
-		if query.text.strip_edges().length() >= 3:
+		clear(results)
+		_show_search_results()
+		notice.text = ""
+		if query.text.strip_edges().length() >= 2:
 			search_timer.start()
 		else:
 			clear(results)
@@ -64,90 +67,44 @@ func setup(host: Control) -> void:
 	results = column(Vector2(180,380))
 	contacts = column(Vector2(990,380))
 
-	var friends_box := Panel.new()
+	friends_box = Panel.new()
 	add_child(friends_box)
-	friends_box.position = Vector2(180,230)
-	friends_box.size = Vector2(1500,750)
-	friends_box.add_theme_stylebox_override("panel",Style.button_style(Style.PANEL,Style.HOVER,4))
-
-	var contacts_scroll := contacts.get_parent() as ScrollContainer
-	contacts_scroll.reparent(friends_box)
-	contacts_scroll.position = Vector2(24,24)
-	contacts_scroll.size = Vector2(1452,702)
-
-	search_box = Panel.new()
-	add_child(search_box)
-	search_box.position = Vector2(980,330)
-	search_box.size = Vector2(780,650)
-	search_box.z_index = 10
-	search_box.add_theme_stylebox_override("panel",Style.button_style(Style.PANEL,Style.HOVER,4))
-
-	query.reparent(search_box)
-	query.position = Vector2(24,24)
-	query.size = Vector2(732,70)
-	query.custom_minimum_size.y = 70
+	friends_box.position = Vector2(180, 210)
+	friends_box.size = Vector2(1500, 720)
+	friends_box.add_theme_stylebox_override("panel", Style.button_style(Style.PANEL, Style.HOVER, 4))
+	query.reparent(friends_box)
+	query.position = Vector2(24, 24)
+	query.size = Vector2(1452, 70)
 	_set_line_edit_radius(query, 35)
-
-
-	var results_scroll := results.get_parent() as ScrollContainer
-	results_scroll.reparent(search_box)
-	results_scroll.position = Vector2(24,110)
-	results_scroll.size = Vector2(732,516)
-	search_box.hide()
-
-	var add_button: Button = menu._round_icon_button(
-		self,
-		"add_friends.svg",
-		"Aggiungi amici",
-		func(): _toggle_search_box()
-	)
-	add_button.position = Vector2(1740,230)
-	add_button.size = Vector2.ONE * menu.ROUND_BUTTON_SIZE
-
-	# Click/tap fuori dal popup: chiude la ricerca.
-	search_box.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	notice.position = Vector2(180,150)
-	notice.size = Vector2(1450,70)
+	var search_icon := TextureRect.new()
+	query.add_child(search_icon)
+	search_icon.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/add_friends.svg")
+	search_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	search_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	search_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	search_icon.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	search_icon.position = Vector2(query.size.x - 62, 11)
+	search_icon.size = Vector2(48, 48)
+	query.text_submitted.connect(func(_text): search_timer.stop(); search())
+	notice.reparent(friends_box)
+	notice.position = Vector2(24, 106)
+	notice.size = Vector2(1452, 56)
+	for box in [contacts, results]:
+		var scroll := box.get_parent() as ScrollContainer
+		scroll.reparent(friends_box)
+		scroll.position = Vector2(24, 174)
+		scroll.size = Vector2(1452, 522)
+	_show_search_results()
 
 	manager.changed.connect(update_contacts)
 	get_node("/root/AccountSession").changed.connect(_identity_changed)
 	identity = str(get_node("/root/AccountSession").user_id)
 	update_contacts()
 
-func _toggle_search_box() -> void:
-	if search_box.visible:
-		_close_search_box()
-	else:
-		search_box.show()
-		query.grab_focus()
-
-
-func _close_search_box() -> void:
-	search_box.hide()
-	query.release_focus()
-	if search_timer:
-		search_timer.stop()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not is_instance_valid(search_box) or not search_box.visible:
-		return
-
-	var pressed := false
-	var position := Vector2.ZERO
-
-	if event is InputEventMouseButton:
-		pressed = event.pressed and event.button_index == MOUSE_BUTTON_LEFT
-		position = event.position
-	elif event is InputEventScreenTouch:
-		pressed = event.pressed
-		position = event.position
-
-	if pressed and not search_box.get_global_rect().has_point(position):
-		_close_search_box()
-		get_viewport().set_input_as_handled()
-
+func _show_search_results() -> void:
+	var searching := query.text.strip_edges().length() >= 2
+	results.get_parent().visible = searching
+	contacts.get_parent().visible = not searching
 
 func _set_button_radius(button: Button, radius: int) -> void:
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
@@ -163,6 +120,7 @@ func _set_line_edit_radius(field: LineEdit, radius: int) -> void:
 		if base_style is StyleBoxFlat:
 			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
 			style.set_corner_radius_all(radius)
+			style.content_margin_right = 84
 			field.add_theme_stylebox_override(state, style)
 
 func label(text: String, parent: Node) -> Label:
@@ -200,25 +158,35 @@ func _identity_changed() -> void:
 		search_timer.stop()
 	clear(results)
 	query.clear()
+	_show_search_results()
 
 func open() -> void:
-	_close_search_box()
+	search_generation += 1
+	search_timer.stop()
+	query.clear()
+	clear(results)
+	notice.text = ""
+	_show_search_results()
 	manager.refresh()
 	update_contacts()
 
 func search() -> void:
+	if not is_visible_in_tree(): return
 	if working:
+		search_timer.start()
 		return
 
 	var search_text := query.text.strip_edges()
-	if search_text.length() < 3:
+	if search_text.length() < 2:
 		return
 
 	working = true
 	var generation := search_generation
 	var response: Dictionary = await manager.call_api("bisca_search_friends", {"query":search_text})
 	working = false
-	if generation != search_generation: return
+	if generation != search_generation:
+		if query.text.strip_edges().length() >= 2: search_timer.start()
+		return
 	clear(results)
 	if not response.ok:
 		notice.text = response.message

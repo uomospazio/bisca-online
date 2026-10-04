@@ -431,10 +431,10 @@ func _ready() -> void:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 24)
 	setup_page.add_child(buttons)
-	buttons.position = Vector2(1290, 760)
+	buttons.position = Vector2(1290, 795)
 	buttons.size = Vector2(260, 96)
 	var back := _button(setup_page, "Indietro", show_home)
-	back.position = Vector2(40, 40)
+	back.position = Vector2(40, 1080 - 40 - 96)
 	back.size = Vector2(260, 96)
 	var play := _button(buttons, "Gioca", _start)
 	solo_buttons = [back, play]
@@ -940,6 +940,7 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 	button.add_theme_color_override("font_disabled_color", LexispellStyle.DISABLED_TEXT)
 	parent.add_child(button)
 	if text.to_lower() == "indietro":
+		button.set_meta("safe_bottom", true)
 		preload("res://scenes/balatro/scripts/safe_edges.gd").attach(button)
 	button.pressed.connect(callback)
 	return button

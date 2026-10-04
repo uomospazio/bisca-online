@@ -56,7 +56,7 @@ func _run() -> void:
 	assert(lobby.match_options.values().bot_count == 4)
 	assert(lobby.match_options.values().turn_seconds == 30)
 	for index in 4:
-		lobby.match_options.turn_timer.select(index)
+		lobby.match_options.turn_timer.value = index
 		assert(lobby.match_options.values().turn_seconds == [15, 30, 60, 0][index])
 	lobby.match_options.update_bot_limit(1, true)
 	assert(lobby.match_options.bot_count.max_value == 1 and lobby.match_options.bot_count.value == 1)
@@ -69,7 +69,7 @@ func _run() -> void:
 	lobby._sync_options({"people": [{}, {}, {}, {}, {}, {}, {}], "bots": true, "bot_count": 7, "options": {"lives": 4, "starting_cards": 2, "turn_seconds": 0}})
 	assert(lobby.lobby_options.bot_count.value == 1)
 	assert(not lobby.lobby_options.bot_count.editable and not lobby.lobby_options.lives.editable)
-	assert(lobby.lobby_options.turn_timer.disabled)
+	assert(not lobby.lobby_options.turn_timer.editable)
 	assert(lobby.lobby_options.values().turn_seconds == 0)
 	for _i in range(5):
 		await process_frame

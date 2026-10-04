@@ -27,6 +27,8 @@ static func attach(control: Control, right: bool = false) -> void:
 				safe = Rect2((physical.position - Vector2(window.position)) * ratio, physical.size * ratio)
 		var origin := (viewport_size - Vector2(1920, 1080)) * 0.5
 		var delta := Vector2(safe.end.x - viewport_size.x + origin.x if right else safe.position.x - origin.x, safe.position.y - origin.y)
+		if control.get_meta("safe_bottom", false):
+			delta.y = safe.end.y - viewport_size.y + origin.y
 		var previous: Vector2 = control.get_meta("safe_edge")
 		control.position += delta - previous
 		control.set_meta("safe_edge", delta)

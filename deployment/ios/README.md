@@ -132,3 +132,9 @@ Install a signed build with the latest pack and test an iPhone with a web peer:
 
 The temporary exported Xcode project is a build artifact. Keep this directory
 in source control and rerun the setup for future exports.
+
+## One-command export with voice
+
+Run `python3 deployment/ios/export_with_voice.py` from the repository, or invoke the script by its absolute path from anywhere. It exports the debug iOS Xcode project and then applies `setup.py`. Use `--release` for a release engine export, and `--dry-run` to inspect commands without writing files. `--godot`, `--godot-source`, and `--output` override the local paths.
+
+The iOS preset uses `application/export_project_only=true`: compile and sign in Xcode after integration. The wrapper does not rebuild any existing IPA. Direct exports from the Godot editor still require running `setup.py` afterward.

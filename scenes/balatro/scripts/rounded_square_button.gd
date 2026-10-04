@@ -56,15 +56,11 @@ func _update_state_styles() -> void:
 			button_height
 		)
 	)
-	add_theme_stylebox_override(
-		"disabled",
-		LexispellStyle.button_style(
-			LexispellStyle.DISABLED,
-			Color.TRANSPARENT,
-			0,
-			button_height
-		)
-	)
+	var disabled_style := get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+	if disabled_style:
+		disabled_style.bg_color = LexispellStyle.DISABLED
+		disabled_style.set_corner_radius_all(int(button_height / 2.0))
+		add_theme_stylebox_override("disabled", disabled_style)
 	add_theme_stylebox_override(
 		"hover_pressed",
 		LexispellStyle.button_style(
@@ -109,7 +105,7 @@ func _hover() -> void:
 	hover_tween.parallel().tween_property(self, "rotation_degrees", 0.0, 0.1).set_delay(0.1)
 
 func _unhover() -> void:
-	if disabled or not hover_animate:
+	if not hover_animate:
 		return
 	_resync_pivot()
 	if hover_tween and hover_tween.is_running():

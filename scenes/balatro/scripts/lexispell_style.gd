@@ -31,7 +31,7 @@ static func button_style(
 	else:
 		style.content_margin_left = 10.0
 		style.content_margin_right = 10.0
-		style.shadow_color = Color(0.658824, 0.635294, 0.709804) if color == DISABLED else SHADOW
+		style.shadow_color = SHADOW
 		if color == Color(0.909804, 0.364706, 0.407843):
 			style.shadow_color = Color(0.623529, 0.207843, 0.290196)
 		style.shadow_size = 1

@@ -5,6 +5,10 @@ const PLAYER_SLOT_HEIGHT := 78.0
 # Larghezze indipendenti: lascia almeno 48 px fra box e tessere per i margini.
 const PLAYER_SLOT_WIDTH := 600.0
 const PLAYERS_PANEL_WIDTH := 660.0
+const OPTIONS_PANEL_WIDTH := 740.0
+const LOBBY_COLUMN_GAP := 40.0
+const LOBBY_LEFT_X := (1920.0 - PLAYERS_PANEL_WIDTH - LOBBY_COLUMN_GAP - OPTIONS_PANEL_WIDTH) / 2.0
+const LOBBY_RIGHT_X := LOBBY_LEFT_X + PLAYERS_PANEL_WIDTH + LOBBY_COLUMN_GAP
 # Spaziatura e dimensioni degli elementi centrati nel pulsante codice.
 const LOBBY_CODE_ICON_SIZE := 96.0
 const LOBBY_CODE_ICON_GAP := 16
@@ -114,7 +118,7 @@ func setup(owner_menu: Control) -> void:
 	session_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	session_controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var invite_button: Button = menu._round_icon_button(session_controls,"add_friends.svg","Invita amici",_open_invites)
-	invite_button.position = Vector2(1740,145)
+	invite_button.position = Vector2(LOBBY_RIGHT_X + OPTIONS_PANEL_WIDTH - menu.ROUND_BUTTON_SIZE, 95)
 	invite_button.size = Vector2.ONE * menu.ROUND_BUTTON_SIZE
 	invite_box = AcceptDialog.new()
 	invite_box.title = "INVITA AMICI IN LOBBY"
@@ -133,7 +137,7 @@ func setup(owner_menu: Control) -> void:
 		copied_code = str(code_button.get_meta("room_code", ""))
 		info.text = "Codice copiato negli appunti"
 	)
-	code_button.position = Vector2(1050, 145)
+	code_button.position = Vector2(LOBBY_RIGHT_X + (OPTIONS_PANEL_WIDTH - 540.0) / 2.0, 95)
 	code_button.custom_minimum_size = Vector2(540, 200)
 	code_button.size = Vector2(540, 200)
 	_set_button_radius(code_button, 100)
@@ -202,16 +206,16 @@ func setup(owner_menu: Control) -> void:
 	
 	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	session_controls.add_child(lobby_options)
-	lobby_options.position = Vector2(1050, 370)
-	lobby_options.size = Vector2(640, 560)
+	lobby_options.position = Vector2(LOBBY_RIGHT_X, 325)
+	lobby_options.size = Vector2(OPTIONS_PANEL_WIDTH, 560)
 	lobby_options.setup(menu, true)
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.value_changed.connect(func(_value): _send_options())
-	lobby_options.turn_timer.item_selected.connect(func(_index): _send_options())
+	lobby_options.turn_timer.value_changed.connect(func(_index): _send_options())
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	var participant_panel := PanelContainer.new()
 	session_controls.add_child(participant_panel)
-	participant_panel.position = Vector2(350, 140)
+	participant_panel.position = Vector2(LOBBY_LEFT_X, 95)
 	participant_panel.size = Vector2(PLAYERS_PANEL_WIDTH, 790)
 	var panel_style = menu._menu_button_style(menu.LexispellStyle.PANEL, menu.BUTTON_CYAN, 4)
 	panel_style.content_margin_left = 24
@@ -242,9 +246,11 @@ func setup(owner_menu: Control) -> void:
 		if own >= 0 and own < people.size():
 			net.send({"op": "ready", "ready": not bool(people[own].get("ready", false))})
 	)
-	start_button.position = Vector2(1430, 940)
-	start_button.size = Vector2(260, 80)
-	start_button.custom_minimum_size.y = 80
+	start_button.position = Vector2(1920 - 40 - 260, 1080 - 40 - 96)
+	start_button.size = Vector2(260, 96)
+	start_button.custom_minimum_size.y = 96
+	start_button.set_meta("safe_bottom", true)
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(start_button, true)
 	# PLAY a capsula: radius = meta della sua altezza (Y/2).
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		var base_style := start_button.get_theme_stylebox(state)
@@ -256,7 +262,7 @@ func setup(owner_menu: Control) -> void:
 	session_controls.hide()
 	info = Label.new()
 	add_child(info)
-	info.position = Vector2(500, 1020)
+	info.position = Vector2(500, 970)
 	info.size = Vector2(920, 40)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_size_override("font_size", 24)
@@ -407,7 +413,6 @@ func _update(state: Dictionary) -> void:
 		row.draw.connect(func():
 			var left := PLAYER_SLOT_HEIGHT * 0.5
 			var right := row.size.x - left
-			row.draw_line(Vector2(left, 6), Vector2(right, 6), Color(1, 1, 1, 0.8), 3, true)
 			row.draw_line(Vector2(left, row.size.y - 9), Vector2(right, row.size.y - 9), Color(0, 0, 0, 0.26), 7, true)
 		)
 		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
@@ -750,8 +755,8 @@ func _sync_options(state: Dictionary) -> void:
 	lobby_options.rounds.value = options.get("starting_cards", 5)
 	lobby_options.bot_count.value = state.get("bot_count", 2)
 	lobby_options.fill_bots.button_pressed = state.get("bots", false)
-	lobby_options.turn_timer.select(lobby_options.TURN_TIMES.find(int(options.get("turn_seconds", 30))))
-	lobby_options.turn_timer.disabled = not is_host
+	lobby_options.turn_timer.value = maxi(0, lobby_options.TURN_TIMES.find(int(options.get("turn_seconds", 30))))
+	lobby_options.turn_timer.editable = is_host
 	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
 		slider.editable = is_host
 	lobby_options.update_bot_limit(maxi(0, 8 - state.people.size()), is_host)

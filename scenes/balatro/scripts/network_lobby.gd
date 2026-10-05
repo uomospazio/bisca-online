@@ -334,13 +334,6 @@ func _build_directory() -> void:
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 16)
 	directory_panel.add_child(content)
-	var heading := Label.new()
-	heading.text = "LOBBY"
-	heading.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	heading.add_theme_font_override("font", menu.KIDS_FONT)
-	heading.add_theme_font_size_override("font_size", 60)
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content.add_child(heading)
 	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL

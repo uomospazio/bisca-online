@@ -1,10 +1,10 @@
 extends Control
 
-## Vetrina fissa: due articoli grandi e due piccoli, senza scorrimento.
+## Vetrina fissa: tre articoli grandi, senza scorrimento.
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 const MARKET_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/fullMarket.png")
-const PRICE_TAG_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/market_price_tag.png")
+const COIN_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/coin.png")
 const PRICE_COLOR := Color("#340602")
 
 # Banco, insegna e articoli si spostano insieme.
@@ -13,16 +13,14 @@ const MARKET_POSITION := Vector2(400, 50)
 const MARKET_SIZE := Vector2(1700, 1050)
 # Coordinate relative alla grafica del banco.
 const ITEM_RECTS := [
-	Rect2(475, 460, 260, 300),
-	Rect2(835, 460, 260, 300),
-	Rect2(1185, 452, 145, 112),
-	Rect2(1185, 682, 145, 112),
+	Rect2(85, 450, 240, 280),
+	Rect2(435, 450, 240, 280),
+	Rect2(785, 450, 240, 280),
 ]
 const TAG_RECTS := [
-	Rect2(500, 755, 205, 102.5),
-	Rect2(860, 755, 205, 102.5),
-	Rect2(1190, 538, 140, 70),
-	Rect2(1190, 777, 140, 70),
+	Rect2(120, 755, 205, 102.5),
+	Rect2(480, 755, 205, 102.5),
+	Rect2(840, 755, 205, 102.5),
 ]
 const TAP_MOVE_THRESHOLD := 18.0
 const ITEM_SHADOW_COLOR := Color(0.10, 0.055, 0.025, 0.48)
@@ -41,7 +39,9 @@ var touch_item_id := ""
 var touch_start_position := Vector2.ZERO
 var touch_dragged := false
 var rendered_items: Array = []
-var purchase_dialog: ConfirmationDialog
+var purchase_dialog: Control
+var purchase_text: Label
+var purchase_amount: Label
 var result_dialog: AcceptDialog
 var pending_item := ""
 var pending_price := 0
@@ -80,12 +80,6 @@ func setup(menu: Control) -> void:
 	market.position = MARKET_POSITION + MARKET_OFFSET
 	market.size = MARKET_SIZE
 	content.add_child(market)
-	var title := _label("SHOP", 60)
-	title.position = Vector2(670, 142)
-	title.size = Vector2(475, 83)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	market.add_child(title)
 
 	grid = Control.new()
 	grid.name = "Offers"
@@ -115,16 +109,88 @@ func setup(menu: Control) -> void:
 	back.position = Vector2(40, 40)
 	fixed_controls = [back, counter]
 
-	purchase_dialog = ConfirmationDialog.new()
-	purchase_dialog.title = "CONFERMA ACQUISTO"
-	purchase_dialog.ok_button_text = "ACQUISTA"
-	purchase_dialog.cancel_button_text = "ANNULLA"
-	add_child(purchase_dialog)
-	purchase_dialog.confirmed.connect(_purchase_confirmed)
+	_build_purchase_dialog()
+	get_viewport().size_changed.connect(_fit_offer_scale, CONNECT_DEFERRED)
 	result_dialog = AcceptDialog.new()
 	add_child(result_dialog)
 	manager.changed.connect(_update)
 	visibility_changed.connect(_update)
+
+func _build_purchase_dialog() -> void:
+	purchase_dialog = Control.new()
+	purchase_dialog.z_index = 100
+	add_child(purchase_dialog)
+	var shade := ColorRect.new()
+	shade.color = Color(0.04, 0.03, 0.08, 0.78)
+	purchase_dialog.add_child(shade)
+	var panel := Panel.new()
+	purchase_dialog.add_child(panel)
+	panel.size = Vector2(560, 420)
+	var skin := Style.button_style(Style.PANEL, Style.HOVER, 4)
+	for edge in ["left", "right", "top", "bottom"]:
+		skin.set("content_margin_" + edge, 36.0)
+	panel.add_theme_stylebox_override("panel", skin)
+	var rows := Control.new()
+	panel.add_child(rows)
+	rows.position = Vector2(32, 32)
+	rows.size = Vector2(496, 356)
+	purchase_text = _label("", 32)
+	purchase_text.size = Vector2(496, 160)
+	purchase_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	purchase_text.max_lines_visible = 5
+	purchase_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	purchase_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	purchase_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rows.add_child(purchase_text)
+	var cost := HBoxContainer.new()
+	cost.alignment = BoxContainer.ALIGNMENT_CENTER
+	cost.add_theme_constant_override("separation", 16)
+	rows.add_child(cost)
+	cost.position = Vector2(0, 180)
+	cost.size = Vector2(496, 64)
+	purchase_amount = _label("", 44)
+	cost.add_child(purchase_amount)
+	var coin := TextureRect.new()
+	coin.texture = COIN_TEXTURE
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.custom_minimum_size = Vector2(64, 64)
+	cost.add_child(coin)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 20)
+	rows.add_child(buttons)
+	buttons.position = Vector2(0, 280)
+	buttons.size = Vector2(496, 76)
+	for spec in [["ANNULLA", purchase_dialog.hide], ["ACQUISTA", _purchase_confirmed]]:
+		var button: Button = menu_owner._button(buttons, spec[0], spec[1])
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size = Vector2(238, 76)
+		button.add_theme_font_size_override("font_size", 28)
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			var button_skin := button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+			button_skin.set_corner_radius_all(38)
+			for edge in ["left", "right", "top", "bottom"]:
+				button_skin.set("content_margin_" + edge, 6.0)
+			button.add_theme_stylebox_override(state, button_skin)
+	var fit := func():
+		var screen := get_viewport_rect().size
+		shade.position = -(screen - Vector2(1920, 1080)) * 0.5
+		shade.size = screen
+		panel.position = (Vector2(1920, 1080) - panel.size) * 0.5
+	get_viewport().size_changed.connect(fit)
+	panel.resized.connect(fit)
+	fit.call()
+	purchase_dialog.hide()
+
+func _fit_offer_scale() -> void:
+	# Keep design sizes as the maximum, even on larger physical displays.
+	var display_scale := get_viewport().get_stretch_transform().get_scale().abs()
+	var factor := 1.0 / maxf(1.0, maxf(display_scale.x, display_scale.y))
+	for offer in grid.get_children():
+		for child in offer.get_children():
+			if child is Control:
+				child.pivot_offset = child.size * 0.5
+				child.scale = Vector2.ONE * factor
 
 func open() -> void:
 	coins_amount.text = menu_owner.coins_label.text
@@ -185,20 +251,15 @@ func _ask_purchase(item_id: String) -> void:
 		get_node("/root/AccountSession").user_id
 	)
 
-	purchase_dialog.dialog_text = (
-		"Acquistare %s per %d monete?"
-		% [
-			item.name,
-			pending_price
-		]
-	)
-
-	purchase_dialog.popup_centered(
-		Vector2i(560, 200)
-	)
+	purchase_text.text = 'Vuoi acquistare "%s" per' % item.name
+	purchase_amount.text = str(pending_price)
+	purchase_dialog.show()
 
 
 func _purchase_confirmed() -> void:
+	if manager.purchasing:
+		return
+	purchase_dialog.hide()
 	# Se nel frattempo è cambiato account,
 	# l'acquisto viene annullato.
 	if pending_user != str(
@@ -257,8 +318,9 @@ func _update() -> void:
 	for child in grid.get_children():
 		grid.remove_child(child)
 		child.queue_free()
-	for index in mini(items.size(), 4):
+	for index in mini(items.size(), ITEM_RECTS.size()):
 		_build_offer(items[index], index)
+	_fit_offer_scale()
 
 func _build_offer(item: Dictionary, index: int) -> void:
 	var offer := Control.new()
@@ -287,26 +349,22 @@ func _build_offer(item: Dictionary, index: int) -> void:
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		offer.add_child(caption)
 
-	var tag := TextureRect.new()
+	var tag := Control.new()
 	tag.name = "PriceTag"
-	tag.texture = PRICE_TAG_TEXTURE
-	tag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tag.stretch_mode = TextureRect.STRETCH_SCALE
 	tag.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.position = TAG_RECTS[index].position
+	tag.position = TAG_RECTS[index].position + Vector2([-15, -25, -35][index], -12)
 	tag.size = TAG_RECTS[index].size
 	offer.add_child(tag)
 	var owned: bool = manager.owns_item(item.id)
-	var price := _label("POSSEDUTO" if owned else str(item.price), 34 if index < 2 else 23)
+	var price := _label("POSSEDUTO" if owned else str(item.price), 34)
 	price.name = "Price"
 	price.add_theme_color_override("font_color", PRICE_COLOR)
-	# Solo testo: la moneta fa gia' parte della grafica dell'etichetta.
-	price.position = tag.size * Vector2(0.28, 0.40)
-	price.size = tag.size * Vector2(0.56, 0.38)
+	price.position = Vector2.ZERO
+	price.size = tag.size
 	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	price.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var font_size := 34 if index < 2 else 23
+	var font_size := 34
 	while FONT.get_string_size(price.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > price.size.x and font_size > 10:
 		font_size -= 1
 	price.add_theme_font_size_override("font_size", font_size)

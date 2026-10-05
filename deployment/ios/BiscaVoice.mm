@@ -10,8 +10,14 @@ protected:
     static void _bind_methods() {
         ClassDB::bind_method(D_METHOD("invoke", "method", "args_json"), &BiscaVoice::invoke);
         ClassDB::bind_method(D_METHOD("drain"), &BiscaVoice::drain);
+        ClassDB::bind_method(D_METHOD("open_photo"), &BiscaVoice::open_photo);
+        ClassDB::bind_method(D_METHOD("drain_photo"), &BiscaVoice::drain_photo);
     }
 public:
+    void open_photo() { [BiscaPhotoNative.shared open]; }
+    String drain_photo() {
+        @autoreleasepool { return String::utf8([BiscaPhotoNative.shared drain].UTF8String); }
+    }
     void invoke(const String &method, const String &args_json) {
         @autoreleasepool {
             [BiscaVoiceNative.shared invoke:[NSString stringWithUTF8String:method.utf8().get_data()]

@@ -7,9 +7,15 @@ var dialog: ConfirmationDialog
 var preview: TextureButton
 var file_dialog: FileDialog
 var chosen := ""
+var photo_bridge: Object
+var photo_pending := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if OS.get_name() == "iOS" and Engine.has_singleton("BiscaVoice"):
+		var native := Engine.get_singleton("BiscaVoice")
+		if native.has_method("open_photo"):
+			photo_bridge = native
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval(FileAccess.get_file_as_string("res://scenes/balatro/scripts/profile_picker.js"), true)
 		bridge = JavaScriptBridge.get_interface("BiscaProfile")
@@ -72,6 +78,13 @@ func open(display_name: String) -> void:
 	dialog.popup_centered(Vector2i(minf(900, available.x * 0.9), minf(660, available.y * 0.9)))
 
 func _open_files() -> void:
+	if OS.get_name() == "iOS":
+		if photo_bridge != null:
+			photo_pending = true
+			photo_bridge.open_photo()
+		else:
+			dialog.get_node("ProfileContent/ProfileName").text = "Aggiorna la build iOS per scegliere una foto."
+		return
 	# Native dialogs ignore the fallback theme and dimensions. On platforms
 	# without a native picker, keep the file browser large enough for touch.
 	var fallback_theme := Theme.new()
@@ -99,6 +112,7 @@ func _import_file(path: String) -> void:
 	preview.texture_normal = AvatarData.circular_texture(chosen)
 
 func close() -> void:
+	photo_pending = false
 	if bridge:
 		bridge.close()
 	if is_instance_valid(dialog):
@@ -106,6 +120,16 @@ func close() -> void:
 		file_dialog.hide()
 
 func _process(_delta: float) -> void:
+	if photo_bridge != null:
+		var photo: String = photo_bridge.drain_photo()
+		if not photo.is_empty() and photo_pending:
+			photo_pending = false
+			if photo != "cancel":
+				if photo == "error" or photo.length() > AvatarData.MAX_ENCODED:
+					dialog.get_node("ProfileContent/ProfileName").text = "Foto non disponibile. Prova un'altra immagine."
+				else:
+					chosen = photo
+					preview.texture_normal = AvatarData.circular_texture(chosen)
 	if bridge:
 		var value := str(bridge.drain())
 		if not value.is_empty():

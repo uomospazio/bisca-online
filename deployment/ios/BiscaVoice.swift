@@ -1,7 +1,71 @@
 import Foundation
 import AVFoundation
 import UIKit
+import PhotosUI
 import LiveKit
+
+/// Separate queue: voice polling must never consume a selected profile photo.
+@objc(BiscaPhotoNative) public final class BiscaPhotoNative: NSObject, PHPickerViewControllerDelegate, @unchecked Sendable {
+    @objc public static let shared = BiscaPhotoNative()
+    private let lock = NSLock()
+    private var result = ""
+    @MainActor private var picker: PHPickerViewController?
+
+    private func finish(_ value: String) {
+        lock.lock(); result = value; lock.unlock()
+    }
+
+    @objc public func drain() -> String {
+        lock.lock(); defer { lock.unlock() }
+        let value = result; result = ""; return value
+    }
+
+    @objc public func open() {
+        DispatchQueue.main.async {
+            guard self.picker == nil else { return }
+            self.finish("")
+            let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive }
+            guard var controller = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+                self.finish("error"); return
+            }
+            while let presented = controller.presentedViewController { controller = presented }
+            var configuration = PHPickerConfiguration()
+            configuration.filter = .images
+            configuration.selectionLimit = 1
+            let picker = PHPickerViewController(configuration: configuration)
+            picker.delegate = self
+            self.picker = picker
+            controller.present(picker, animated: true)
+        }
+    }
+
+    public func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        DispatchQueue.main.async {
+            picker.dismiss(animated: true)
+            self.picker = nil
+        }
+        guard let provider = results.first?.itemProvider else { finish("cancel"); return }
+        guard provider.canLoadObject(ofClass: UIImage.self) else { finish("error"); return }
+        provider.loadObject(ofClass: UIImage.self) { object, _ in
+            guard let image = object as? UIImage, image.size.width > 0, image.size.height > 0 else {
+                self.finish("error"); return
+            }
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1
+            format.opaque = true
+            let avatar = UIGraphicsImageRenderer(size: CGSize(width: 192, height: 192), format: format).image { context in
+                UIColor.white.setFill()
+                context.fill(CGRect(x: 0, y: 0, width: 192, height: 192))
+                let scale = 192 / min(image.size.width, image.size.height)
+                let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+                image.draw(in: CGRect(x: (192 - size.width) / 2, y: (192 - size.height) / 2, width: size.width, height: size.height))
+            }
+            guard let data = avatar.jpegData(compressionQuality: 0.65) else { self.finish("error"); return }
+            self.finish(data.base64EncodedString())
+        }
+    }
+}
 
 /// Godot may call from its rendering thread. Only the event queue crosses threads;
 /// all mutable transport state and SDK operations are owned by the main actor.

@@ -100,6 +100,10 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 		_translated(toggles.fullscreen, "Disponibile nella versione PC", "Available on desktop", "tooltip_text")
 	var general := _tab("GENERALE", "GENERAL")
 	_setting(general, "MOSTRA OGGETTI LANCIATI", "SHOW THROWN OBJECTS", "show_thrown_objects")
+	_setting(general, "NOTIFICHE PUSH", "PUSH NOTIFICATIONS", "push_notifications")
+	if OS.get_name() not in ["Android", "iOS"]:
+		toggles.push_notifications.disabled = true
+		_translated(toggles.push_notifications, "Disponibili nell'app mobile", "Available in the mobile app", "tooltip_text")
 	var note := _label("", 20)
 	_translated(note, "Disattivando gli oggetti vengono silenziati anche i loro suoni.", "Hiding thrown objects also mutes their sounds.")
 	general.add_child(note)

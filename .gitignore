@@ -5,6 +5,10 @@
 .env
 .env.*
 __pycache__/
+google-services.json
+GoogleService-Info.plist
+*-firebase-adminsdk-*.json
+service-account*.json
 
 # Generated Godot Android export and Gradle build artifacts
 /android/build/

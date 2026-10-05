@@ -82,7 +82,7 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	skin.content_margin_top = 28
 	skin.content_margin_bottom = 28
 	settings_panel.add_theme_stylebox_override("panel", skin)
-	content_scroll = ScrollContainer.new()
+	content_scroll = preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -195,7 +195,14 @@ func _layout_page() -> void:
 	# The menu lives in a centered design canvas; convert screen coordinates
 	# to this page's coordinates so the heading cannot move outside the screen.
 	var screen_to_page := get_global_transform_with_canvas().affine_inverse()
-	var bounds := screen_to_page * Rect2(Vector2.ZERO, viewport_size)
+	var safe := Rect2(Vector2.ZERO, viewport_size)
+	if OS.has_feature("mobile"):
+		var window := get_window()
+		var physical := Rect2(DisplayServer.get_display_safe_area()).intersection(Rect2(Vector2(window.position), Vector2(window.size)))
+		if physical.has_area():
+			var ratio := viewport_size / Vector2(window.size)
+			safe = Rect2((physical.position - Vector2(window.position)) * ratio, physical.size * ratio)
+	var bounds := screen_to_page * safe
 	var side_margin := maxf(40.0, bounds.size.x * 0.035)
 	var width := bounds.size.x - side_margin * 2.0
 	page_title.position = bounds.position + Vector2(side_margin, 24)

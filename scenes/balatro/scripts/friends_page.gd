@@ -133,7 +133,7 @@ func label(text: String, parent: Node) -> Label:
 	return node
 
 func column(at: Vector2) -> VBoxContainer:
-	var scroll := ScrollContainer.new()
+	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	add_child(scroll)
 	scroll.position = at
 	scroll.size = Vector2(750,620)

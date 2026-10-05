@@ -124,7 +124,7 @@ func setup(owner_menu: Control) -> void:
 	invite_box.title = "INVITA AMICI IN LOBBY"
 	invite_box.ok_button_text = "CHIUDI"
 	add_child(invite_box)
-	var invite_scroll := ScrollContainer.new()
+	var invite_scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	invite_scroll.custom_minimum_size = Vector2(700,440)
 	invite_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	invite_box.add_child(invite_scroll)

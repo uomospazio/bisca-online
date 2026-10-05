@@ -55,7 +55,7 @@ func setup(host: Control, initial_mode: String = "home") -> void:
 		skin
 	)
 
-	var scroll := ScrollContainer.new()
+	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	panel.add_child(scroll)
 

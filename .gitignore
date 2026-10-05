@@ -16,3 +16,4 @@ service-account*.json
 /addons/bisca_voice/android/.gradle/
 /addons/bisca_voice/android/plugin/.gradle/
 /addons/bisca_voice/android/plugin/build/
+.native-deps/

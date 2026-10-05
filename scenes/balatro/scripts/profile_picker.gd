@@ -7,7 +7,7 @@ var dialog: Control
 var status: Label
 var confirm: Button
 var overlay: CanvasLayer
-var preview: TextureButton
+var preview: TextureRect
 var file_dialog: FileDialog
 var chosen := ""
 var photo_bridge: Object
@@ -57,25 +57,12 @@ func open(display_name: String) -> void:
 		column.name = "ProfileContent"
 		column.add_theme_constant_override("separation", 24)
 		panel.add_child(column)
-		var name_label := Label.new()
-		name_label.name = "ProfileName"
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_label.add_theme_font_size_override("font_size", 38)
-		column.add_child(name_label)
-		status = name_label
-		preview = TextureButton.new()
+		preview = TextureRect.new()
 		preview.custom_minimum_size = Vector2(256, 256)
-		preview.ignore_texture_size = true
-		preview.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		column.add_child(preview)
-		var hint := Label.new()
-		hint.text = "Tocca la foto per scegliere un'immagine.\nLa foto sara' condivisa con la lobby."
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hint.add_theme_font_size_override("font_size", 30)
-		column.add_child(hint)
 		var sources := HBoxContainer.new()
 		sources.alignment = BoxContainer.ALIGNMENT_CENTER
 		sources.add_theme_constant_override("separation", 24)
@@ -83,6 +70,12 @@ func open(display_name: String) -> void:
 		var camera := _button(sources, "SCATTA", _open_camera)
 		camera.disabled = photo_bridge == null or not photo_bridge.has_method("open_camera")
 		_button(sources, "IMPORTA", _open_files)
+		status = Label.new()
+		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		status.add_theme_font_size_override("font_size", 26)
+		status.visible = false
+		column.add_child(status)
 		var footer := HBoxContainer.new()
 		layout.add_child(footer)
 		_button(footer, "INDIETRO", close)
@@ -102,12 +95,11 @@ func open(display_name: String) -> void:
 		file_dialog.cancel_button_text = "ANNULLA"
 		file_dialog.filters = PackedStringArray(["*.jpg,*.jpeg,*.png,*.webp ; Immagini"])
 		add_child(file_dialog)
-		preview.pressed.connect(_open_files)
 		file_dialog.file_selected.connect(_import_file)
-	status.text = display_name
+	status.text = ""
 	var blank := Image.create(192, 192, false, Image.FORMAT_RGB8)
 	blank.fill(Color("efecfa"))
-	preview.texture_normal = AvatarData.circular_texture(chosen if not chosen.is_empty() else Marshalls.raw_to_base64(blank.save_jpg_to_buffer()))
+	preview.texture = AvatarData.circular_texture(chosen if not chosen.is_empty() else Marshalls.raw_to_base64(blank.save_jpg_to_buffer()))
 	confirm.disabled = chosen.is_empty()
 	dialog.show()
 
@@ -128,7 +120,7 @@ func _open_files() -> void:
 			photo_pending = true
 			photo_bridge.open_photo()
 		else:
-			status.text = "Aggiorna la build iOS per scegliere una foto."
+			_set_status("Aggiorna la build iOS per scegliere una foto.")
 		return
 	# Native dialogs ignore the fallback theme and dimensions. On platforms
 	# without a native picker, keep the file browser large enough for touch.
@@ -154,8 +146,13 @@ func _import_file(path: String) -> void:
 	if chosen.length() > AvatarData.MAX_ENCODED:
 		chosen = ""
 		return
-	preview.texture_normal = AvatarData.circular_texture(chosen)
+	preview.texture = AvatarData.circular_texture(chosen)
 	confirm.disabled = false
+	_set_status("")
+
+func _set_status(message: String) -> void:
+	status.text = message
+	status.visible = not message.is_empty()
 
 func close() -> void:
 	photo_pending = false
@@ -172,11 +169,12 @@ func _process(_delta: float) -> void:
 			photo_pending = false
 			if photo != "cancel":
 				if photo == "error" or photo.length() > AvatarData.MAX_ENCODED:
-					status.text = "Foto non disponibile. Controlla i permessi e riprova."
+					_set_status("Foto non disponibile. Controlla i permessi e riprova.")
 				else:
 					chosen = photo
-					preview.texture_normal = AvatarData.circular_texture(chosen)
+					preview.texture = AvatarData.circular_texture(chosen)
 					confirm.disabled = false
+					_set_status("")
 	if bridge:
 		var value := str(bridge.drain())
 		if not value.is_empty():

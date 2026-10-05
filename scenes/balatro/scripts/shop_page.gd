@@ -3,7 +3,7 @@ extends Control
 ## Vetrina fissa: due articoli grandi e due piccoli, senza scorrimento.
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
-const MARKET_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/market_four.png")
+const MARKET_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/fullMarket.png")
 const PRICE_TAG_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/market_price_tag.png")
 const PRICE_COLOR := Color("#340602")
 
@@ -56,11 +56,25 @@ func setup(menu: Control) -> void:
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(content)
 
-	var market := TextureRect.new()
+	var background := ColorRect.new()
+	background.color = Color.BLACK
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(background)
+	var art := TextureRect.new()
+	art.texture = MARKET_TEXTURE
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.add_child(art)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var fit := func():
+		var screen := get_viewport_rect().size
+		background.position = -(screen - Vector2(1920, 1080)) * 0.5
+		background.size = screen
+	get_viewport().size_changed.connect(fit)
+	fit.call()
+	var market := Control.new()
 	market.name = "Market"
-	market.texture = MARKET_TEXTURE
-	market.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	market.stretch_mode = TextureRect.STRETCH_SCALE
 	market.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	market.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	market.position = MARKET_POSITION + MARKET_OFFSET
@@ -95,8 +109,10 @@ func setup(menu: Control) -> void:
 	coins_amount = counter.get_node("CoinBar/CoinsAmount")
 	counter.pivot_offset = Vector2(counter.size.x, 0)
 	counter.scale = Vector2.ONE
-	var back: Button = menu._button(self, "INDIETRO", menu._show_personalization)
+	var back: Button = menu._button(self, "INDIETRO", menu._leave_shop)
 	menu.match_singleplayer_back(back)
+	back.set_meta("safe_bottom", false)
+	back.position = Vector2(40, 40)
 	fixed_controls = [back, counter]
 
 	purchase_dialog = ConfirmationDialog.new()

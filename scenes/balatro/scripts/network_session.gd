@@ -4,6 +4,7 @@ signal updated(state: Dictionary)
 signal clock_updated(seconds: float)
 signal problem(message: String)
 signal connection_lost
+signal lobby_directory_updated(entries: Array)
 signal presence_notice(player_name: String, connected: bool)
 
 signal avatars_changed
@@ -128,7 +129,7 @@ func connect_room(address: String, command: Dictionary) -> void:
 
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 
-	if command.get("op", "") in ["create", "join"]:
+	if command.get("op", "") in ["create", "join", "join_public"]:
 		avatar_textures.clear()
 		room_code = ""
 		token = ""
@@ -167,6 +168,39 @@ func connect_room(address: String, command: Dictionary) -> void:
 
 		problem.emit("Connessione al server in corso...")
 		return
+	if endpoint in ["127.0.0.1", "localhost"] and not _ensure_local_server():
+		return
+	var enet := ENetMultiplayerPeer.new()
+	if enet.create_client(endpoint, PORT) != OK:
+		problem.emit("Impossibile connettersi al server")
+		return
+	multiplayer.multiplayer_peer = enet
+	connection_deadline = Time.get_ticks_msec() + 15000
+
+func browse_lobbies() -> void:
+	if dedicated or not latest.is_empty():
+		return
+	if multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
+		connect_room(endpoint, {"op": "list_lobbies"})
+	else:
+		send({"op": "list_lobbies"})
+
+@rpc("authority", "call_remote", "reliable")
+func lobby_directory(entries: Array) -> void:
+	if not dedicated:
+		lobby_directory_updated.emit(entries)
+
+func _lobby_directory() -> Array:
+	var entries: Array = []
+	for room in rooms.values():
+		if room.get("singleplayer", false) or room.stage != "lobby" or room.people.is_empty() or room.people.size() >= room.capacity:
+			continue
+		if not _peer_connected(int(room.people[0].peer)):
+			continue
+		if not room.has("directory_id"):
+			room["directory_id"] = Crypto.new().generate_random_bytes(16).hex_encode()
+		entries.append({"id": room.directory_id, "name": "Lobby di " + str(room.people[0].get("directory_name", room.people[0].name)), "participants": room.people.size(), "capacity": room.capacity, "private": bool(room.get("private", true))})
+	return entries
 
 func _ensure_local_server() -> bool:
 	# A running server already owns this UDP port. Otherwise start the same
@@ -220,7 +254,7 @@ func _lost() -> void:
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	connection_lost.emit()
 	problem.emit("Connessione persa. Tentativo di riconnessione…" if not token.is_empty() else "Server non raggiungibile: controlla l'indirizzo e che il server sia acceso.")
-	if not token.is_empty():
+	if not token.is_empty() and pending.get("op", "") != "list_lobbies":
 		retry = 2.0
 
 func _disconnected(peer_id: int) -> void:
@@ -373,6 +407,21 @@ func request(command: Dictionary) -> void:
 		return
 	var peer := multiplayer.get_remote_sender_id()
 	var op := str(command.get("op", ""))
+	if op == "list_lobbies":
+		lobby_directory.rpc_id(peer, _lobby_directory())
+		return
+	if op == "join_public":
+		var selected: Dictionary = {}
+		for candidate in rooms.values():
+			if str(candidate.get("directory_id", "")) == str(command.get("id", "")) and candidate.has("directory_id"):
+				selected = candidate
+				break
+		if selected.is_empty() or selected.get("private", true) or selected.stage != "lobby":
+			_reject(peer, "Lobby non disponibile o diventata privata. Aggiorna l’elenco.")
+			return
+		command = command.duplicate()
+		command["code"] = selected.code
+		op = "join"
 	if op in ["create", "join", "rejoin"]:
 		if members.has(peer) or verifying_peers.has(peer):
 			return
@@ -395,9 +444,13 @@ func request(command: Dictionary) -> void:
 			return
 		var room: Dictionary = rooms[code]
 		if op == "create":
+			room["private"] = bool(command.get("private", false))
 			room["singleplayer"] = bool(command.get("singleplayer", false))
 			if room.singleplayer:
 				room.bots = true
+		if command.get("op", "") == "join_public" and room.get("private", true):
+			_reject(peer, "Questa lobby ora è privata: serve il codice")
+			return
 		if op == "join" and room.get("singleplayer", false):
 			_reject(peer, "Partita solitaria privata")
 			return
@@ -429,6 +482,10 @@ func request(command: Dictionary) -> void:
 			var display_name := str(command.get("name", "Giocatore")).strip_edges().substr(0, 16)
 			room.people.append({"name": display_name if not display_name.is_empty() else "Giocatore", "peer": 0, "bot": false, "token": Crypto.new().generate_random_bytes(32).hex_encode()})
 		room.people[slot].peer = peer
+		if op == "create":
+			room.people[slot]["directory_name"] = str(command.get("directory_name", room.people[slot].name)).strip_edges().substr(0, 32)
+			if str(room.people[slot].directory_name).is_empty():
+				room.people[slot].directory_name = room.people[slot].name
 		if room.rules == null:
 			_reset_ready(room)
 		# Durante una partita il proprietario del posto non puo' cambiare account.
@@ -454,6 +511,12 @@ func request(command: Dictionary) -> void:
 	var member: Dictionary = members[peer]
 	var room: Dictionary = rooms[member.code]
 	var slot: int = member.slot
+	if op == "visibility":
+		if slot == 0 and room.stage == "lobby":
+			room["private"] = bool(command.get("private", false))
+			_reset_ready(room)
+			_broadcast(room)
+		return
 	if op == "throw":
 		var object_id := int(command.get("object_id", 0))
 		if not preload("res://scenes/balatro/scripts/throw_catalog.gd").enabled(object_id):
@@ -642,6 +705,7 @@ func _broadcast(room: Dictionary) -> void:
 			continue
 		var state := {"code": room.code, "you": id, "rev": room.rev, "stage": room.stage, "capacity": room.capacity, "bots": room.bots, "people": []}
 		state["singleplayer"] = bool(room.get("singleplayer", false))
+		state["private"] = bool(room.get("private", true))
 		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
 		state["bot_count"] = room.get("bot_count", 2)
 		for p in room.people:

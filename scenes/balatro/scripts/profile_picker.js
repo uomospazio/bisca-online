@@ -22,16 +22,14 @@
         .bisca-profile button:hover{border-color:#fdfdfb}.bisca-profile button:disabled{opacity:.5;cursor:default}.bisca-profile .photo{display:block;margin:14px auto;width:128px;height:128px;border-radius:50%;border:3px solid #241f1d;background:#38315a;padding:0;overflow:hidden;color:#f3effe;font-size:40px;box-shadow:none}.bisca-profile .photo img{width:100%;height:100%;object-fit:cover}.bisca-profile .choices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}.bisca-profile small{font-weight:400;display:block;margin:12px 0}.bisca-profile video{width:160px;height:160px;object-fit:cover;border-radius:50%}
         @media(max-height:500px){.bisca-profile{padding:12px;width:min(720px,94vw);font-size:14px}.bisca-profile h2{font-size:20px}.bisca-profile .photo{width:88px;height:88px;margin:8px auto}.bisca-profile small{margin:8px 0}.bisca-profile button{padding:8px 14px}}
       </style><section class="bisca-profile" role="dialog" aria-modal="true" aria-label="Il tuo profilo">
-        <h2>IL TUO PROFILO</h2><p class="name"></p>
-        <button class="photo" aria-label="Scegli foto profilo">+</button>
-        <div class="choices sources" hidden><button class="camera">SCATTA FOTO</button><button class="import">IMPORTA FOTO</button></div>
+        <h2>IL TUO PROFILO</h2>
+        <div class="photo" aria-label="Anteprima foto profilo"></div>
+        <div class="choices sources"><button class="camera">SCATTA FOTO</button><button class="import">IMPORTA FOTO</button></div>
         <div class="capture" hidden><video autoplay muted playsinline></video><br><button class="take">SCATTA</button></div>
-        <small>La foto sara' visibile ai giocatori della lobby.</small>
         <p class="status" role="status"></p>
         <div class="choices"><button class="skip">SALTA</button><button class="save" disabled>CONFERMA</button></div>
       </section>`;
       const q = selector => root.querySelector(selector);
-      q('.name').textContent = name;
       const status = q('.status'), save = q('.save'), photo = q('.photo');
       const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.hidden = true; root.append(input);
       const cameraInput = document.createElement('input'); cameraInput.type = 'file'; cameraInput.accept = 'image/*'; cameraInput.setAttribute('capture','user'); cameraInput.hidden = true; root.append(cameraInput);
@@ -61,7 +59,6 @@
       };
       input.onchange=()=>importFile(input.files[0]); cameraInput.onchange=()=>importFile(cameraInput.files[0]);
       q('.import').onclick=()=>{input.value='';input.click();};
-      photo.onclick=()=>{q('.sources').hidden=false;q('.camera').focus();status.textContent='Scegli SCATTA FOTO oppure IMPORTA FOTO.';};
       q('.camera').onclick=async()=>{
         if(matchMedia('(pointer:coarse)').matches){cameraInput.value='';cameraInput.click();return;}
         q('.camera').disabled=true;this.stopCamera();status.textContent='Consenti l’accesso alla fotocamera.';
@@ -77,7 +74,7 @@
       const finish=data=>{this.close();this.result=JSON.stringify({avatar:data});document.getElementById('canvas')?.focus();};
       q('.skip').onclick=()=>finish('');save.onclick=()=>{if(encoded&&!working)finish(encoded);};
       root.onkeydown=e=>{e.stopPropagation();if(e.key==='Escape')finish('');if(e.key==='Tab'){const nodes=[...root.querySelectorAll('button:not(:disabled)')].filter(b=>b.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault();}else if(!e.shiftKey&&document.activeElement===last){first.focus();e.preventDefault();}}};
-      document.body.append(root);photo.focus();
+      document.body.append(root);q('.import').focus();
     }
   };
   window.addEventListener('pagehide',()=>window.BiscaProfile.close());

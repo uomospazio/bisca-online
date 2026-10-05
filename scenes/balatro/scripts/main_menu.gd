@@ -38,6 +38,8 @@ const MULTI_CHARACTER_POSITION := SOLO_CHARACTER_POSITION + Vector2(-150, 0)
 var solo_buttons: Array[Button] = []
 const SOLO_TITLE_POSITION := Vector2(920, 170)
 const SOLO_SUBTITLE_POSITION := Vector2(920, 350)
+# Spostamento comune del blocco titolo, creazione ed elenco lobby.
+const MULTIPLAYER_CONTENT_OFFSET := Vector2(140, -60)
 var solo_transition: Tween
 var second_character: TextureRect
 var returning_home := false
@@ -126,6 +128,8 @@ var menu_content: Control
 var active_page: Control
 var settings_page: Control
 var shop_page: Control
+var home_market_button: TextureButton
+var shop_return_page: Control
 var personalization_page: Control
 var shop_character: TextureRect
 var customization_character_ready := false
@@ -334,21 +338,40 @@ func _ready() -> void:
 	friends_dot.add_theme_stylebox_override("panel",dot_style)
 	get_node("/root/FriendsManager").changed.connect(_refresh_friends_dot)
 	_refresh_friends_dot()
-	var info := _round_icon_button(home_persistent_ui, "info.svg", "Info", _show_home_info)
-	info.position = Vector2(40,168)
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info)
-	info.size = Vector2.ONE * ROUND_BUTTON_SIZE
-
-	# Discord: sotto INFO, in alto a sinistra.
-	var discord := _round_icon_button(home_persistent_ui, "discord.svg", "Discord", _open_discord)
-	discord.position = DISCORD_POSITION
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(discord)
-	discord.size = Vector2.ONE * DISCORD_BUTTON_SIZE
-	_add_gloss_button_style(discord)
+	var market_button := TextureButton.new()
+	home_market_button = market_button
+	market_button.name = "HomeShop"
+	home_page.add_child(market_button)
+	market_button.texture_normal = preload("res://scenes/balatro/trick_asset/ui_bisca/tastoShop.png")
+	market_button.ignore_texture_size = true
+	market_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	market_button.size = preload("res://scenes/balatro/scripts/personalization_page.gd").SHOP_BUTTON_SIZE
+	market_button.position = Vector2(1920, 1080) - Vector2(40, 40) - market_button.size
+	market_button.pivot_offset = market_button.size / 2.0
+	market_button.set_meta("safe_bottom", true)
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(market_button, true)
+	market_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	market_button.pressed.connect(_show_shop)
+	preload("res://scenes/balatro/scripts/button_audio.gd").attach(market_button)
+	var hover_state := {"tween": null}
+	var hover := func(active: bool):
+		if hover_state.tween and hover_state.tween.is_valid():
+			hover_state.tween.kill()
+		var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		hover_state.tween = tween
+		var ratio := clampf(128.0 / market_button.size.x, 0.5, 1.0)
+		tween.tween_property(market_button, "scale", Vector2.ONE * (1.0 + 0.2 * ratio if active else 1.0), 0.2 if active else 0.25)
+		tween.parallel().tween_property(market_button, "rotation_degrees", 5.0 * ratio * [-1.0, 1.0].pick_random() if active else 0.0, 0.1)
+		if active:
+			tween.tween_property(market_button, "rotation_degrees", 0.0, 0.1)
+	market_button.mouse_entered.connect(hover.bind(true))
+	market_button.mouse_exited.connect(hover.bind(false))
+	market_button.focus_entered.connect(hover.bind(true))
+	market_button.focus_exited.connect(hover.bind(false))
 
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
 	# Control separati: nessun Container forza le loro dimensioni.
-	for button in [single, multi, shop, settings, friends, info, discord]:
+	for button in [single, multi, shop, settings, friends]:
 		_add_gloss_button_style(button)
 		home_intro_buttons.append(button)
 	profile_picker = preload("res://scenes/balatro/scripts/profile_picker.gd").new()
@@ -434,7 +457,8 @@ func _ready() -> void:
 	buttons.position = Vector2(1290, 795)
 	buttons.size = Vector2(260, 96)
 	var back := _button(setup_page, "Indietro", show_home)
-	back.position = Vector2(40, 1080 - 40 - 96)
+	back.set_meta("safe_bottom", false)
+	back.position = Vector2(40, 40)
 	back.size = Vector2(260, 96)
 	var play := _button(buttons, "Gioca", _start)
 	solo_buttons = [back, play]
@@ -502,6 +526,10 @@ func _ready() -> void:
 func _stop_home_intro() -> void:
 	if home_intro and home_intro.is_valid():
 		home_intro.kill()
+	if is_instance_valid(home_market_button):
+		home_market_button.scale = Vector2.ONE
+		home_market_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		home_market_button.focus_mode = Control.FOCUS_ALL
 	for button in home_intro_buttons:
 		button.scale = Vector2.ONE
 		button.modulate.a = 1.0
@@ -556,10 +584,10 @@ func animate_buttons_like_home(buttons: Array[Button]) -> void:
 func _animate_home_extras() -> void:
 	# Foto, nome e selettore mazzo entrano con lo stesso effetto pop,
 	# dopo i pulsanti (con leggero ritardo fra loro).
-	var home_extras: Array[Control] = [profile_button, name_input, deck_selector]
+	var home_extras: Array[Control] = [profile_button, name_input, deck_selector, home_market_button]
 	for index in home_extras.size():
 		var control: Control = home_extras[index]
-		if control.get_parent() != home_persistent_ui:
+		if control.get_parent() != home_persistent_ui and control != home_market_button:
 			continue
 		var final_scale := Vector2.ONE
 		if control == profile_button:
@@ -568,13 +596,13 @@ func _animate_home_extras() -> void:
 			final_scale = Vector2.ONE * HOME_DECK_SCALE
 		control.pivot_offset = control.size / 2.0
 		# Evita interazioni premature mentre l'elemento appare.
-		if control == profile_button or control == name_input:
+		if control == profile_button or control == name_input or control == home_market_button:
 			control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			control.focus_mode = Control.FOCUS_NONE
 		control.scale = Vector2.ZERO
 		var delay := HOME_INTRO_DELAY + (home_intro_buttons.size() + index) * HOME_INTRO_STAGGER
 		home_intro.tween_property(control, "scale", final_scale, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		if control == profile_button or control == name_input:
+		if control == profile_button or control == name_input or control == home_market_button:
 			home_intro.tween_callback(func():
 				if is_instance_valid(control):
 					control.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -763,6 +791,7 @@ func _show_personalization() -> void:
 	_enter_customization_character()
 
 func _show_shop() -> void:
+	shop_return_page = active_page
 	title.hide()
 	friends_subtitle.hide()
 	if not is_instance_valid(shop_page):
@@ -773,6 +802,12 @@ func _show_shop() -> void:
 	shop_page.open()
 	if is_instance_valid(shop_character):
 		shop_character.hide()
+
+func _leave_shop() -> void:
+	if shop_return_page == home_page:
+		show_home()
+	else:
+		_show_personalization()
 
 
 func _show_settings() -> void:
@@ -917,6 +952,7 @@ func _style_input(input: LineEdit, font_size: int) -> void:
 func match_singleplayer_back(button: Button) -> void:
 	# Un solo riferimento per dimensioni, stile e posizione di tutti gli Indietro.
 	var reference: Button = solo_buttons[0]
+	button.set_meta("safe_bottom", false)
 	button.custom_minimum_size = reference.custom_minimum_size
 	button.size = reference.size
 	button.position = reference.position - Vector2(reference.get_meta("safe_edge", Vector2.ZERO)) + Vector2(button.get_meta("safe_edge", Vector2.ZERO))
@@ -1202,6 +1238,9 @@ func _animate_mode_heading(subtitle_text: String) -> void:
 		solo_transition.kill()
 	title.position = SOLO_TITLE_POSITION
 	friends_subtitle.position = SOLO_SUBTITLE_POSITION
+	if subtitle_text == "WITH YOUR FRIENDS":
+		title.position += MULTIPLAYER_CONTENT_OFFSET
+		friends_subtitle.position += MULTIPLAYER_CONTENT_OFFSET
 	friends_subtitle.text = subtitle_text
 	friends_subtitle.size.x = TITLE_WIDTH
 	friends_subtitle.add_theme_font_size_override("font_size", SUBTITLE_FONT_SIZE)

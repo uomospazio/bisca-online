@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import BISCA_SWIFT_HEADER
 #include "core/config/engine.h"
 #include "core/object/class_db.h"

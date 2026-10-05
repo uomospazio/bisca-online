@@ -202,6 +202,9 @@ func _input(event: InputEvent) -> void:
 		set_talk_held(event.pressed)
 
 func _apply_microphone_preferences() -> void:
+	var game_settings := get_node_or_null("/root/GameSettings")
+	if game_settings == null:
+		return
 	var preferences: Dictionary = get_node("/root/GameSettings").values
 	var must_mute: bool = not preferences.microphone_enabled or (preferences.push_to_talk and not talk_held)
 	if muted != must_mute:

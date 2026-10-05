@@ -4,8 +4,8 @@ const Catalog = preload("res://scenes/balatro/scripts/throw_catalog.gd")
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const ButtonStyle = preload("res://scenes/balatro/scripts/rounded_square_button.gd")
 
-const SLOT_SIZE := 120.0
-const SLOT_GAP := 24.0
+const SLOT_SIZE := 156.0
+const SLOT_GAP := 84.0
 
 var menu: Control
 var buttons: Array[Button] = []
@@ -22,6 +22,8 @@ func setup(owner_menu: Control) -> void:
 		button.position = Vector2(0, index * step) if vertical_layout else Vector2(index * step, 0)
 		button.expand_icon = true
 		button.add_theme_constant_override("icon_max_width", 110)
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		for state in ["normal", "hover", "pressed", "focus"]:
 			var style := Style.button_style(Style.NORMAL)
 			style.set_corner_radius_all(SLOT_SIZE * 0.5)

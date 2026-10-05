@@ -1,300 +1,240 @@
 extends Control
 
-const StyledButton = preload("res://scenes/balatro/scripts/rounded_square_button.gd")
-const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
-const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
+# Due carte sempre visibili:
+# - a sinistra il FRONT
+# - a destra il BACK
+#
+# Toccando una carta si passa direttamente alla variante successiva.
 
-var preview: TextureRect
-var edit_button: Button
-var editing_controls: Array[Control] = []
-var selected := 1
-var switching := false
-var editing := false
+const CARD_SIZE := Vector2(180, 272)
+
+# POSIZIONI DELLE DUE CARTE DEL DECK SELECTOR
+const FRONT_CARD_POSITION := Vector2(0, 0)
+const BACK_CARD_POSITION := Vector2(250, 0)
+
+const FRONT_CARD_ROTATION := -5.0
+const BACK_CARD_ROTATION := 5.0
+
+# Carta usata solo come anteprima grafica del fronte.
+const FRONT_PREVIEW_SUIT := 3
+const FRONT_PREVIEW_VALUE := 5
+
+const PRESS_SCALE := 0.92
+const PRESS_IN_DURATION := 0.08
+const PRESS_OUT_DURATION := 0.16
+
+var front_preview: TextureButton
+var back_preview: TextureButton
+
 var selected_front := 0
-var showing_front := false
-var flip_button: Button
-var flip_tween: Tween
-var controls_tween: Tween
-var flipping := false
+var selected_back := 1
+
+var front_tween: Tween
+var back_tween: Tween
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	preview = TextureRect.new()
-	preview.position = Vector2(90, 0)
-	preview.size = Vector2(180, 272)
-	preview.pivot_offset = preview.size / 2.0
-	preview.rotation_degrees = 7.0
-	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(preview)
-
-	edit_button = _button(
-		Vector2(246, -24),
-		Vector2(64, 64),
-		"edit",
-		_toggle_edit
+	front_preview = _create_card_button(
+		FRONT_CARD_POSITION,
+		FRONT_CARD_ROTATION,
+		_cycle_front
 	)
 
-	editing_controls.append(
-		_button(
-			Vector2(0, 104),
-			Vector2(64, 64),
-			"arrow-left",
-			func(): _cycle(-1)
-		)
+	back_preview = _create_card_button(
+		BACK_CARD_POSITION,
+		BACK_CARD_ROTATION,
+		_cycle_back
 	)
 
-	editing_controls.append(
-		_button(
-			Vector2(296, 104),
-			Vector2(64, 64),
-			"arrow-right",
-			func(): _cycle(1)
-		)
-	)
-
-	flip_button = _button(Vector2(60, 294), Vector2(240, 54), "", _flip)
-	flip_button.text = "FRONT"
-	editing_controls.append(flip_button)
-
-	reset_preview()
 	var shop := get_node_or_null("/root/ShopManager")
 	if shop:
 		shop.changed.connect(_refresh_owned_backs)
+
 	var cloud := get_node_or_null("/root/AccountProfile")
 	if cloud:
-		cloud.preferences_loaded.connect(func():
-			if not editing and not switching and not flipping:
-				reset_preview()
-		)
+		cloud.preferences_loaded.connect(reset_preview)
+
+	reset_preview()
 
 
-func _button(
+func _create_card_button(
 	at: Vector2,
-	dimensions: Vector2,
-	icon_name: String,
+	rotation: float,
 	callback: Callable
-) -> Button:
-	var button := StyledButton.new()
-	add_child(button)
-
+) -> TextureButton:
+	var button := TextureButton.new()
 	button.position = at
-	button.size = dimensions
-	button.custom_minimum_size = dimensions
-	button.add_theme_font_override("font", FONT)
-	button.add_theme_font_size_override("font_size", 24)
-	button.add_theme_color_override("font_color", Style.TEXT)
-	button.add_theme_color_override("font_hover_color", Style.TEXT)
+	button.size = CARD_SIZE
+	button.custom_minimum_size = CARD_SIZE
+	button.pivot_offset = CARD_SIZE / 2.0
+	button.rotation_degrees = rotation
 
-	if not icon_name.is_empty():
-		button.expand_icon = true
-		button.add_theme_constant_override("icon_max_width", 28)
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.icon = load(
-			"res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name
-		)
-		button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-
-	var radius := int(dimensions.y / 2.0)
-
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var style := Style.button_style(
-			Style.HOVER if state in ["hover", "focus"] else Style.NORMAL,
-			Color.TRANSPARENT,
-			0,
-			dimensions.y
-		)
-		style.set_corner_radius_all(radius)
-		button.add_theme_stylebox_override(state, style)
+	button.ignore_texture_size = true
+	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.focus_mode = Control.FOCUS_ALL
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 	button.pressed.connect(callback)
+	add_child(button)
+
 	return button
 
 
 func reset_preview() -> void:
-	if flip_tween and flip_tween.is_valid():
-		flip_tween.kill()
-	if controls_tween and controls_tween.is_valid():
-		controls_tween.kill()
-	flipping = false
-	showing_front = false
-	preview.scale = Vector2.ONE
-	flip_button.text = "FRONT"
-	selected_front = int(get_node("/root/GameSettings").values.deck_front)
-	selected = int(get_node("/root/GameSettings").values.deck_back)
+	var settings := get_node("/root/GameSettings")
+
+	selected_front = int(settings.values.deck_front)
+	selected_back = int(settings.values.deck_back)
+
 	_refresh_owned_backs()
-	_edit(false, false)
+	_update_textures()
 
 
-## La proprieta' resta quella dell'inventario; back1 e' solo l'anteprima di attesa.
+## La proprietà resta quella dell'inventario;
+## back1 viene usato soltanto come fallback visivo se non c'è nessun dorso disponibile.
 func _owned_backs() -> Array[int]:
 	var backs: Array[int] = []
 	var shop := get_node_or_null("/root/ShopManager")
+
 	if shop:
 		for item in shop.get_owned_items():
 			var asset := int(item.asset_id)
-			if str(item.id).begins_with("deck_back_") and asset >= 1 and asset <= 12 and not backs.has(asset):
+
+			if (
+				str(item.id).begins_with("deck_back_")
+				and asset >= 1
+				and asset <= 12
+				and not backs.has(asset)
+			):
 				backs.append(asset)
+
 	backs.sort()
 	return backs
 
 
 func _refresh_owned_backs() -> void:
 	var backs := _owned_backs()
-	if not editing:
-		var saved := int(get_node("/root/GameSettings").values.deck_back)
-		if backs.has(saved):
-			selected = saved
-	if not backs.has(selected):
-		selected = backs[0] if not backs.is_empty() else 0
-	_update_texture()
 
-
-func _toggle_edit() -> void:
-	if switching or flipping:
+	if backs.has(selected_back):
+		_update_textures()
 		return
-	if editing:
-		_confirm()
+
+	var saved := int(get_node("/root/GameSettings").values.deck_back)
+
+	if backs.has(saved):
+		selected_back = saved
+	elif not backs.is_empty():
+		selected_back = backs[0]
 	else:
-		_edit(true)
+		selected_back = 0
+
+	_update_textures()
 
 
-func _edit(value: bool, animate := true) -> void:
-	if switching and animate:
-		return
-	editing = value
-	edit_button.show()
-	edit_button.tooltip_text = "Conferma mazzo" if editing else "Modifica mazzo"
+func _cycle_front() -> void:
+	var settings := get_node("/root/GameSettings")
+	var count: int = int(settings.FRONT_FOLDERS.size())
 
-	var outgoing: Array[Control] = []
-	var incoming: Array[Control] = []
-
-	if value:
-		incoming = editing_controls
-	else:
-		outgoing = editing_controls
-
-	if not animate:
-		edit_button.visible = true
-		edit_button.scale = Vector2.ONE
-
-		for control in editing_controls:
-			control.visible = value
-			control.scale = Vector2.ONE
-
-		switching = false
+	if count <= 0:
 		return
 
-	switching = true
-	_animate_control_swap(outgoing, incoming)
+	selected_front = wrapi(selected_front + 1, 0, count)
+
+	settings.set_value("deck_front", selected_front)
+	settings.save_preferences()
+
+	_update_front_texture()
+	_animate_card(front_preview, true)
 
 
-func _animate_control_swap(
-	outgoing: Array[Control],
-	incoming: Array[Control]
-) -> void:
-	var tween := create_tween()
-	controls_tween = tween
-
-	for control in outgoing:
-		control.pivot_offset = control.size / 2.0
-		control.scale = Vector2.ONE
-		control.set("hover_animate", false)
-
-	tween.set_trans(Tween.TRANS_BACK)
-	tween.set_ease(Tween.EASE_IN)
-	tween.set_parallel(true)
-
-	for control in outgoing:
-		tween.tween_property(
-			control,
-			"scale",
-			Vector2(0.5, 0.5),
-			0.18
-		)
-
-	tween.set_parallel(false)
-
-	tween.tween_callback(func():
-		for control in outgoing:
-			control.hide()
-			control.scale = Vector2.ONE
-
-		for control in incoming:
-			control.pivot_offset = control.size / 2.0
-			control.scale = Vector2(0.5, 0.5)
-			control.set("hover_animate", false)
-			control.show()
-	)
-
-	tween.set_trans(Tween.TRANS_BACK)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_parallel(true)
-
-	for control in incoming:
-		tween.tween_property(
-			control,
-			"scale",
-			Vector2.ONE,
-			0.28
-		)
-
-	tween.set_parallel(false)
-
-	tween.tween_callback(func():
-		for control in incoming:
-			control.scale = Vector2.ONE
-			control.set("hover_animate", true)
-
-		for control in outgoing:
-			control.set("hover_animate", true)
-
-		switching = false
-	)
-
-
-func _cycle(direction: int) -> void:
-	if flipping or switching:
-		return
-	if showing_front:
-		selected_front = wrapi(selected_front + direction, 0, get_node("/root/GameSettings").FRONT_FOLDERS.size())
-		_update_texture()
-		return
+func _cycle_back() -> void:
 	var backs := _owned_backs()
+
 	if backs.is_empty():
 		return
-	selected = backs[wrapi(backs.find(selected) + direction, 0, backs.size())]
-	_update_texture()
 
-func _update_texture() -> void:
-	var settings = get_node("/root/GameSettings")
-	preview.texture = settings.front_texture(3, 5, selected_front) if showing_front else settings.back_texture(selected if selected > 0 else 1)
+	var current_index := backs.find(selected_back)
 
-func _flip() -> void:
-	if switching or flipping:
+	if current_index == -1:
+		current_index = 0
+	else:
+		current_index = wrapi(current_index + 1, 0, backs.size())
+
+	selected_back = backs[current_index]
+
+	var settings := get_node("/root/GameSettings")
+	settings.set_value("deck_back", selected_back)
+	settings.save_preferences()
+
+	_update_back_texture()
+	_animate_card(back_preview, false)
+
+
+func _update_textures() -> void:
+	_update_front_texture()
+	_update_back_texture()
+
+
+func _update_front_texture() -> void:
+	if not is_instance_valid(front_preview):
 		return
-	flipping = true
-	flip_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	flip_tween.tween_property(preview, "scale:x", 0.0, 0.16)
-	flip_tween.tween_callback(func():
-		showing_front = not showing_front
-		flip_button.text = "BACK" if showing_front else "FRONT"
-		_update_texture()
+
+	var settings := get_node("/root/GameSettings")
+	front_preview.texture_normal = settings.front_texture(
+		FRONT_PREVIEW_SUIT,
+		FRONT_PREVIEW_VALUE,
+		selected_front
 	)
-	flip_tween.tween_property(preview, "scale:x", 1.0, 0.16)
-	flip_tween.tween_callback(func(): flipping = false)
 
 
-func _confirm() -> void:
-	if switching or flipping:
+func _update_back_texture() -> void:
+	if not is_instance_valid(back_preview):
 		return
-	if _owned_backs().has(selected):
-		get_node("/root/GameSettings").set_value("deck_back", selected)
-	get_node("/root/GameSettings").set_value("deck_front", selected_front)
-	get_node("/root/GameSettings").save_preferences()
-	if showing_front:
-		_flip()
-		await flip_tween.finished
-	_edit(false)
+
+	var settings := get_node("/root/GameSettings")
+	back_preview.texture_normal = settings.back_texture(
+		selected_back if selected_back > 0 else 1
+	)
+
+
+func _animate_card(card: Control, is_front: bool) -> void:
+	if not is_instance_valid(card):
+		return
+
+	if is_front:
+		if front_tween and front_tween.is_valid():
+			front_tween.kill()
+
+		front_tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		front_tween.tween_property(
+			card,
+			"scale",
+			Vector2.ONE * PRESS_SCALE,
+			PRESS_IN_DURATION
+		)
+		front_tween.tween_property(
+			card,
+			"scale",
+			Vector2.ONE,
+			PRESS_OUT_DURATION
+		)
+	else:
+		if back_tween and back_tween.is_valid():
+			back_tween.kill()
+
+		back_tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		back_tween.tween_property(
+			card,
+			"scale",
+			Vector2.ONE * PRESS_SCALE,
+			PRESS_IN_DURATION
+		)
+		back_tween.tween_property(
+			card,
+			"scale",
+			Vector2.ONE,
+			PRESS_OUT_DURATION
+		)

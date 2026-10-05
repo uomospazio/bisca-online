@@ -5,7 +5,7 @@ const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 const MARKET_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/fullMarket.png")
 const COIN_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/coin.png")
-const PRICE_COLOR := Color("#340602")
+const PRICE_COLOR := Color("#0c0918")
 
 # Banco, insegna e articoli si spostano insieme.
 const MARKET_OFFSET := Vector2.ZERO

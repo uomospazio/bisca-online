@@ -5,6 +5,7 @@ signal registration_changed(registered: bool, message: String)
 signal notification_received(title: String, body: String)
 
 const WEBHOOK_RPC := "bisca_register_push_device"
+const IOS_PUSH_ENABLED := false # Re-enable with paid Apple team and APNs entitlement.
 
 var _account: Node
 var _settings: Node
@@ -24,6 +25,9 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_account = get_node("/root/AccountSession")
 	_settings = get_node("/root/GameSettings")
+	if OS.get_name() == "iOS" and not IOS_PUSH_ENABLED:
+		_report(false, "Notifiche temporaneamente non disponibili su iOS.")
+		return
 	_enabled_cache = bool(_settings.values.get("push_notifications", false))
 	_account.changed.connect(_on_account_changed)
 	_settings.changed.connect(_on_settings_changed)

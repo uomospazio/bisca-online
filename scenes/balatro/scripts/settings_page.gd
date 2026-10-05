@@ -138,6 +138,8 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	chapters.move_child(graphics.get_parent(), 1)
 	_setting(graphics, "MOSTRA OGGETTI LANCIATI", "SHOW THROWN OBJECTS", "show_thrown_objects")
 	_setting(account, "NOTIFICHE PUSH", "PUSH NOTIFICATIONS", "push_notifications")
+	if OS.get_name() == "iOS" and not get_node("/root/PushNotifications").IOS_PUSH_ENABLED:
+		toggles.push_notifications.disabled = true
 	if OS.get_name() not in ["Android", "iOS"]:
 		toggles.push_notifications.disabled = true
 		_translated(toggles.push_notifications, "Disponibili nell'app mobile", "Available in the mobile app", "tooltip_text")
@@ -332,6 +334,8 @@ func _sync() -> void:
 		numbers[key].text = str(int(settings.values[key]))
 	for key in toggles:
 		toggles[key].set_pressed_no_signal(settings.values[key])
+	if OS.get_name() == "iOS" and not get_node("/root/PushNotifications").IOS_PUSH_ENABLED:
+		toggles.push_notifications.set_pressed_no_signal(false)
 
 	for entry in translations:
 		entry[0].set(entry[1], _text(entry[2], entry[3]))

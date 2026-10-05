@@ -5,10 +5,11 @@ import PhotosUI
 import LiveKit
 
 /// Separate queue: voice polling must never consume a selected profile photo.
-@objc(BiscaPhotoNative) public final class BiscaPhotoNative: NSObject, PHPickerViewControllerDelegate, @unchecked Sendable {
+@objc(BiscaPhotoNative) public final class BiscaPhotoNative: NSObject, PHPickerViewControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, @unchecked Sendable {
     @objc public static let shared = BiscaPhotoNative()
     private let lock = NSLock()
     private var result = ""
+    @MainActor private var camera: UIImagePickerController?
     @MainActor private var picker: PHPickerViewController?
 
     private func finish(_ value: String) {
@@ -40,12 +41,51 @@ import LiveKit
         }
     }
 
+    @objc public func openCamera() {
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            DispatchQueue.main.async {
+                guard granted, UIImagePickerController.isSourceTypeAvailable(.camera), self.camera == nil else {
+                    self.finish("error"); return
+                }
+                let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                    .first { $0.activationState == .foregroundActive }
+                guard var controller = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+                    self.finish("error"); return
+                }
+                while let presented = controller.presentedViewController { controller = presented }
+                self.finish("")
+                let camera = UIImagePickerController()
+                camera.sourceType = .camera
+                camera.delegate = self
+                self.camera = camera
+                controller.present(camera, animated: true)
+            }
+        }
+    }
+
+    public func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+        camera = nil
+        finish("cancel")
+    }
+
+    public func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true)
+        camera = nil
+        guard let image = info[.originalImage] as? UIImage else { finish("error"); return }
+        loadPhoto(NSItemProvider(object: image))
+    }
+
     public func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         DispatchQueue.main.async {
             picker.dismiss(animated: true)
             self.picker = nil
         }
         guard let provider = results.first?.itemProvider else { finish("cancel"); return }
+        loadPhoto(provider)
+    }
+
+    private func loadPhoto(_ provider: NSItemProvider) {
         guard provider.canLoadObject(ofClass: UIImage.self) else { finish("error"); return }
         provider.loadObject(ofClass: UIImage.self) { object, _ in
             guard let image = object as? UIImage, image.size.width > 0, image.size.height > 0 else {

@@ -3,7 +3,10 @@ extends Node
 signal selected(avatar: String)
 const AvatarData = preload("res://scenes/balatro/scripts/avatar_data.gd")
 var bridge: JavaScriptObject
-var dialog: ConfirmationDialog
+var dialog: Control
+var status: Label
+var confirm: Button
+var overlay: CanvasLayer
 var preview: TextureButton
 var file_dialog: FileDialog
 var chosen := ""
@@ -12,36 +15,55 @@ var photo_pending := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	if OS.get_name() == "iOS" and Engine.has_singleton("BiscaVoice"):
+	if OS.get_name() in ["iOS", "Android"] and Engine.has_singleton("BiscaVoice"):
 		var native := Engine.get_singleton("BiscaVoice")
-		if native.has_method("open_photo"):
+		if native.has_method("drain_photo"):
 			photo_bridge = native
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval(FileAccess.get_file_as_string("res://scenes/balatro/scripts/profile_picker.js"), true)
 		bridge = JavaScriptBridge.get_interface("BiscaProfile")
 
 func open(display_name: String) -> void:
-	chosen = ""
+	var current = get_parent().get("profile_avatar")
+	chosen = str(current) if current != null else ""
 	if bridge:
 		bridge.open(display_name)
 		return
 	# Native desktop import; browser builds also offer camera capture.
 	if dialog == null:
-		dialog = ConfirmationDialog.new()
-		add_child(dialog)
-		dialog.title = "IL TUO PROFILO"
-		dialog.ok_button_text = "CONFERMA"
-		dialog.cancel_button_text = "SALTA"
+		overlay = CanvasLayer.new()
+		overlay.layer = 110
+		add_child(overlay)
+		dialog = Control.new()
+		overlay.add_child(dialog)
+		dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var shade := ColorRect.new()
+		shade.color = Color(0.05, 0.03, 0.1, 0.8)
+		dialog.add_child(shade)
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var center := CenterContainer.new()
+		dialog.add_child(center)
+		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var layout := VBoxContainer.new()
+		layout.add_theme_constant_override("separation", 24)
+		center.add_child(layout)
+		var panel := PanelContainer.new()
+		layout.add_child(panel)
+		var skin := preload("res://scenes/balatro/scripts/lexispell_style.gd").button_style(Color("2c2647"), Color("7a68b8"), 4)
+		for edge in ["left", "right", "top", "bottom"]:
+			skin.set("content_margin_" + edge, 32)
+		panel.add_theme_stylebox_override("panel", skin)
 		var column := VBoxContainer.new()
 		column.name = "ProfileContent"
 		column.add_theme_constant_override("separation", 24)
-		dialog.add_child(column)
+		panel.add_child(column)
 		var name_label := Label.new()
 		name_label.name = "ProfileName"
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_label.add_theme_font_size_override("font_size", 38)
 		column.add_child(name_label)
+		status = name_label
 		preview = TextureButton.new()
 		preview.custom_minimum_size = Vector2(256, 256)
 		preview.ignore_texture_size = true
@@ -54,6 +76,23 @@ func open(display_name: String) -> void:
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.add_theme_font_size_override("font_size", 30)
 		column.add_child(hint)
+		var sources := HBoxContainer.new()
+		sources.alignment = BoxContainer.ALIGNMENT_CENTER
+		sources.add_theme_constant_override("separation", 24)
+		column.add_child(sources)
+		var camera := _button(sources, "SCATTA", _open_camera)
+		camera.disabled = photo_bridge == null or not photo_bridge.has_method("open_camera")
+		_button(sources, "IMPORTA", _open_files)
+		var footer := HBoxContainer.new()
+		layout.add_child(footer)
+		_button(footer, "INDIETRO", close)
+		var spacer := Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		footer.add_child(spacer)
+		confirm = _button(footer, "CONFERMA", func():
+			selected.emit(chosen)
+			close()
+		)
 		file_dialog = FileDialog.new()
 		file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 		file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -65,17 +104,23 @@ func open(display_name: String) -> void:
 		add_child(file_dialog)
 		preview.pressed.connect(_open_files)
 		file_dialog.file_selected.connect(_import_file)
-		dialog.confirmed.connect(func(): selected.emit(chosen))
-		dialog.canceled.connect(func(): selected.emit(""))
-	dialog.get_node("ProfileContent/ProfileName").text = display_name
+	status.text = display_name
 	var blank := Image.create(192, 192, false, Image.FORMAT_RGB8)
 	blank.fill(Color("efecfa"))
-	preview.texture_normal = AvatarData.circular_texture(Marshalls.raw_to_base64(blank.save_jpg_to_buffer()))
-	for button in [dialog.get_ok_button(), dialog.get_cancel_button()]:
-		button.custom_minimum_size = Vector2(240, 80)
-		button.add_theme_font_size_override("font_size", 32)
-	var available := get_viewport().get_visible_rect().size
-	dialog.popup_centered(Vector2i(minf(900, available.x * 0.9), minf(660, available.y * 0.9)))
+	preview.texture_normal = AvatarData.circular_texture(chosen if not chosen.is_empty() else Marshalls.raw_to_base64(blank.save_jpg_to_buffer()))
+	confirm.disabled = chosen.is_empty()
+	dialog.show()
+
+func _button(parent: Control, text: String, action: Callable) -> Button:
+	var button: Button = get_parent()._button(parent, text, action)
+	button.custom_minimum_size = Vector2(300, 80)
+	button.add_theme_font_size_override("font_size", 32)
+	return button
+
+func _open_camera() -> void:
+	if photo_bridge != null and photo_bridge.has_method("open_camera"):
+		photo_pending = true
+		photo_bridge.open_camera()
 
 func _open_files() -> void:
 	if OS.get_name() == "iOS":
@@ -83,7 +128,7 @@ func _open_files() -> void:
 			photo_pending = true
 			photo_bridge.open_photo()
 		else:
-			dialog.get_node("ProfileContent/ProfileName").text = "Aggiorna la build iOS per scegliere una foto."
+			status.text = "Aggiorna la build iOS per scegliere una foto."
 		return
 	# Native dialogs ignore the fallback theme and dimensions. On platforms
 	# without a native picker, keep the file browser large enough for touch.
@@ -110,6 +155,7 @@ func _import_file(path: String) -> void:
 		chosen = ""
 		return
 	preview.texture_normal = AvatarData.circular_texture(chosen)
+	confirm.disabled = false
 
 func close() -> void:
 	photo_pending = false
@@ -126,10 +172,11 @@ func _process(_delta: float) -> void:
 			photo_pending = false
 			if photo != "cancel":
 				if photo == "error" or photo.length() > AvatarData.MAX_ENCODED:
-					dialog.get_node("ProfileContent/ProfileName").text = "Foto non disponibile. Prova un'altra immagine."
+					status.text = "Foto non disponibile. Controlla i permessi e riprova."
 				else:
 					chosen = photo
 					preview.texture_normal = AvatarData.circular_texture(chosen)
+					confirm.disabled = false
 	if bridge:
 		var value := str(bridge.drain())
 		if not value.is_empty():

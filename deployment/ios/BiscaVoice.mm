@@ -11,10 +11,12 @@ protected:
         ClassDB::bind_method(D_METHOD("invoke", "method", "args_json"), &BiscaVoice::invoke);
         ClassDB::bind_method(D_METHOD("drain"), &BiscaVoice::drain);
         ClassDB::bind_method(D_METHOD("open_photo"), &BiscaVoice::open_photo);
+        ClassDB::bind_method(D_METHOD("open_camera"), &BiscaVoice::open_camera);
         ClassDB::bind_method(D_METHOD("drain_photo"), &BiscaVoice::drain_photo);
     }
 public:
     void open_photo() { [BiscaPhotoNative.shared open]; }
+    void open_camera() { [BiscaPhotoNative.shared openCamera]; }
     String drain_photo() {
         @autoreleasepool { return String::utf8([BiscaPhotoNative.shared drain].UTF8String); }
     }

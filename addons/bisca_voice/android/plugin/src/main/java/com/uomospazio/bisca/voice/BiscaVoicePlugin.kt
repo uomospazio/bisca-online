@@ -1,6 +1,12 @@
 package com.uomospazio.bisca.voice
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
+import android.provider.MediaStore
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
@@ -55,6 +61,56 @@ class BiscaVoicePlugin(godot: Godot) : GodotPlugin(godot) {
     private var waitingRequestId: Int? = null
 
     override fun getPluginName() = "BiscaVoice"
+
+    private val photoLock = Any()
+    private var photoResult = ""
+    private var cameraPending = false
+    private val cameraRequest = 4817
+
+    @UsedByGodot
+    fun drain_photo(): String = synchronized(photoLock) {
+        val result = photoResult
+        photoResult = ""
+        result
+    }
+
+    private fun photoResult(value: String) = synchronized(photoLock) { photoResult = value }
+
+    @UsedByGodot
+    fun open_camera() {
+        hostHandler.post {
+            if (cameraPending || destroyed.get()) return@post
+            val host = activity
+            if (host == null) { photoResult("error"); return@post }
+            photoResult("")
+            try {
+                // The camera app returns a preview, sufficient for our 192px avatar.
+                // No broad storage or camera permission is needed by this app.
+                cameraPending = true
+                host.startActivityForResult(Intent(MediaStore.ACTION_IMAGE_CAPTURE), cameraRequest)
+            } catch (_: Exception) {
+                cameraPending = false
+                photoResult("error")
+            }
+        }
+    }
+
+    override fun onMainActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != cameraRequest || !cameraPending) return
+        cameraPending = false
+        if (resultCode != Activity.RESULT_OK) { photoResult("cancel"); return }
+        try {
+            @Suppress("DEPRECATION")
+            val original = data?.extras?.get("data") as? Bitmap
+            if (original == null) { photoResult("error"); return }
+            val side = minOf(original.width, original.height)
+            val cropped = Bitmap.createBitmap(original, (original.width - side) / 2, (original.height - side) / 2, side, side)
+            val avatar = Bitmap.createScaledBitmap(cropped, 192, 192, true)
+            val bytes = ByteArrayOutputStream()
+            avatar.compress(Bitmap.CompressFormat.JPEG, 65, bytes)
+            photoResult(Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP))
+        } catch (_: Exception) { photoResult("error") }
+    }
 
     @UsedByGodot
     fun invoke(method: String, argsJson: String) {

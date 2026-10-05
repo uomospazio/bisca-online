@@ -339,6 +339,11 @@ func _announce_presence(room: Dictionary, slot: int, connected: bool) -> void:
 
 func _set_turn(room: Dictionary) -> void:
 	room.stage = "turn"
+	# In the blind one-card round nobody can choose a card: the server
+	# plays it on its next tick, even when the human turn timer is disabled.
+	if room.rules.phase == "play" and room.rules.hand_size == 1:
+		room.deadline = maxi(1, Time.get_ticks_msec())
+		return
 	var actor: int = room.rules.current
 	var seconds := _turn_seconds(room.get("options", {}).get("turn_seconds", 30))
 	var delay := seconds * 1000

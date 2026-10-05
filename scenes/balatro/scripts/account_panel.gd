@@ -15,8 +15,10 @@ var buttons: Array[Button] = []
 var working := false
 var mode := ""
 var username_field: LineEdit
+var direct_action := false
 
-func setup(host: Control) -> void:
+func setup(host: Control, initial_mode: String = "home") -> void:
+	direct_action = initial_mode != "home"
 	menu = host
 	account = get_node("/root/AccountSession")
 
@@ -71,7 +73,7 @@ func setup(host: Control) -> void:
 	var cloud := get_node("/root/AccountProfile")
 	cloud.changed.connect(_account_changed)
 
-	_show("home")
+	_show(initial_mode)
 
 
 func _account_changed() -> void:
@@ -188,6 +190,9 @@ func _button(
 
 
 func _show(next: String) -> void:
+	if direct_action and next == "home":
+		queue_free()
+		return
 	mode = next
 
 	for child in rows.get_children():

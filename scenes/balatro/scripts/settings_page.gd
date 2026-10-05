@@ -9,7 +9,8 @@ var numbers: Dictionary = {}
 var toggles: Dictionary = {}
 var account_dot: Panel
 var translations: Array = []
-var tabs: TabContainer
+var content_scroll: ScrollContainer
+var chapters: VBoxContainer
 var language: OptionButton
 var reset_dialog: ConfirmationDialog
 var mic_test: Node
@@ -21,6 +22,9 @@ var settings_panel: PanelContainer
 var footer_label: Label
 var footer_buttons: HBoxContainer
 var push_status: Label
+var account_name: Label
+var account_id: Label
+var save_progress: Button
 
 func _text(it: String, en: String) -> String:
 	return en if settings.values.language == "en" else it
@@ -30,18 +34,28 @@ func _translated(node: Node, it: String, en: String, property: String = "text") 
 	node.set(property, _text(it, en))
 
 func _tab(it: String, en: String) -> VBoxContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = it
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.add_child(scroll)
-	scroll.set_meta("titles", [it, en])
+	var section := PanelContainer.new()
+	section.name = it
+	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color("242039")
+	background.set_corner_radius_all(22)
+	background.content_margin_left = 32
+	background.content_margin_right = 32
+	background.content_margin_top = 26
+	background.content_margin_bottom = 30
+	section.add_theme_stylebox_override("panel", background)
+	chapters.add_child(section)
 	var rows := VBoxContainer.new()
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rows.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 24)
-	scroll.add_child(rows)
+	rows.add_theme_constant_override("separation", 20)
+	section.add_child(rows)
+	var heading := _label("", 40)
+	_translated(heading, it, en)
+	heading.add_theme_color_override("font_color", Color("c7b7ff"))
+	rows.add_child(heading)
+	var divider := HSeparator.new()
+	rows.add_child(divider)
 	return rows
 
 func _setting(rows: VBoxContainer, it: String, en: String, key: String, slider := false) -> void:
@@ -68,19 +82,36 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	skin.content_margin_top = 28
 	skin.content_margin_bottom = 28
 	settings_panel.add_theme_stylebox_override("panel", skin)
-	tabs = TabContainer.new()
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.add_theme_font_override("font", FONT)
-	tabs.add_theme_font_size_override("font_size", 25)
-	settings_panel.add_child(tabs)
-	var audio := _tab("AUDIO", "AUDIO")
+	content_scroll = ScrollContainer.new()
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_scroll.follow_focus = true
+	settings_panel.add_child(content_scroll)
+	chapters = VBoxContainer.new()
+	chapters.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chapters.add_theme_constant_override("separation", 28)
+	content_scroll.add_child(chapters)
+	var account := _tab("ACCOUNT", "ACCOUNT")
+	account_name = _label("")
+	account.add_child(account_name)
+	account_id = _label("")
+	account.add_child(account_id)
+	var username_button := _account_action(menu, account, "MODIFICA USERNAME", "EDIT USERNAME", "username", back_action.is_valid())
+	account_dot = menu._notification_dot(username_button)
+	save_progress = _account_action(menu, account, "SALVA I TUOI PROGRESSI", "SAVE YOUR PROGRESS", "save", back_action.is_valid())
+	_account_action(menu, account, "ACCEDI A UN ACCOUNT", "SIGN IN TO AN ACCOUNT", "login", back_action.is_valid())
+	_account_action(menu, account, "CONTINUA CON UN NUOVO OSPITE", "CONTINUE AS A NEW GUEST", "new_guest", back_action.is_valid())
+	get_node("/root/AccountProfile").changed.connect(_refresh_account_dot)
+	get_node("/root/AccountSession").changed.connect(_refresh_account_dot)
+	_refresh_account_dot()
+	var audio := _tab("AUDIO E MICROFONO", "AUDIO AND MICROPHONE")
 	_setting(audio, "VOLUME GENERALE", "MASTER VOLUME", "main", true)
 	_setting(audio, "EFFETTI", "SOUND EFFECTS", "effects", true)
-	var microphone := _tab("MICROFONO", "MICROPHONE")
+	var microphone := audio
 	_setting(microphone, "MICROFONO ABILITATO", "MICROPHONE ENABLED", "microphone_enabled")
 	_setting(microphone, "PREMI PER PARLARE", "PUSH TO TALK", "push_to_talk")
-	var hint := _label("", 20)
+	var hint := _label("", 26)
 	_translated(hint, "Tieni premuto V o il pulsante microfono al tavolo per parlare.", "Hold V or the microphone button at the table to talk.")
 	microphone.add_child(hint)
 	mic_test = preload("res://scenes/balatro/scripts/settings_mic_test.gd").new()
@@ -89,12 +120,13 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 		if mic_test.active: mic_test.stop()
 		else: mic_test.start()
 	)
-	test_button.custom_minimum_size = Vector2(320, 64)
+	test_button.custom_minimum_size = Vector2(420, 76)
+	test_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	mic_meter = ProgressBar.new()
 	mic_meter.custom_minimum_size.y = 28
 	mic_meter.show_percentage = false
 	microphone.add_child(mic_meter)
-	mic_status = _label("", 20)
+	mic_status = _label("", 26)
 	microphone.add_child(mic_status)
 	var graphics := _tab("GRAFICA", "GRAPHICS")
 	_setting(graphics, "MOVIMENTO CAMERA", "CAMERA MOVEMENT", "camera")
@@ -103,49 +135,31 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	if OS.get_name() in ["Android", "iOS", "Web"]:
 		toggles.fullscreen.disabled = true
 		_translated(toggles.fullscreen, "Disponibile nella versione PC", "Available on desktop", "tooltip_text")
-	var general := _tab("GENERALE", "GENERAL")
-	_setting(general, "MOSTRA OGGETTI LANCIATI", "SHOW THROWN OBJECTS", "show_thrown_objects")
-	_setting(general, "NOTIFICHE PUSH", "PUSH NOTIFICATIONS", "push_notifications")
+	chapters.move_child(graphics.get_parent(), 1)
+	_setting(graphics, "MOSTRA OGGETTI LANCIATI", "SHOW THROWN OBJECTS", "show_thrown_objects")
+	_setting(account, "NOTIFICHE PUSH", "PUSH NOTIFICATIONS", "push_notifications")
 	if OS.get_name() not in ["Android", "iOS"]:
 		toggles.push_notifications.disabled = true
 		_translated(toggles.push_notifications, "Disponibili nell'app mobile", "Available in the mobile app", "tooltip_text")
-	push_status = _label("", 18)
+	push_status = _label("", 24)
 	push_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	push_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	push_status.text = get_node("/root/PushNotifications").last_message
-	general.add_child(push_status)
+	account.add_child(push_status)
 	get_node("/root/PushNotifications").registration_changed.connect(_on_push_registration_changed)
-	var push_note := _label("", 20)
+	var push_note := _label("", 26)
 	_translated(push_note, "Al primo avvio ti chiederemo il permesso. Se lo rifiuti, puoi riprovare da qui; potrebbe essere necessario abilitarlo anche nelle impostazioni del dispositivo.", "We will ask for permission the first time. If you decline, you can try again here; you may also need to enable it in your device settings.")
-	general.add_child(push_note)
-	var note := _label("", 20)
-	_translated(note, "Disattivando gli oggetti vengono silenziati anche i loro suoni.", "Hiding thrown objects also mutes their sounds.")
-	general.add_child(note)
-	var row := _row(general, "")
+	account.add_child(push_note)
+	var row := _row(chapters, "")
 	_translated(row.get_child(0), "LINGUA", "LANGUAGE")
 	language = OptionButton.new()
 	language.add_item("Italiano")
 	language.add_item("English")
 	language.add_theme_font_override("font", FONT)
-	language.add_theme_font_size_override("font_size", 26)
+	language.add_theme_font_size_override("font_size", 32)
+	language.custom_minimum_size = Vector2(240, 72)
 	row.add_child(language)
 	language.item_selected.connect(func(index): settings.set_value("language", "en" if index == 1 else "it"))
-	var account := _tab("ACCOUNT", "ACCOUNT")
-	var account_button: Button = menu._button(account, "", func():
-		var account_panel := preload("res://scenes/balatro/scripts/account_panel.gd").new()
-		add_child(account_panel)
-		account_panel.setup(menu)
-	)
-	_translated(account_button, "GESTISCI ACCOUNT", "MANAGE ACCOUNT")
-	account_button.custom_minimum_size = Vector2(360, 64)
-	account_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_set_button_radius(account_button, 32)
-	account_dot = menu._notification_dot(account_button)
-	get_node("/root/AccountProfile").changed.connect(_refresh_account_dot)
-	get_node("/root/AccountSession").changed.connect(_refresh_account_dot)
-	_refresh_account_dot()
-	account_button.disabled = back_action.is_valid()
-	_translated(account_button, "Gestisci l'account dal menu principale.", "Manage your account from the main menu.", "tooltip_text")
 	footer_label = _label("", 18)
 	_translated(footer_label, "LE MODIFICHE VENGONO SALVATE AUTOMATICAMENTE", "CHANGES ARE SAVED AUTOMATICALLY")
 	add_child(footer_label)
@@ -167,7 +181,6 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	for button in [back, reset]:
 		button.custom_minimum_size = Vector2(320, 80)
 		_set_button_radius(button, 40)
-	tabs.tab_changed.connect(func(_index): mic_test.stop())
 	settings.changed.connect(_sync)
 	get_viewport().size_changed.connect(_layout_page)
 	_layout_page()
@@ -177,16 +190,21 @@ func _layout_page() -> void:
 	var viewport_size := get_viewport_rect().size
 	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		return
-	var side_margin := minf(240.0, maxf(24.0, viewport_size.x * 0.04))
-	var panel_width := minf(1440.0, viewport_size.x - side_margin * 2.0)
-	page_title.position = Vector2(side_margin, viewport_size.y * 0.055)
-	page_title.size = Vector2(viewport_size.x - side_margin * 2.0, minf(95.0, viewport_size.y * 0.14))
-	settings_panel.position = Vector2((viewport_size.x - panel_width) * 0.5, viewport_size.y * 0.22)
-	settings_panel.size = Vector2(panel_width, viewport_size.y * 0.58)
-	footer_label.position = Vector2(side_margin, viewport_size.y * 0.815)
-	footer_label.size = Vector2(viewport_size.x - side_margin * 2.0, 32.0)
-	footer_buttons.position = Vector2((viewport_size.x - 860.0) * 0.5, viewport_size.y * 0.88)
-	footer_buttons.size = Vector2(860.0, 80.0)
+	# The menu lives in a centered design canvas; convert screen coordinates
+	# to this page's coordinates so the heading cannot move outside the screen.
+	var screen_to_page := get_global_transform_with_canvas().affine_inverse()
+	var bounds := screen_to_page * Rect2(Vector2.ZERO, viewport_size)
+	var side_margin := maxf(40.0, bounds.size.x * 0.035)
+	var width := bounds.size.x - side_margin * 2.0
+	page_title.position = bounds.position + Vector2(side_margin, 24)
+	page_title.size = Vector2(width, 90)
+	var buttons_y := bounds.end.y - 112.0
+	settings_panel.position = bounds.position + Vector2(side_margin, 132)
+	settings_panel.size = Vector2(width, buttons_y - settings_panel.position.y - 64.0)
+	footer_label.position = Vector2(bounds.position.x + side_margin, buttons_y - 48)
+	footer_label.size = Vector2(width, 32)
+	footer_buttons.position = Vector2(bounds.get_center().x - 335.0, buttons_y)
+	footer_buttons.size = Vector2(670.0, 80.0)
 
 func _on_push_registration_changed(registered: bool, message: String) -> void:
 	if not is_instance_valid(push_status):
@@ -204,6 +222,34 @@ func _process(_delta: float) -> void:
 func _refresh_account_dot() -> void:
 	if is_instance_valid(account_dot):
 		account_dot.visible = get_node("/root/AccountProfile").needs_username()
+	if is_instance_valid(account_name):
+		var profile: Dictionary = get_node("/root/AccountProfile").profile
+		var username = profile.get("username")
+		account_name.text = "USERNAME: " + (str(username) if username != null and not str(username).strip_edges().is_empty() else _text("NON SCELTO", "NOT SET"))
+		var public_id = profile.get("public_id")
+		account_id.text = "ID BISCA: " + ("#" + str(public_id) if public_id != null and not str(public_id).is_empty() else _text("IN ATTESA", "PENDING"))
+	if is_instance_valid(save_progress):
+		save_progress.visible = not get_node("/root/AccountSession").password_ready
+
+func _account_action(menu: Control, parent: Control, it: String, en: String, action: String, locked: bool) -> Button:
+	var button: Button = menu._button(parent, "", func():
+		var session := get_node("/root/AccountSession")
+		var next := action
+		if action == "save":
+			next = "verify" if not session.pending_email.is_empty() else ("password" if session.email_verified else "link")
+		var panel := preload("res://scenes/balatro/scripts/account_panel.gd").new()
+		add_child(panel)
+		panel.setup(menu, next)
+	)
+	_translated(button, it, en)
+	button.custom_minimum_size = Vector2(600, 76)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	button.add_theme_font_size_override("font_size", 30)
+	_set_button_radius(button, 38)
+	button.disabled = locked
+	if locked:
+		_translated(button, "Gestisci l'account dal menu principale.", "Manage your account from the main menu.", "tooltip_text")
+	return button
 
 func _set_button_radius(button: Button, radius: int) -> void:
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
@@ -213,7 +259,7 @@ func _set_button_radius(button: Button, radius: int) -> void:
 			style.set_corner_radius_all(radius)
 			button.add_theme_stylebox_override(state, style)
 
-func _label(text: String, font_size: int = 26) -> Label:
+func _label(text: String, font_size: int = 32) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_override("font", FONT)
@@ -226,11 +272,11 @@ func _label(text: String, font_size: int = 26) -> Label:
 
 func _row(parent: Control, title: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 48
+	row.custom_minimum_size.y = 76
 	row.add_theme_constant_override("separation", 22)
 	parent.add_child(row)
 	var label := _label(title)
-	label.custom_minimum_size.x = 335
+	label.custom_minimum_size.x = 380
 	row.add_child(label)
 	return row
 
@@ -252,6 +298,7 @@ func _add_slider(parent: Control, title: String, key: String) -> void:
 	slider.add_theme_icon_override("grabber_highlight", preload("res://scenes/balatro/visuals/settings_knob_hover.svg"))
 	row.add_child(slider)
 	var number := _label("100")
+	number.size_flags_horizontal = Control.SIZE_FILL
 	number.custom_minimum_size.x = 65
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(number)
@@ -271,7 +318,7 @@ func _add_toggle(parent: Control, title: String, key: String) -> void:
 	var toggle := CheckButton.new()
 	toggle.add_theme_icon_override("checked", preload("res://scenes/balatro/visuals/settings_toggle_on.svg"))
 	toggle.add_theme_icon_override("unchecked", preload("res://scenes/balatro/visuals/settings_toggle_off.svg"))
-	toggle.custom_minimum_size = Vector2(110, 48)
+	toggle.custom_minimum_size = Vector2(120, 76)
 	toggle.add_theme_color_override("font_color", Style.TEXT)
 	row.add_child(toggle)
 	Audio.attach(toggle)
@@ -279,6 +326,7 @@ func _add_toggle(parent: Control, title: String, key: String) -> void:
 	toggle.toggled.connect(func(enabled): settings.set_value(key, enabled))
 
 func _sync() -> void:
+	_refresh_account_dot()
 	for key in sliders:
 		sliders[key].set_value_no_signal(settings.values[key])
 		numbers[key].text = str(int(settings.values[key]))
@@ -288,6 +336,3 @@ func _sync() -> void:
 	for entry in translations:
 		entry[0].set(entry[1], _text(entry[2], entry[3]))
 	language.select(1 if settings.values.language == "en" else 0)
-	for index in tabs.get_tab_count():
-		var titles: Array = tabs.get_tab_control(index).get_meta("titles")
-		tabs.set_tab_title(index, _text(titles[0], titles[1]))

@@ -45,6 +45,18 @@ func _initialize() -> void:
 			assert(room.deadline == 0 if seconds == 0 else room.deadline > Time.get_ticks_msec() + 14000)
 	assert(net._turn_seconds(-1) == 30)
 	assert(net._turn_seconds("60") == 30)
+	# One-card play is automatic for connected humans, regardless of timer.
+	rules.hand_size = 1
+	room.people[0].peer = 99
+	for seconds in [0, 15, 30, 60]:
+		room.options = {"turn_seconds": seconds}
+		rules.phase = "prediction"
+		net._set_turn(room)
+		assert(room.deadline == 0 if seconds == 0 else room.deadline > Time.get_ticks_msec() + 14000)
+		rules.phase = "play"
+		net._after_action(room)
+		assert(room.stage == "turn" and room.deadline > 0)
+		assert(room.deadline <= maxi(1, Time.get_ticks_msec()))
 	net.free()
 	print("PASS: stale/offline seat recovery, invalid token rejection, human identity and state preserved")
 	quit()

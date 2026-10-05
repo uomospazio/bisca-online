@@ -16,6 +16,11 @@ var mic_test: Node
 var mic_meter: ProgressBar
 var mic_status: Label
 var test_button: Button
+var page_title: Label
+var settings_panel: PanelContainer
+var footer_label: Label
+var footer_buttons: HBoxContainer
+var push_status: Label
 
 func _text(it: String, en: String) -> String:
 	return en if settings.values.language == "en" else it
@@ -28,10 +33,13 @@ func _tab(it: String, en: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
 	scroll.name = it
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.add_child(scroll)
 	scroll.set_meta("titles", [it, en])
 	var rows := VBoxContainer.new()
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	rows.add_theme_constant_override("separation", 24)
 	scroll.add_child(rows)
 	return rows
@@ -46,29 +54,26 @@ func _setting(rows: VBoxContainer, it: String, en: String, key: String, slider :
 func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_settings: bool = false) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings = get_node("/root/GameSettings")
-	var title := _label("", 66)
-	_translated(title, "SETTINGS", "SETTINGS")
-	add_child(title)
-	title.position = Vector2(240, 125)
-	title.size = Vector2(1440, 95)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_color_override("font_outline_color", Style.HOVER)
-	title.add_theme_constant_override("outline_size", 12)
-	var panel := PanelContainer.new()
-	add_child(panel)
-	panel.position = Vector2(240, 280)
-	panel.size = Vector2(1440, 520)
+	page_title = _label("", 66)
+	_translated(page_title, "SETTINGS", "SETTINGS")
+	add_child(page_title)
+	page_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	page_title.add_theme_color_override("font_outline_color", Style.HOVER)
+	page_title.add_theme_constant_override("outline_size", 12)
+	settings_panel = PanelContainer.new()
+	add_child(settings_panel)
 	var skin := Style.button_style(Style.PANEL, Style.HOVER, 4)
 	skin.content_margin_left = 36
 	skin.content_margin_right = 36
 	skin.content_margin_top = 28
 	skin.content_margin_bottom = 28
-	panel.add_theme_stylebox_override("panel", skin)
+	settings_panel.add_theme_stylebox_override("panel", skin)
 	tabs = TabContainer.new()
-	tabs.custom_minimum_size = Vector2(1368, 464)
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.add_theme_font_override("font", FONT)
 	tabs.add_theme_font_size_override("font_size", 25)
-	panel.add_child(tabs)
+	settings_panel.add_child(tabs)
 	var audio := _tab("AUDIO", "AUDIO")
 	_setting(audio, "VOLUME GENERALE", "MASTER VOLUME", "main", true)
 	_setting(audio, "EFFETTI", "SOUND EFFECTS", "effects", true)
@@ -104,6 +109,15 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	if OS.get_name() not in ["Android", "iOS"]:
 		toggles.push_notifications.disabled = true
 		_translated(toggles.push_notifications, "Disponibili nell'app mobile", "Available in the mobile app", "tooltip_text")
+	push_status = _label("", 18)
+	push_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	push_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	push_status.text = get_node("/root/PushNotifications").last_message
+	general.add_child(push_status)
+	get_node("/root/PushNotifications").registration_changed.connect(_on_push_registration_changed)
+	var push_note := _label("", 20)
+	_translated(push_note, "Al primo avvio ti chiederemo il permesso. Se lo rifiuti, puoi riprovare da qui; potrebbe essere necessario abilitarlo anche nelle impostazioni del dispositivo.", "We will ask for permission the first time. If you decline, you can try again here; you may also need to enable it in your device settings.")
+	general.add_child(push_note)
 	var note := _label("", 20)
 	_translated(note, "Disattivando gli oggetti vengono silenziati anche i loro suoni.", "Hiding thrown objects also mutes their sounds.")
 	general.add_child(note)
@@ -132,12 +146,10 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	_refresh_account_dot()
 	account_button.disabled = back_action.is_valid()
 	_translated(account_button, "Gestisci l'account dal menu principale.", "Manage your account from the main menu.", "tooltip_text")
-	var footer := _label("", 18)
-	_translated(footer, "LE MODIFICHE VENGONO SALVATE AUTOMATICAMENTE", "CHANGES ARE SAVED AUTOMATICALLY")
-	add_child(footer)
-	footer.position = Vector2(240, 810)
-	footer.size.x = 1440
-	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer_label = _label("", 18)
+	_translated(footer_label, "LE MODIFICHE VENGONO SALVATE AUTOMATICAMENTE", "CHANGES ARE SAVED AUTOMATICALLY")
+	add_child(footer_label)
+	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	reset_dialog = ConfirmationDialog.new()
 	add_child(reset_dialog)
 	_translated(reset_dialog, "RIPRISTINA IMPOSTAZIONI", "RESET SETTINGS", "title")
@@ -145,21 +157,42 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	_translated(reset_dialog.get_ok_button(), "RIPRISTINA", "RESET")
 	_translated(reset_dialog.get_cancel_button(), "ANNULLA", "CANCEL")
 	reset_dialog.confirmed.connect(settings.reset_defaults)
-	var buttons := HBoxContainer.new()
-	add_child(buttons)
-	buttons.position = Vector2(530, 870)
-	buttons.size.x = 860
-	buttons.add_theme_constant_override("separation", 30)
-	var back: Button = menu._button(buttons, "", back_action if back_action.is_valid() else menu.show_home)
+	footer_buttons = HBoxContainer.new()
+	add_child(footer_buttons)
+	footer_buttons.add_theme_constant_override("separation", 30)
+	var back: Button = menu._button(footer_buttons, "", back_action if back_action.is_valid() else menu.show_home)
 	_translated(back, "INDIETRO", "BACK")
-	var reset: Button = menu._button(buttons, "", func(): reset_dialog.popup_centered(Vector2i(640, 200)))
+	var reset: Button = menu._button(footer_buttons, "", func(): reset_dialog.popup_centered(Vector2i(640, 200)))
 	_translated(reset, "RIPRISTINA", "RESET")
 	for button in [back, reset]:
 		button.custom_minimum_size = Vector2(320, 80)
 		_set_button_radius(button, 40)
 	tabs.tab_changed.connect(func(_index): mic_test.stop())
 	settings.changed.connect(_sync)
+	get_viewport().size_changed.connect(_layout_page)
+	_layout_page()
 	_sync()
+
+func _layout_page() -> void:
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	var side_margin := minf(240.0, maxf(24.0, viewport_size.x * 0.04))
+	var panel_width := minf(1440.0, viewport_size.x - side_margin * 2.0)
+	page_title.position = Vector2(side_margin, viewport_size.y * 0.055)
+	page_title.size = Vector2(viewport_size.x - side_margin * 2.0, minf(95.0, viewport_size.y * 0.14))
+	settings_panel.position = Vector2((viewport_size.x - panel_width) * 0.5, viewport_size.y * 0.22)
+	settings_panel.size = Vector2(panel_width, viewport_size.y * 0.58)
+	footer_label.position = Vector2(side_margin, viewport_size.y * 0.815)
+	footer_label.size = Vector2(viewport_size.x - side_margin * 2.0, 32.0)
+	footer_buttons.position = Vector2((viewport_size.x - 860.0) * 0.5, viewport_size.y * 0.88)
+	footer_buttons.size = Vector2(860.0, 80.0)
+
+func _on_push_registration_changed(registered: bool, message: String) -> void:
+	if not is_instance_valid(push_status):
+		return
+	push_status.text = message
+	push_status.add_theme_color_override("font_color", Color("78e08f") if registered else Style.TEXT)
 
 func _process(_delta: float) -> void:
 	if mic_test == null: return
@@ -187,6 +220,8 @@ func _label(text: String, font_size: int = 26) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", Style.TEXT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return label
 
 func _row(parent: Control, title: String) -> HBoxContainer:

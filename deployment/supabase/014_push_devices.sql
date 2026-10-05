@@ -25,7 +25,9 @@ begin
   -- A token's owner is taken from the signed-in session, never a client-supplied user id.
   insert into public.bisca_push_devices as current_device (device_token, user_id, platform)
   values ($1, auth.uid(), $2)
-  on conflict (device_token) do update set
+  -- ON CONSTRAINT avoids PL/pgSQL confusing the RPC argument device_token
+  -- with the same-named column in the conflict target.
+  on conflict on constraint bisca_push_devices_pkey do update set
     user_id = excluded.user_id,
     platform = excluded.platform,
     updated_at = now();

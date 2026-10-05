@@ -74,20 +74,23 @@ Deno.serve(async (request) => {
     const event = await request.json();
     const record = event.record ?? {};
     let recipient = "";
+    let sender = "";
     let kind = "";
 
     if (event.schema === "public" && event.table === "bisca_friendships" && event.type === "INSERT" && record.status === "pending") {
-      recipient = record.requester === record.user_a ? record.user_b : record.user_a;
+      sender = record.requester ?? "";
+      recipient = sender === record.user_a ? record.user_b : record.user_a;
       kind = "friend_request";
     } else if (event.schema === "public" && event.table === "bisca_lobby_invites" && ["INSERT", "UPDATE"].includes(event.type)) {
       if (Date.parse(record.expires_at ?? "") <= Date.now()) return Response.json({ skipped: "expired" });
+      sender = record.sender ?? "";
       recipient = record.recipient ?? "";
       kind = "lobby_invite";
     } else {
       return Response.json({ skipped: "unsupported event" });
     }
 
-    if (!recipient) return new Response("Invalid event", { status: 400 });
+    if (!recipient || !sender) return new Response("Invalid event", { status: 400 });
     const { data: devices, error } = await supabase
       .from("bisca_push_devices")
       .select("device_token")
@@ -96,6 +99,16 @@ Deno.serve(async (request) => {
     const tokens = (devices ?? []).map((row) => row.device_token as string).filter(Boolean);
     if (tokens.length === 0) return Response.json({ sent: 0 });
 
+    const { data: senderProfile, error: profileError } = await supabase
+      .from("bisca_profiles")
+      .select("username,public_id")
+      .eq("id", sender)
+      .maybeSingle();
+    if (profileError) throw profileError;
+    const username = typeof senderProfile?.username === "string" ? senderProfile.username.trim() : "";
+    const publicId = typeof senderProfile?.public_id === "string" ? senderProfile.public_id.trim().replace(/^#/, "") : "";
+    const senderName = (username || (publicId ? `#${publicId}` : "Un giocatore")).slice(0, 32);
+
     if (!firebaseServiceAccountJson) throw new Error("FCM_SERVICE_ACCOUNT_JSON is not configured");
     const serviceAccount = JSON.parse(firebaseServiceAccountJson);
     const projectId = serviceAccount.project_id;
@@ -103,7 +116,9 @@ Deno.serve(async (request) => {
     const bearer = await getFcmAccessToken(serviceAccount);
 
     const title = kind === "friend_request" ? "Nuova richiesta di amicizia" : "Invito a una partita";
-    const body = kind === "friend_request" ? "Apri BISCA per vedere la richiesta." : "Apri BISCA per vedere l'invito alla lobby.";
+    const body = kind === "friend_request"
+      ? `${senderName} ti ha inviato una richiesta di amicizia.`
+      : `${senderName} ti ha invitato in una lobby.`;
     let sent = 0;
     let hadDeliveryFailure = false;
     const invalidTokens: string[] = [];

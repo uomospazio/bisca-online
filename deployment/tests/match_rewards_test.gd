@@ -26,10 +26,18 @@ func run() -> void:
 	assert(str(room.reward_match).length() == 36)
 	rewards.observe(room)
 	assert(rewards.pending.is_empty())
+	# Uscita e rientro, anche dopo l'eliminazione durante l'assenza.
+	var match_id: String = room.reward_match
+	rewards.suspend_participant(room, 0)
 	rules.players[0].active = false
+	rewards.observe(room)
+	assert(rewards.pending.is_empty())
+	rewards.resume_participant(room, 0)
+	assert(room.reward_match == match_id)
 	rewards.observe(room)
 	assert(rewards.pending.size() == 1)
 	assert(rewards.pending.values()[0].p_outcome == "elimination")
+	rewards.resume_participant(room, 0)
 	rewards.observe(room)
 	assert(rewards.pending.size() == 1)
 	# Il bot che sostituisce un disconnesso non invalida la partita gia' iniziata.
@@ -80,6 +88,10 @@ func run() -> void:
 	assert(rewards.pending.size() == 1)
 	assert(rewards.pending.values()[0].p_outcome == "victory")
 	rewards.free()
+	print("PASS: reward eligibility, exit/rejoin result recovery and idempotency")
+	if "--logic-only" in OS.get_cmdline_user_args():
+		quit()
+		return
 	var popup := RewardPanel.new()
 	root.add_child(popup)
 	popup.show_reward({"user_id": "test", "outcome": "victory", "amount": 50})

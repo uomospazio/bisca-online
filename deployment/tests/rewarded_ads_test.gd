@@ -48,6 +48,11 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	assert(overlay.rewarded_offer.visible)
+	var offer = overlay.rewarded_offer
+	var row_center: Vector2 = offer.button_content.get_global_transform() * (offer.button_content.size / 2.0)
+	var button_center: Vector2 = offer.button.get_global_transform() * (offer.button.size / 2.0)
+	assert(row_center.distance_to(button_center) < 1.0, "Ad icon and text must form one centered group")
+	assert(offer.button.icon == null and offer.button.text.is_empty(), "Button must not draw a second icon/text")
 	assert(overlay.panel.size.y < 1080, "Reward offer must fit the victory screen")
 	assert(overlay.rewarded_offer.button.disabled, "Desktop must not simulate paid ads")
 	overlay.announce_turn(true)

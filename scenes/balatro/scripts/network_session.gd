@@ -531,6 +531,7 @@ func request(command: Dictionary) -> void:
 		members[peer] = {"code": code, "slot": slot}
 		room.touched = Time.get_ticks_msec()
 		if op == "rejoin":
+			rewards.resume_participant(room, slot)
 			_announce_presence(room, slot, true)
 		joined.rpc_id(peer, code, room.people[slot].token)
 		_broadcast(room)
@@ -604,7 +605,7 @@ func request(command: Dictionary) -> void:
 		return
 	if op == "leave":
 		if room.rules != null and room.rules.players[slot].active and room.rules.phase != "finished":
-			room.get("reward_users", {}).erase(slot)
+			rewards.suspend_participant(room, slot)
 		_disconnected(peer)
 		return
 	if op == "settings":

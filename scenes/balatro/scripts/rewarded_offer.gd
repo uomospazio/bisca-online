@@ -3,8 +3,10 @@ const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const KIDS_FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 var placement := "shop"
 var context := ""
-var caption := "VIDEO · +20 MONETE"
+var caption := "+20 MONETE"
 var button: Button
+var button_caption: Label
+var button_content: HBoxContainer
 var status: Label
 var ads: Node
 
@@ -13,11 +15,6 @@ func _ready() -> void:
 	add_theme_constant_override("separation", 8)
 	button = preload("res://scenes/balatro/scripts/rounded_square_button.gd").new()
 	button.custom_minimum_size = Vector2(350, 64)
-	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/ad.svg")
-	button.expand_icon = true
-	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.add_theme_constant_override("icon_max_width", 34)
 	button.add_theme_font_override("font", KIDS_FONT)
 	button.add_theme_font_size_override("font_size", 24)
 	button.add_theme_color_override("font_color", Style.TEXT)
@@ -26,6 +23,27 @@ func _ready() -> void:
 	button.add_theme_stylebox_override("hover", Style.button_style(Style.HOVER, Style.TEXT, 4, 64))
 	button.add_theme_stylebox_override("pressed", Style.button_style(Style.NORMAL, Style.TEXT, 2, 64))
 	add_child(button)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	button_content = HBoxContainer.new()
+	button_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button_content.add_theme_constant_override("separation", 12)
+	center.add_child(button_content)
+	var icon := TextureRect.new()
+	icon.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/ad.svg")
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(34, 34)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button_content.add_child(icon)
+	button_caption = Label.new()
+	button_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button_caption.add_theme_font_override("font", KIDS_FONT)
+	button_caption.add_theme_font_size_override("font_size", 24)
+	button_caption.add_theme_color_override("font_color", Style.TEXT)
+	button_content.add_child(button_caption)
 	status = Label.new()
 	status.add_theme_font_override("font", KIDS_FONT)
 	status.add_theme_font_size_override("font_size", 18)
@@ -43,8 +61,10 @@ func _update() -> void:
 	var used: bool = ads.claimed(placement, context)
 	if placement == "refresh": used = not get_node("/root/ShopManager").daily_refresh_available
 	var clean_caption := caption.replace("VIDEO · ", "")
-	button.text = "RECUPERA PREMIO" if pending else ("PREMIO GIÀ RICEVUTO" if used and placement != "refresh" else clean_caption)
+	button_caption.text = "RECUPERA PREMIO" if pending else ("PREMIO GIÀ RICEVUTO" if used and placement != "refresh" else clean_caption)
+	button.custom_minimum_size.x = maxf(350.0, button_content.get_combined_minimum_size().x + 40.0)
 	button.disabled = ads.busy or (used and not pending) or (not ads.supported() and not pending)
+	button_content.modulate.a = 0.5 if button.disabled else 1.0
 	status.text = ads.message
 	if status.text.is_empty():
 		status.text = "Annuncio facoltativo · test" if ads.supported() else "Disponibile su Android e iOS"

@@ -48,6 +48,7 @@ func start_match(room: Dictionary) -> void:
 	var hex := bytes.hex_encode()
 	room.reward_match = "%s-%s-%s-%s-%s" % [hex.substr(0,8),hex.substr(8,4),hex.substr(12,4),hex.substr(16,4),hex.substr(20)]
 	room.reward_users = {}
+	room.reward_suspended_users = {}
 	var distinct: Dictionary = {}
 	for i in range(room.people.size()):
 		var person: Dictionary = room.people[i]
@@ -59,6 +60,24 @@ func start_match(room: Dictionary) -> void:
 	var solo: bool = bool(room.get("singleplayer", false))
 	room.reward_eligible = enabled() and (solo or (int(room.options.get("starting_cards", 5)) == 5 and accounts_valid))
 	room.reward_sent = {}
+
+func suspend_participant(room: Dictionary, slot: int) -> void:
+	if not room.get("reward_users", {}).has(slot):
+		return
+	if not room.has("reward_suspended_users"):
+		room.reward_suspended_users = {}
+	room.reward_suspended_users[slot] = room.reward_users[slot]
+	room.reward_users.erase(slot)
+
+func resume_participant(room: Dictionary, slot: int) -> void:
+	var suspended: Dictionary = room.get("reward_suspended_users", {})
+	if not suspended.has(slot):
+		return
+	# Il posto è già stato autenticato dal server; conserva l'account iniziale.
+	if str(room.people[slot].get("account_id", "")) != str(suspended[slot]):
+		return
+	room.reward_users[slot] = suspended[slot]
+	suspended.erase(slot)
 
 func observe(room: Dictionary) -> void:
 	if not enabled() or not room.has("reward_users") or room.rules == null:

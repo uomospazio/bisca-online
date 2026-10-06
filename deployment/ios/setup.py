@@ -19,6 +19,25 @@ def run(*args):
     return subprocess.check_output(args, text=True).strip()
 
 
+def inject_plugin_hooks(contents):
+    """AdMob wraps Godot's entry points, then renames the original with macros.
+
+    Insert voice into the ORIGINAL (last) definition, which the wrapper calls.
+    Never inject into both: that would register the native singletons twice.
+    """
+    if "void bisca_voice_initialize();" in contents:
+        return contents
+    for hook, call in [("initialize", "bisca_voice_initialize"), ("deinitialize", "bisca_voice_deinitialize")]:
+        name = "godot_apple_embedded_plugins_" + hook
+        matches = list(re.finditer(r"void " + name + r"\(\)\s*\{", contents))
+        wrapped = "#define " + name + " " + name + "_admob" in contents
+        if len(matches) != (2 if wrapped else 1):
+            raise ValueError("Missing expected Godot plugin hook: " + hook)
+        end = matches[-1].end()
+        contents = contents[:end] + "\n    " + call + "();" + contents[end:]
+    return "void bisca_voice_initialize();\nvoid bisca_voice_deinitialize();\n" + contents
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("project", type=Path, help="Exported .xcodeproj")
@@ -127,12 +146,10 @@ def main():
     dummy = project.parent / target["name"] / "dummy.cpp"
     contents = dummy.read_text()
     if "void bisca_voice_initialize();" not in contents:
-        for hook, call in [("initialize", "bisca_voice_initialize"), ("deinitialize", "bisca_voice_deinitialize")]:
-            pattern = r"(void godot_apple_embedded_plugins_" + hook + r"\(\)\s*\{)"
-            contents, count = re.subn(pattern, r"\1\n    " + call + "();", contents)
-            if count != 1:
-                parser.error("Missing unique Godot plugin hook: " + hook)
-        contents = "void bisca_voice_initialize();\nvoid bisca_voice_deinitialize();\n" + contents
+        try:
+            contents = inject_plugin_hooks(contents)
+        except ValueError as error:
+            parser.error(str(error))
         shutil.copy2(dummy, dummy.with_suffix(".cpp.before-bisca-voice"))
         dummy.write_text(contents)
     if not pbx.with_suffix(".pbxproj.before-bisca-voice").exists():

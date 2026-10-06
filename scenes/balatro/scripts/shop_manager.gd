@@ -25,6 +25,11 @@ var daily_error := ""
 var _daily_ids: Array = []
 var _daily_loading := false
 var _daily_until := 0
+var daily_refresh_available := false
+
+func invalidate_daily() -> void:
+	_daily_until = 0
+	refresh_daily()
 
 func get_daily_items() -> Array:
 	var result: Array = []
@@ -45,6 +50,7 @@ func refresh_daily() -> void:
 		changed.emit()
 		return
 	_daily_loading = true
+	var generation := _generation
 	daily_error = "CARICAMENTO MARKET..."
 	changed.emit()
 	var request := HTTPRequest.new()
@@ -57,6 +63,9 @@ func refresh_daily() -> void:
 		response = await request.request_completed
 	request.queue_free()
 	_daily_loading = false
+	if generation != _generation:
+		refresh_daily()
+		return
 	daily_error = "MARKET NON DISPONIBILE. Verifica la migrazione 012_daily_shop.sql."
 	if response.size() == 4 and response[0] == HTTPRequest.RESULT_SUCCESS and response[1] == 200:
 		var data = JSON.parse_string(response[3].get_string_from_utf8())
@@ -67,6 +76,7 @@ func refresh_daily() -> void:
 				if not id is String or unique.has(id): valid = false
 				unique.append(id)
 			if valid:
+				daily_refresh_available = bool(data.get("refresh_available", false))
 				_daily_ids = unique
 				daily_error = ""
 				var seconds := clampi(int(data.refresh_after), 1, 86400)
@@ -138,6 +148,9 @@ func _account_changed() -> void:
 	if str(_account.user_id) != _owner:
 		_owner = str(_account.user_id)
 		_generation += 1 # Anche A -> B -> A invalida la prima risposta di A.
+		_daily_ids.clear()
+		_daily_until = 0
+		daily_refresh_available = false
 		_inventory.clear()
 		inventory_ready = false
 		last_error = ""

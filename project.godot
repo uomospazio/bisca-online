@@ -38,6 +38,7 @@ AccountProfile="*res://scenes/balatro/scripts/account_profile.gd"
 ShopManager="*res://scenes/balatro/scripts/shop_manager.gd"
 FriendsManager="*res://scenes/balatro/scripts/friends_manager.gd"
 PushNotifications="*res://scenes/balatro/scripts/push_notifications.gd"
+RewardedAds="*res://scenes/balatro/scripts/rewarded_ads.gd"
 
 [bisca]
 
@@ -59,7 +60,7 @@ movie_writer/movie_file="result.avi"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/bisca_voice/plugin.cfg", "res://addons/godotx_firebase/plugin.cfg", "res://addons/web_covers/plugin.cfg")
+enabled=PackedStringArray("res://addons/bisca_voice/plugin.cfg", "res://addons/godotx_firebase/plugin.cfg", "res://addons/web_covers/plugin.cfg", "res://addons/admob/plugin.cfg")
 
 [gui]
 

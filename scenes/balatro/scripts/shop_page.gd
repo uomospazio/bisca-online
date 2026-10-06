@@ -108,6 +108,21 @@ func setup(menu: Control) -> void:
 	back.set_meta("safe_bottom", false)
 	back.position = Vector2(40, 40)
 	fixed_controls = [back, counter]
+	get_node("/root/RewardedAds").changed.connect(func():
+		back.disabled = get_node("/root/RewardedAds").busy
+	)
+	var video := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
+	video.position = Vector2(40, 710)
+	video.size.x = 350
+	add_child(video)
+	var refresh_video := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
+	refresh_video.placement = "refresh"
+	refresh_video.caption = "VIDEO · CAMBIA OFFERTE"
+	refresh_video.position = Vector2(40, 870)
+	refresh_video.size.x = 350
+	add_child(refresh_video)
+	fixed_controls.append_array([video, refresh_video])
+	status.position = Vector2(400, 950)
 
 	_build_purchase_dialog()
 	get_viewport().size_changed.connect(_fit_offer_scale, CONNECT_DEFERRED)
@@ -231,7 +246,7 @@ func _item_at_position(viewport_position: Vector2) -> String:
 	return ""
 
 func _ask_purchase(item_id: String) -> void:
-	if manager.purchasing:
+	if manager.purchasing or get_node("/root/RewardedAds").busy:
 		return
 
 	if manager.owns_item(item_id):

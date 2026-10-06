@@ -26,6 +26,22 @@ var buttons: HBoxContainer
 var wide_prediction_banner := false
 var panel_style: StyleBoxFlat
 var victory_details: VBoxContainer
+var rewarded_offer: Control
+
+func setup_rewarded_offer(placement: String, match_id: String) -> void:
+	if is_instance_valid(rewarded_offer):
+		rewarded_offer.get_parent().remove_child(rewarded_offer)
+		rewarded_offer.queue_free()
+	var offer := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
+	offer.placement = placement
+	offer.context = match_id
+	offer.caption = "VIDEO · +50 MONETE EXTRA" if placement == "multi" else "VIDEO · +30 MONETE"
+	offer.custom_minimum_size.x = 450
+	offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var column := buttons.get_parent()
+	column.add_child(offer)
+	column.move_child(offer, buttons.get_index())
+	rewarded_offer = offer
 
 func _update_banner_width() -> void:
 	panel.custom_minimum_size.x = size.x / 1.5 if wide_prediction_banner else 1280.0 / 1.5
@@ -33,6 +49,7 @@ func _update_banner_width() -> void:
 		prediction_title.custom_minimum_size.x = maxf(1.0, size.x - 96.0)
 
 func _set_wide_prediction_banner(enabled: bool) -> void:
+	if is_instance_valid(rewarded_offer): rewarded_offer.hide()
 	if is_instance_valid(victory_details):
 		victory_details.hide()
 	wide_prediction_banner = enabled
@@ -135,6 +152,11 @@ func _ready() -> void:
 		else:
 			button.pressed.connect(func(): hide(); menu_requested.emit())
 	hide()
+	get_node("/root/RewardedAds").changed.connect(_rewarded_state_changed)
+
+func _rewarded_state_changed() -> void:
+	for button in buttons.get_children():
+		button.disabled = get_node("/root/RewardedAds").busy
 
 func _overlay_button_style(color: Color, border_color: Color = Color.TRANSPARENT, border_width: int = 0) -> StyleBoxFlat:
 	# I pulsanti dell'overlay sono alti 64 px: radius Y/2 = 32.

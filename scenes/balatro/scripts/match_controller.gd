@@ -544,7 +544,10 @@ func _set_button_radius(button: Button, radius: int) -> void:
 			style.set_corner_radius_all(radius)
 			button.add_theme_stylebox_override(state, style)
 
+var solo_ad_match := ""
+
 func _start(count: int) -> void:
+	solo_ad_match = preload("res://scenes/balatro/scripts/rewarded_ads.gd").new_id()
 	presented_damage_round = -1
 	if busy:
 		return
@@ -848,6 +851,7 @@ func _show_victory() -> void:
 	var winner_id: int = rules.winner
 	var avatar: Texture2D = scores.get_child(winner_id).profile_texture
 	overlay.show_victory(_name_of(winner_id), avatar, rules.players[winner_id], online and not online_match.state.get("singleplayer", false), not online or online_match.local_id == 0)
+	overlay.setup_rewarded_offer("multi" if online else "solo", str(online_match.state.get("reward_match", "")) if online else solo_ad_match)
 
 func _play_turn_sound() -> void:
 	if rules.current != 0 or not rules.phase in ["prediction", "play"]:

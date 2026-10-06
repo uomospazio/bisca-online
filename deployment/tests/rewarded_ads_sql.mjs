@@ -1,0 +1,56 @@
+// Run: node deployment/tests/rewarded_ads_sql.mjs /absolute/path/to/@electric-sql/pglite/dist/index.js
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+const { PGlite } = await import(pathToFileURL(process.argv[2]).href);
+const db = new PGlite();
+const user = '11111111-1111-1111-1111-111111111111';
+const match = '22222222-2222-2222-2222-222222222222';
+await db.exec(`
+create role anon; create role authenticated;
+create schema auth;
+create function auth.uid() returns uuid language sql as $$ select '${user}'::uuid $$;
+create table public.bisca_profiles(id uuid primary key, credits integer not null default 0);
+create table public.bisca_items(id text primary key, is_available boolean, is_default boolean);
+create table public.bisca_daily_offers(day date primary key,items text[]);
+create table public.bisca_match_results(match_id uuid,user_id uuid);
+insert into public.bisca_profiles values('${user}',100);
+insert into public.bisca_items select 'item_'||g,true,false from generate_series(1,9) g;
+`);
+await db.exec(await readFile(new URL('../supabase/016_rewarded_ads_test.sql', import.meta.url), 'utf8'));
+async function rpc(fn, args) {
+  return (await db.query(`select public.${fn}(${args.map((_, i) => '$'+(i+1)).join(',')}) as result`, args)).rows[0].result;
+}
+await assert.rejects(rpc('bisca_ad_test_eligible', ['shop','']), /TESTER_REQUIRED/);
+await db.exec(`insert into public.bisca_ad_testers values('${user}')`);
+const id = n => `00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+let r = await rpc('bisca_claim_test_ad',[id(1),'shop','']);
+assert.equal(r.credits,120);
+r = await rpc('bisca_claim_test_ad',[id(1),'shop','']);
+assert.equal(r.credits,120,'retry must not pay twice');
+await assert.rejects(rpc('bisca_claim_test_ad',[id(1),'solo',match]),/INVALID_CLAIM/);
+r = await rpc('bisca_claim_test_ad',[id(2),'solo',match]);
+assert.equal(r.credits,150);
+await assert.rejects(rpc('bisca_claim_test_ad',[id(3),'solo',match]),/ALREADY_CLAIMED/);
+await assert.rejects(rpc('bisca_claim_test_ad',[id(4),'multi',match]),/MATCH_NOT_RECORDED/);
+await db.exec(`insert into public.bisca_match_results values('${match}','${user}')`);
+r = await rpc('bisca_claim_test_ad',[id(4),'multi',match]);
+assert.equal(r.credits,200);
+const before = await rpc('bisca_daily_shop',[]);
+assert.equal(before.items.length,3);
+await rpc('bisca_claim_test_ad',[id(5),'refresh','']);
+const after = await rpc('bisca_daily_shop',[]);
+assert.equal(after.refresh_available,false);
+assert.equal(after.items.length,3);
+assert.ok(after.items.every(x => !before.items.includes(x)));
+assert.deepEqual((await rpc('bisca_daily_shop',[])).items,after.items);
+await assert.rejects(rpc('bisca_claim_test_ad',[id(6),'refresh','']),/DAILY_REFRESH_USED/);
+assert.equal((await rpc('bisca_claim_test_ad',[id(5),'refresh',''])).credits,200);
+for (let n=10;n<15;n++) await rpc('bisca_claim_test_ad',[id(n),'shop','']);
+assert.equal((await db.query('select credits from public.bisca_profiles')).rows[0].credits,300);
+await db.exec("update public.bisca_personal_offers set day=day-1");
+assert.equal((await rpc('bisca_daily_shop',[])).refresh_available,true);
+await db.exec('set role authenticated');
+await assert.rejects(db.query('select * from public.bisca_ad_testers'), /permission denied/);
+await db.close();
+console.log('PASS: opt-in testers, 20/30/50, idempotency, match validation, once/day personal refresh, no shop cap, RLS.');

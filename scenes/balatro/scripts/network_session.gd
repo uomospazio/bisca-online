@@ -21,6 +21,14 @@ func avatar_for_slot(slot: int) -> Texture2D:
 	var people: Array = latest.get("people", [])
 	if slot < 0 or slot >= people.size():
 		return null
+	if people[slot].get("bot", false):
+		# voice_id è casuale, stabile e condiviso dal server: tutti vedono
+		# lo stesso avatar del bot, anche dopo un rientro nella partita.
+		var identity := str(people[slot].get("voice_id", "bot-%d" % slot))
+		if not avatar_textures.has(identity):
+			var catalog = load("res://scenes/balatro/scripts/avatar_catalog.gd")
+			avatar_textures[identity] = catalog.TEXTURES[posmod(identity.hash(), catalog.TEXTURES.size())]
+		return avatar_textures[identity]
 	return avatar_textures.get(str(people[slot].get("voice_id", "")))
 
 @rpc("authority", "call_remote", "reliable")

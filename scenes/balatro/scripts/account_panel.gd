@@ -1,4 +1,5 @@
 extends Control
+signal action_completed(action: String)
 ## UI account distinta dal profilo temporaneo delle lobby.
 
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
@@ -289,7 +290,7 @@ func _show(next: String) -> void:
 
 		if (
 			not account.anonymous
-			and account.password_ready
+			and (account.password_ready or account.social_ready)
 		):
 			_button(
 				"ESCI DALL'ACCOUNT",
@@ -482,6 +483,7 @@ func _run(action: String) -> void:
 		)
 		return
 
+	action_completed.emit(action)
 	_show(
 		"verify"
 		if action == "link"

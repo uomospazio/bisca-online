@@ -2,6 +2,8 @@ extends Node
 
 signal selected(avatar: String)
 const AvatarData = preload("res://scenes/balatro/scripts/avatar_data.gd")
+const Avatars = preload("res://scenes/balatro/scripts/avatar_catalog.gd")
+var avatar_index := -1
 var bridge: JavaScriptObject
 var dialog: Control
 var status: Label
@@ -26,8 +28,18 @@ func _ready() -> void:
 func open(display_name: String) -> void:
 	var current = get_parent().get("profile_avatar")
 	chosen = str(current) if current != null else ""
+	if chosen.is_empty():
+		chosen = Avatars.encoded(0)
+	avatar_index = -1
+	for index in range(Avatars.TEXTURES.size()):
+		if chosen == Avatars.encoded(index):
+			avatar_index = index
+			break
 	if bridge:
-		bridge.open(display_name)
+		var presets: Array[String] = []
+		for index in range(Avatars.TEXTURES.size()):
+			presets.append(Avatars.encoded(index))
+		bridge.open(display_name, chosen, JSON.stringify(presets))
 		return
 	# Native desktop import; browser builds also offer camera capture.
 	if dialog == null:
@@ -57,12 +69,18 @@ func open(display_name: String) -> void:
 		column.name = "ProfileContent"
 		column.add_theme_constant_override("separation", 24)
 		panel.add_child(column)
+		var carousel := HBoxContainer.new()
+		carousel.alignment = BoxContainer.ALIGNMENT_CENTER
+		carousel.add_theme_constant_override("separation", 32)
+		column.add_child(carousel)
+		_avatar_arrow(carousel, "arrow-left.svg", -1)
 		preview = TextureRect.new()
 		preview.custom_minimum_size = Vector2(256, 256)
 		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		column.add_child(preview)
+		carousel.add_child(preview)
+		_avatar_arrow(carousel, "arrow-right.svg", 1)
 		var sources := HBoxContainer.new()
 		sources.alignment = BoxContainer.ALIGNMENT_CENTER
 		sources.add_theme_constant_override("separation", 24)
@@ -109,6 +127,20 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 	button.add_theme_font_size_override("font_size", 32)
 	return button
 
+func _avatar_arrow(parent: Control, icon_file: String, step: int) -> void:
+	var arrow := _button(parent, "", func():
+		avatar_index = posmod(avatar_index + step, Avatars.TEXTURES.size()) if avatar_index >= 0 else (0 if step > 0 else Avatars.TEXTURES.size() - 1)
+		chosen = Avatars.encoded(avatar_index)
+		preview.texture = AvatarData.circular_texture(chosen)
+		confirm.disabled = chosen.is_empty()
+		_set_status("")
+	)
+	arrow.custom_minimum_size = Vector2(80, 80)
+	arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	arrow.icon = load("res://scenes/balatro/trick_asset/ui_bisca/" + icon_file)
+	arrow.expand_icon = true
+	arrow.add_theme_constant_override("icon_max_width", 36)
+
 func _open_camera() -> void:
 	if photo_bridge != null and photo_bridge.has_method("open_camera"):
 		photo_pending = true
@@ -147,6 +179,7 @@ func _import_file(path: String) -> void:
 		chosen = ""
 		return
 	preview.texture = AvatarData.circular_texture(chosen)
+	avatar_index = -1
 	confirm.disabled = false
 	_set_status("")
 
@@ -172,6 +205,7 @@ func _process(_delta: float) -> void:
 					_set_status("Foto non disponibile. Controlla i permessi e riprova.")
 				else:
 					chosen = photo
+					avatar_index = -1
 					preview.texture = AvatarData.circular_texture(chosen)
 					confirm.disabled = false
 					_set_status("")

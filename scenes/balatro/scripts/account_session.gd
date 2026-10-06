@@ -15,6 +15,7 @@ var anonymous := true
 var email_verified := false
 var pending_email := ""
 var password_ready := false
+var social_ready := false
 var _access_token := ""
 var _refresh_token := ""
 var _expires_at := 0
@@ -29,6 +30,9 @@ func match_access_token() -> String:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	var social := preload("res://scenes/balatro/scripts/social_auth.gd").new()
+	social.name = "SocialAuth"
+	add_child(social)
 	# I server e i test headless non devono creare utenti reali.
 	if DisplayServer.get_name() == "headless" or OS.get_cmdline_user_args().has("--server"):
 		return
@@ -49,7 +53,10 @@ func _ready() -> void:
 	_refresh_token = str(_cache.get_value("session", "refresh_token", ""))
 	pending_email = str(_cache.get_value("session", "pending_email", ""))
 	password_ready = bool(_cache.get_value("session", "password_ready", false))
-	connect_account()
+	social_ready = bool(_cache.get_value("session", "social_ready", false))
+	# Nuove installazioni scelgono l'accesso nella pagina iniziale.
+	if not user_id.is_empty() or not _refresh_token.is_empty():
+		connect_account()
 
 func connect_account() -> void:
 	if _busy or _request == null:
@@ -95,6 +102,7 @@ func connect_account() -> void:
 	_cache.set_value("session", "refresh_token", _refresh_token)
 	_cache.set_value("session", "pending_email", pending_email)
 	_cache.set_value("session", "password_ready", password_ready)
+	_cache.set_value("session", "social_ready", social_ready)
 	if _cache.save(SESSION_FILE) != OK:
 		_fail("Account connesso, ma salvataggio locale non riuscito.")
 		return
@@ -122,6 +130,7 @@ func _read_user(data: Dictionary) -> void:
 	email = str(data.get("email", ""))
 	anonymous = bool(data.get("is_anonymous", true))
 	email_verified = data.get("email_confirmed_at") != null
+	social_ready = _has_social_identity(data)
 	if email_verified:
 		pending_email = ""
 
@@ -221,7 +230,13 @@ func continue_as_new_guest() -> Dictionary:
 		return {"ok": false, "message": "Impossibile salvare il nuovo ospite. Sessione precedente conservata."}
 	return {"ok": true}
 
-func _accept_session(data: Dictionary, allow_switch: bool) -> bool:
+static func _has_social_identity(user: Dictionary) -> bool:
+	for identity in user.get("identities", []):
+		if identity is Dictionary and identity.get("provider", "") in ["google", "apple"]:
+			return true
+	return false
+
+func _accept_session(data: Dictionary, allow_switch: bool, password_login := true) -> bool:
 	var user: Dictionary = data.get("user", {})
 	var next_id := str(user.get("id", ""))
 	if next_id.is_empty() or str(data.get("refresh_token", "")).is_empty() or str(data.get("access_token", "")).is_empty():
@@ -231,8 +246,9 @@ func _accept_session(data: Dictionary, allow_switch: bool) -> bool:
 	var next_cache := ConfigFile.new()
 	next_cache.set_value("session", "user_id", next_id)
 	next_cache.set_value("session", "refresh_token", data.refresh_token)
-	var next_password_ready := not bool(user.get("is_anonymous", true)) and (allow_switch or password_ready)
+	var next_password_ready := not bool(user.get("is_anonymous", true)) and (password_login if allow_switch else password_ready)
 	next_cache.set_value("session", "password_ready", next_password_ready)
+	next_cache.set_value("session", "social_ready", _has_social_identity(user))
 	if next_cache.save(SESSION_FILE) != OK:
 		return false
 	_cache = next_cache
@@ -251,7 +267,7 @@ func _accept_session(data: Dictionary, allow_switch: bool) -> bool:
 	return true
 
 func sign_out() -> Dictionary:
-	if anonymous or not password_ready:
+	if anonymous or not (password_ready or social_ready):
 		return {"ok": false, "message": "Collega prima email e password per non perdere l'ospite."}
 	var result := await _auth_action("logout?scope=local", HTTPClient.METHOD_POST, {})
 	if not result.ok:
@@ -269,6 +285,7 @@ func sign_out() -> Dictionary:
 	anonymous = true
 	email_verified = false
 	password_ready = false
+	social_ready = false
 	status = "offline"
 	changed.emit()
 	connect_account()

@@ -4,6 +4,7 @@ const Rules = preload("res://scenes/balatro/scripts/match_rules.gd")
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 var bot_policy = preload("res://scenes/balatro/scripts/local_bot_policy.gd").new()
 var local_bot_generation := 0
+var local_bot_avatars: Dictionary = {}
 const LOCAL_BOT_PREDICTION_DELAY := 0.0
 const LOCAL_BOT_PLAY_DELAY := 0.0
 var skip_solo_requested := false
@@ -396,14 +397,6 @@ func _solo_offline_fallback() -> void:
 func _start_solo_offline(count: int) -> void:
 	online = false
 	_start(count)
-	var notice := Label.new()
-	notice.text = "SOLITARIA · SENZA PREMI"
-	notice.position = Vector2(620, 30)
-	notice.add_theme_color_override("font_color", Color("f3effe"))
-	notice.add_theme_font_size_override("font_size", 26)
-	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	game_ui.add_child(notice)
-	get_tree().create_timer(6.0).timeout.connect(notice.queue_free)
 
 func _name_of(id: int) -> String:
 	if online and id >= 0 and id < online_match.names.size():
@@ -574,6 +567,10 @@ func _start(count: int) -> void:
 	var seating: Array = CLOCKWISE_SEATS.filter(func(id): return id < count)
 	seating.shuffle()
 	rules.start(count, -1, seating)
+	local_bot_avatars.clear()
+	var avatars = preload("res://scenes/balatro/scripts/avatar_catalog.gd")
+	for id in range(1, count):
+		local_bot_avatars[id] = avatars.TEXTURES.pick_random()
 	pile.place_home()
 	displayed_taken.clear()
 	_clear(scores)
@@ -808,7 +805,7 @@ func _refresh() -> void:
 					visible_lives = result.previous_lives
 					visible_out = visible_lives <= 0
 		badge.configure(_name_of(p.id), visible_lives, p.bid, displayed_taken.get(p.id, p.taken), rules.current == p.id, visible_out, rules.phase in ["play", "trick_complete"])
-		badge.profile_texture = get_node("/root/NetworkSession").avatar_for_slot((p.id + online_match.local_id) % player_count) if online else (menu.profile_texture if p.id == 0 else null)
+		badge.profile_texture = get_node("/root/NetworkSession").avatar_for_slot((p.id + online_match.local_id) % player_count) if online else (menu.profile_texture if p.id == 0 else local_bot_avatars.get(p.id))
 		# configure() resets opacity for normal/eliminated seats. During this
 		# sequence opacity belongs to the exit/reveal tween, including its delays.
 		if prediction_focus and p.id != 0:

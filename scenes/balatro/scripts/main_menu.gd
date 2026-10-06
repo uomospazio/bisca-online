@@ -451,6 +451,9 @@ func _ready() -> void:
 	profile_button.add_child(camera_icon)
 	profile_button.pressed.connect(func(): profile_picker.open(chosen_name()))
 	profile_picker.selected.connect(_set_home_profile)
+	var profile_config := ConfigFile.new()
+	profile_config.load("user://profile_photo.cfg")
+	_set_home_profile(str(profile_config.get_value("profile", "avatar", "")))
 	_set_home_profile("")
 	deck_selector = preload("res://scenes/balatro/scripts/deck_selector.gd").new()
 	menu_content.add_child(deck_selector)
@@ -569,6 +572,9 @@ func _ready() -> void:
 	_refresh_default_name()
 	_start_title_wave()
 	_play_home_intro()
+	var welcome := preload("res://scenes/balatro/scripts/welcome_page.gd").new()
+	add_child(welcome)
+	welcome.setup(self)
 
 func _stop_home_intro() -> void:
 	if home_intro and home_intro.is_valid():
@@ -743,14 +749,18 @@ func _send_profile_name() -> void:
 		get_node("/root/NetworkSession").send({"op": "rename", "name": chosen_name()})
 
 func _set_home_profile(avatar: String) -> void:
+	var is_default := avatar.is_empty()
 	profile_avatar = avatar
-	profile_texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(avatar)
+	profile_texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(profile_avatar)
 	profile_button.texture_normal = profile_texture
-	profile_button.get_node("CameraIcon").visible = profile_texture == null
+	profile_button.get_node("CameraIcon").visible = is_default or profile_texture == null
+	var profile_config := ConfigFile.new()
+	profile_config.set_value("profile", "avatar", avatar)
+	profile_config.save("user://profile_photo.cfg")
 	profile_button.queue_redraw()
 	_refresh_single_profile()
 	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
-		get_node("/root/NetworkSession").send({"op": "profile", "avatar": avatar})
+		get_node("/root/NetworkSession").send({"op": "profile", "avatar": profile_avatar})
 
 func _show_support_creator() -> void:
 	var dialog := ConfirmationDialog.new()
@@ -1268,6 +1278,11 @@ func _refresh_default_name() -> void:
 		return
 	var cloud := get_node("/root/AccountProfile")
 	var default_name: String = cloud.account_display_name()
+	var welcome_config := ConfigFile.new()
+	if welcome_config.load("user://welcome.cfg") == OK and bool(welcome_config.get_value("welcome", "pending_name", false)):
+		var pending_owner := str(welcome_config.get_value("welcome", "owner", ""))
+		if pending_owner.is_empty() or pending_owner == str(get_node("/root/AccountSession").user_id):
+			default_name = str(welcome_config.get_value("welcome", "name", default_name))
 	# Solo un valore predefinito: non rinomina chi ha scelto un nome lobby proprio.
 	var net := get_node("/root/NetworkSession")
 	if net.room_code.is_empty() and (name_input.text.strip_edges().is_empty() or name_input.text == account_default_name):

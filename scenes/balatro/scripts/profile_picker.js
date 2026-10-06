@@ -11,9 +11,10 @@
       ++this.generation; this.stopCamera(); this.root?.remove(); this.root = null;
       this.result = '';
     },
-    open(name) {
+    open(name, current = '', presetsJson = '[]') {
       this.close(); const generation = this.generation;
-      let encoded = '', working = false;
+      const presets = JSON.parse(presetsJson);
+      let encoded = current, working = false, avatarIndex = presets.indexOf(current);
       const root = document.createElement('div'); this.root = root;
       root.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#241f1dbb;display:grid;place-items:center;padding:12px;box-sizing:border-box;touch-action:auto;';
       root.innerHTML = `<style>
@@ -23,14 +24,29 @@
         @media(max-height:500px){.bisca-profile{padding:12px;width:min(720px,94vw);font-size:14px}.bisca-profile h2{font-size:20px}.bisca-profile .photo{width:88px;height:88px;margin:8px auto}.bisca-profile small{margin:8px 0}.bisca-profile button{padding:8px 14px}}
       </style><section class="bisca-profile" role="dialog" aria-modal="true" aria-label="Il tuo profilo">
         <h2>IL TUO PROFILO</h2>
-        <div class="photo" aria-label="Anteprima foto profilo"></div>
+        <div class="choices" style="align-items:center;flex-wrap:nowrap"><button class="previous" aria-label="Avatar precedente">❮</button><div class="photo" aria-label="Anteprima foto profilo"></div><button class="next" aria-label="Avatar successivo">❯</button></div>
         <div class="choices sources"><button class="camera">SCATTA FOTO</button><button class="import">IMPORTA FOTO</button></div>
         <div class="capture" hidden><video autoplay muted playsinline></video><br><button class="take">SCATTA</button></div>
         <p class="status" role="status"></p>
-        <div class="choices"><button class="skip">SALTA</button><button class="save" disabled>CONFERMA</button></div>
+        <div class="choices"><button class="skip">INDIETRO</button><button class="save" disabled>CONFERMA</button></div>
       </section>`;
       const q = selector => root.querySelector(selector);
       const status = q('.status'), save = q('.save'), photo = q('.photo');
+      const showAvatar = value => {
+        encoded = value;
+        const img = document.createElement('img');
+        img.src = 'data:image/jpeg;base64,' + value; img.alt = 'Anteprima profilo';
+        photo.replaceChildren(img); save.disabled = !value;
+      };
+      if (current) showAvatar(current);
+      const cycle = step => {
+        if (working || !presets.length) return;
+        this.stopCamera(); q('.capture').hidden = true;
+        avatarIndex = avatarIndex < 0 ? (step > 0 ? 0 : presets.length - 1) : (avatarIndex + step + presets.length) % presets.length;
+        showAvatar(presets[avatarIndex]); status.textContent = '';
+      };
+      q('.previous').onclick = () => cycle(-1);
+      q('.next').onclick = () => cycle(1);
       const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.hidden = true; root.append(input);
       const cameraInput = document.createElement('input'); cameraInput.type = 'file'; cameraInput.accept = 'image/*'; cameraInput.setAttribute('capture','user'); cameraInput.hidden = true; root.append(cameraInput);
       const alive = () => this.generation === generation && this.root === root;
@@ -45,7 +61,7 @@
         let data = '';
         for (const quality of [.8,.65,.5,.35,.2]) { data=canvas.toDataURL('image/jpeg',quality); if(data.split(',')[1].length<=32768)break; }
         if(data.split(',')[1].length>32768)throw Error('Foto troppo complessa. Prova un’altra immagine.');
-        encoded=data.split(',')[1]; const img=document.createElement('img'); img.src=data; img.alt='Anteprima profilo'; photo.replaceChildren(img);
+        avatarIndex=-1; encoded=data.split(',')[1]; const img=document.createElement('img'); img.src=data; img.alt='Anteprima profilo'; photo.replaceChildren(img);
         save.disabled=false; status.textContent=''; this.stopCamera(); q('.capture').hidden=true;
       };
       const importFile = async file => {
@@ -72,8 +88,9 @@
       };
       q('.take').onclick=()=>{try{useImage(this.video);}catch(e){status.textContent=e.message;}};
       const finish=data=>{this.close();this.result=JSON.stringify({avatar:data});document.getElementById('canvas')?.focus();};
-      q('.skip').onclick=()=>finish('');save.onclick=()=>{if(encoded&&!working)finish(encoded);};
-      root.onkeydown=e=>{e.stopPropagation();if(e.key==='Escape')finish('');if(e.key==='Tab'){const nodes=[...root.querySelectorAll('button:not(:disabled)')].filter(b=>b.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault();}else if(!e.shiftKey&&document.activeElement===last){first.focus();e.preventDefault();}}};
+      const cancel=()=>{this.close();document.getElementById('canvas')?.focus();};
+      q('.skip').onclick=cancel;save.onclick=()=>{if(encoded&&!working)finish(encoded);};
+      root.onkeydown=e=>{e.stopPropagation();if(e.key==='Escape')cancel();if(e.key==='Tab'){const nodes=[...root.querySelectorAll('button:not(:disabled)')].filter(b=>b.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault();}else if(!e.shiftKey&&document.activeElement===last){first.focus();e.preventDefault();}}};
       document.body.append(root);q('.import').focus();
     }
   };

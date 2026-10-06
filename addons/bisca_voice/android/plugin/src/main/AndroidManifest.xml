@@ -1,6 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application>
+        <activity android:name="com.uomospazio.bisca.voice.BiscaAuthCallbackActivity"
+            android:exported="true" android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.bisca.game" android:host="auth" android:path="/callback" />
+            </intent-filter>
+        </activity>
         <meta-data
             android:name="org.godotengine.plugin.v2.BiscaVoice"
             android:value="com.uomospazio.bisca.voice.BiscaVoicePlugin" />

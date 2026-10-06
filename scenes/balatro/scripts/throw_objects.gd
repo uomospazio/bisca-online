@@ -2,6 +2,8 @@ extends Control
 
 const COOLDOWN := 8.0
 const SHORT_THROW_DISTANCE := 700.0
+const FULL_SPEED_THROW_DISTANCE := 1800.0
+const MAX_THROW_SPEED_MULTIPLIER := 1.8
 const FAST_THROW = preload("res://scenes/balatro/audio/fast-throw.mp3")
 const LONG_THROW = preload("res://scenes/balatro/audio/long-throw.mp3")
 const IMPACT = preload("res://scenes/balatro/audio/impact.mp3")
@@ -219,11 +221,16 @@ func _launch(sender: int, target: int, local_origin := Vector2.INF, object_id :=
 	var destination := _point(host.scores.get_child(target), Vector2(80, 128)) - projectile.size / 2
 	# Set the initial position before the first rendered frame.
 	projectile.position = origin
-	var sound: AudioStream = FAST_THROW if origin.distance_to(destination) <= SHORT_THROW_DISTANCE else LONG_THROW
-	var flight_duration := maxf(sound.get_length(), 0.1)
+	var distance := origin.distance_to(destination)
+	var sound: AudioStream = FAST_THROW if distance <= SHORT_THROW_DISTANCE else LONG_THROW
+	var distance_ratio := clampf((distance - SHORT_THROW_DISTANCE) / (FULL_SPEED_THROW_DISTANCE - SHORT_THROW_DISTANCE), 0.0, 1.0)
+	var speed_multiplier := lerpf(1.0, MAX_THROW_SPEED_MULTIPLIER, distance_ratio)
+	var flight_duration := maxf(sound.get_length(), 0.1) / speed_multiplier
 	# Each projectile owns its flight sound, including simultaneous throws.
 	var flight_audio := AudioStreamPlayer.new()
 	flight_audio.stream = sound
+	# Accorcia anche il suono di volo, così termina insieme all'impatto.
+	flight_audio.pitch_scale = speed_multiplier
 	get_node("/root/GameSettings").configure_sfx(flight_audio, -10.0)
 	projectile.add_child(flight_audio)
 	flight_audio.play()

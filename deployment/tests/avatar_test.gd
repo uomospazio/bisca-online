@@ -15,6 +15,11 @@ func _initialize() -> void:
 	var large := Image.create(512, 512, false, Image.FORMAT_RGB8)
 	assert(Avatar.decode(Marshalls.raw_to_base64(large.save_jpg_to_buffer())) == null)
 	assert(Avatar.decode(Marshalls.raw_to_base64(image.save_png_to_buffer())) == null)
+	var catalog = load("res://scenes/balatro/scripts/avatar_catalog.gd")
+	for index in range(catalog.TEXTURES.size()):
+		var preset: String = catalog.encoded(index)
+		assert(not preset.is_empty(), "Avatar must fit the network size limit")
+		assert(Avatar.decode(preset) != null, "Built-in avatar must be accepted by the server")
 	var picker = load("res://scenes/balatro/scripts/profile_picker.gd").new()
 	picker.free()
 	print("PASS: JPEG validation, dimension/size limits, round alpha mask, picker parsing")

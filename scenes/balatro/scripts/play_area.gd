@@ -2,7 +2,7 @@ extends Control
 
 signal card_played(card: Control)
 
-@export var played_scale: float = 1.0
+@export var played_scale: float = 1.08
 @export var card_spacing: float = 24.0
 
 var cards: Array[Control] = []
@@ -13,13 +13,13 @@ var throws: Array[Tween] = []
 var winning_card: Control
 const LANDINGS := [
 	Vector2(0, 150), # local: centered horizontally, closer to the hand
-	Vector2(-600, 30), # left side
-	Vector2(-470, -100), # upper-left curve
-	Vector2(-260, -150),
+	Vector2(-680, 30), # left side
+	Vector2(-510, -130), # upper-left curve
+	Vector2(-295, -150),
 	Vector2(0, -160), # upper center
-	Vector2(260, -150),
-	Vector2(470, -100), # upper-right curve
-	Vector2(600, 30), # right side
+	Vector2(295, -150),
+	Vector2(510, -130), # upper-right curve
+	Vector2(680, 30), # right side
 ]
 # Le carte vengono lanciate dalle posizioni dei giocatori, ma restano sempre
 # leggibili dal giocatore locale: niente carte capovolte o ruotate di lato.

@@ -62,6 +62,25 @@ class BiscaVoicePlugin(godot: Godot) : GodotPlugin(godot) {
 
     override fun getPluginName() = "BiscaVoice"
 
+    @UsedByGodot
+    fun open_auth(url: String) {
+        hostHandler.post {
+            BiscaAuthCallbackActivity.clear()
+            try {
+                val uri = android.net.Uri.parse(url)
+                require(uri.scheme == "https")
+                val host = activity ?: throw IllegalStateException()
+                host.startActivity(Intent(Intent.ACTION_VIEW, uri))
+            } catch (_: Exception) { BiscaAuthCallbackActivity.deliver("error") }
+        }
+    }
+
+    @UsedByGodot
+    fun drain_auth(): String = BiscaAuthCallbackActivity.drain()
+
+    @UsedByGodot
+    fun cancel_auth() { BiscaAuthCallbackActivity.clear() }
+
     private val photoLock = Any()
     private var photoResult = ""
     private var cameraPending = false

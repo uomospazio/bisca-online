@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <AuthenticationServices/AuthenticationServices.h>
 #import BISCA_SWIFT_HEADER
 #include "core/config/engine.h"
 #include "core/object/class_db.h"
@@ -14,8 +15,18 @@ protected:
         ClassDB::bind_method(D_METHOD("open_photo"), &BiscaVoice::open_photo);
         ClassDB::bind_method(D_METHOD("open_camera"), &BiscaVoice::open_camera);
         ClassDB::bind_method(D_METHOD("drain_photo"), &BiscaVoice::drain_photo);
+        ClassDB::bind_method(D_METHOD("open_auth", "url"), &BiscaVoice::open_auth);
+        ClassDB::bind_method(D_METHOD("drain_auth"), &BiscaVoice::drain_auth);
+        ClassDB::bind_method(D_METHOD("cancel_auth"), &BiscaVoice::cancel_auth);
     }
 public:
+    void open_auth(const String &url) {
+        @autoreleasepool { [BiscaAuthNative.shared open:[NSString stringWithUTF8String:url.utf8().get_data()]]; }
+    }
+    String drain_auth() {
+        @autoreleasepool { return String::utf8([BiscaAuthNative.shared drain].UTF8String); }
+    }
+    void cancel_auth() { [BiscaAuthNative.shared cancel]; }
     void open_photo() { [BiscaPhotoNative.shared open]; }
     void open_camera() { [BiscaPhotoNative.shared openCamera]; }
     String drain_photo() {

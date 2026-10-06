@@ -20,7 +20,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Bisca"
-config/tags=PackedStringArray("experiment")
+config/tags=PackedStringArray("commercial_games")
 run/main_scene="res://scenes/balatro/balatro.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/bg_color=Color(0.09019608, 0.07450981, 0.14117648, 1)

@@ -54,6 +54,12 @@ const ROUND_ICON_SIZE := 54.0
 const DISCORD_BUTTON_SIZE := 108.0
 const DISCORD_POSITION := Vector2(40, 40)
 const DISCORD_INVITE_URL := "https://discord.gg/ZdRv3gVf8"
+
+# Supporta il creatore: pulsante coffee.png in alto a sinistra nella HOME.
+# Sostituisci TUO_NOME con il tuo link PayPal.Me oppure usa qui il tuo link Buy Me a Coffee.
+const SUPPORT_URL := "https://www.paypal.me/matteostoroni"
+const SUPPORT_BUTTON_POSITION := Vector2(40, 40)
+const SUPPORT_BUTTON_SIZE := Vector2(240, 240)
 # Icona e testo centrati insieme nei pulsanti principali.
 const PLAY_ICON_SIZE := 54.0
 const PLAY_ICON_TEXT_SPACING := 12.0
@@ -129,6 +135,7 @@ var active_page: Control
 var settings_page: Control
 var shop_page: Control
 var home_market_button: TextureButton
+var home_support_button: TextureButton
 var shop_return_page: Control
 var personalization_page: Control
 var shop_character: TextureRect
@@ -369,6 +376,46 @@ func _ready() -> void:
 	market_button.focus_entered.connect(hover.bind(true))
 	market_button.focus_exited.connect(hover.bind(false))
 
+
+	# SUPPORTA IL CREATORE: coffee.png, in alto a sinistra nella HOME.
+	# E' volutamente separato dallo Shop e non assegna monete/contenuti in-game.
+	var support_button := TextureButton.new()
+	home_support_button = support_button
+	support_button.name = "SupportCreator"
+	home_page.add_child(support_button)
+	support_button.texture_normal = preload("res://scenes/balatro/trick_asset/ui_bisca/coffee.png")
+	support_button.ignore_texture_size = true
+	support_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	# Stessa dimensione grafica di tastoShop.png.
+	# Angolo alto-sinistra: stesso sistema SafeEdges degli altri controlli
+	# fissati a sinistra. IMPORTANTE: niente secondo argomento "true":
+	# true viene usato per il bordo DESTRO; senza true il controllo segue il bordo SINISTRO.
+	support_button.size = SUPPORT_BUTTON_SIZE
+	support_button.position = SUPPORT_BUTTON_POSITION
+	support_button.pivot_offset = support_button.size / 2.0
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(support_button)
+	support_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	support_button.tooltip_text = "Supporta il creatore"
+	support_button.pressed.connect(_show_support_creator)
+	preload("res://scenes/balatro/scripts/button_audio.gd").attach(support_button)
+
+	# Stesso hover/pop del pulsante tastoShop.png.
+	var support_hover_state := {"tween": null}
+	var support_hover := func(active: bool):
+		if support_hover_state.tween and support_hover_state.tween.is_valid():
+			support_hover_state.tween.kill()
+		var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		support_hover_state.tween = tween
+		var ratio := clampf(128.0 / support_button.size.x, 0.5, 1.0)
+		tween.tween_property(support_button, "scale", Vector2.ONE * (1.0 + 0.2 * ratio if active else 1.0), 0.2 if active else 0.25)
+		tween.parallel().tween_property(support_button, "rotation_degrees", 5.0 * ratio * [-1.0, 1.0].pick_random() if active else 0.0, 0.1)
+		if active:
+			tween.tween_property(support_button, "rotation_degrees", 0.0, 0.1)
+	support_button.mouse_entered.connect(support_hover.bind(true))
+	support_button.mouse_exited.connect(support_hover.bind(false))
+	support_button.focus_entered.connect(support_hover.bind(true))
+	support_button.focus_exited.connect(support_hover.bind(false))
+
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
 	# Control separati: nessun Container forza le loro dimensioni.
 	for button in [single, multi, shop, settings, friends]:
@@ -530,6 +577,10 @@ func _stop_home_intro() -> void:
 		home_market_button.scale = Vector2.ONE
 		home_market_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		home_market_button.focus_mode = Control.FOCUS_ALL
+	if is_instance_valid(home_support_button):
+		home_support_button.scale = Vector2.ONE
+		home_support_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		home_support_button.focus_mode = Control.FOCUS_ALL
 	for button in home_intro_buttons:
 		button.scale = Vector2.ONE
 		button.modulate.a = 1.0
@@ -584,10 +635,10 @@ func animate_buttons_like_home(buttons: Array[Button]) -> void:
 func _animate_home_extras() -> void:
 	# Foto, nome e selettore mazzo entrano con lo stesso effetto pop,
 	# dopo i pulsanti (con leggero ritardo fra loro).
-	var home_extras: Array[Control] = [profile_button, name_input, deck_selector, home_market_button]
+	var home_extras: Array[Control] = [profile_button, name_input, deck_selector, home_market_button, home_support_button]
 	for index in home_extras.size():
 		var control: Control = home_extras[index]
-		if control.get_parent() != home_persistent_ui and control != home_market_button:
+		if control.get_parent() != home_persistent_ui and control != home_market_button and control != home_support_button:
 			continue
 		var final_scale := Vector2.ONE
 		if control == profile_button:
@@ -596,13 +647,13 @@ func _animate_home_extras() -> void:
 			final_scale = Vector2.ONE * HOME_DECK_SCALE
 		control.pivot_offset = control.size / 2.0
 		# Evita interazioni premature mentre l'elemento appare.
-		if control == profile_button or control == name_input or control == home_market_button:
+		if control == profile_button or control == name_input or control == home_market_button or control == home_support_button:
 			control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			control.focus_mode = Control.FOCUS_NONE
 		control.scale = Vector2.ZERO
 		var delay := HOME_INTRO_DELAY + (home_intro_buttons.size() + index) * HOME_INTRO_STAGGER
 		home_intro.tween_property(control, "scale", final_scale, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		if control == profile_button or control == name_input or control == home_market_button:
+		if control == profile_button or control == name_input or control == home_market_button or control == home_support_button:
 			home_intro.tween_callback(func():
 				if is_instance_valid(control):
 					control.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -700,6 +751,26 @@ func _set_home_profile(avatar: String) -> void:
 	_refresh_single_profile()
 	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
 		get_node("/root/NetworkSession").send({"op": "profile", "avatar": avatar})
+
+func _show_support_creator() -> void:
+	var dialog := ConfirmationDialog.new()
+	add_child(dialog)
+	dialog.title = "SUPPORTA IL CREATORE"
+	dialog.dialog_text = (
+		"Ti piace BISCA?\n\n"
+		+ "Puoi offrirmi un caffe' per supportare lo sviluppo del gioco.\n\n"
+		+ "Il supporto e' completamente facoltativo e non offre "
+		+ "monete, contenuti, vantaggi o funzionalita' nel gioco."
+	)
+	dialog.get_ok_button().text = "OFFRIMI UN CAFFE'"
+	dialog.get_cancel_button().text = "ANNULLA"
+	dialog.confirmed.connect(func():
+		OS.shell_open(SUPPORT_URL)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered(Vector2i(850, 500))
+
 
 func _open_discord() -> void:
 	OS.shell_open(DISCORD_INVITE_URL)

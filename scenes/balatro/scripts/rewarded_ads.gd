@@ -5,6 +5,10 @@ signal changed
 const ANDROID_UNIT := "ca-app-pub-3940256099942544/5224354917"
 const IOS_UNIT := "ca-app-pub-3940256099942544/1712485313"
 const SAVE := "user://rewarded_ads_test.cfg"
+
+# SOLO PER TEST UMP. Rimettere false prima della build di produzione.
+const UMP_DEBUG_FORCE_EEA := true
+const UMP_TEST_DEVICE_ID := "66350DC7-1D59-4CF7-BF79-7CF5FEB25942"
 var busy := false
 var message := ""
 var _initialized := false
@@ -82,7 +86,18 @@ func _start_consent_flow() -> void:
 	consent_ready = false
 	privacy_message = ""
 	changed.emit()
+
 	var params := ConsentRequestParameters.new()
+	if UMP_DEBUG_FORCE_EEA:
+		# Simula una prima installazione in area SEE/EEA.
+		# reset() è SOLO per test: con questa costante a true il popup può
+		# ricomparire a ogni avvio.
+		_consent_info.reset()
+		var debug_settings := ConsentDebugSettings.new()
+		debug_settings.debug_geography = DebugGeography.Values.EEA
+		debug_settings.test_device_hashed_ids.append(UMP_TEST_DEVICE_ID)
+		params.consent_debug_settings = debug_settings
+
 	_consent_info.update(
 		params,
 		func():

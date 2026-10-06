@@ -6,9 +6,10 @@ const ANDROID_UNIT := "ca-app-pub-3940256099942544/5224354917"
 const IOS_UNIT := "ca-app-pub-3940256099942544/1712485313"
 const SAVE := "user://rewarded_ads_test.cfg"
 
-# SOLO PER TEST UMP. Rimettere false prima della build di produzione.
+# Ignorate sempre nelle build release. Usare SOLO l'ID stampato da <UMP SDK>.
 const UMP_DEBUG_FORCE_EEA := true
-const UMP_TEST_DEVICE_ID := "66350DC7-1D59-4CF7-BF79-7CF5FEB25942"
+const UMP_TEST_DEVICE_ID := ""
+const UMP_DEBUG_RESET := false
 var busy := false
 var message := ""
 var _initialized := false
@@ -26,7 +27,8 @@ var _consent_started := false
 var _consent_info: ConsentInformation
 
 func _ump_log(text: String) -> void:
-	print("[BISCA UMP] " + text)
+	if OS.is_debug_build():
+		print("[BISCA UMP] " + text)
 
 func _ump_dump_state(where: String) -> void:
 	if _consent_info == null:
@@ -41,37 +43,28 @@ func _ump_dump_state(where: String) -> void:
 
 # Poing 5.1 espone enum GDScript con ordine Android-style:
 # UNKNOWN=0, NOT_REQUIRED=1, REQUIRED=2, OBTAINED=3.
-# L'SDK UMP nativo iOS usa invece:
-# UNKNOWN=0, REQUIRED=1, NOT_REQUIRED=2, OBTAINED=3.
-# I log su iPhone mostrano i valori nativi, quindi su iOS li interpretiamo
-# esplicitamente per evitare di inizializzare gli ads quando il consenso è richiesto.
+# Il bridge Objective-C++ normalizza già gli enum iOS: non invertirli di nuovo.
 func _consent_is_required() -> bool:
 	if _consent_info == null:
 		return false
 	var raw := int(_consent_info.get_consent_status())
-	if OS.get_name() == "iOS":
-		return raw == 1
 	return raw == int(ConsentInformation.ConsentStatus.REQUIRED)
 
 func _consent_is_not_required() -> bool:
 	if _consent_info == null:
 		return false
 	var raw := int(_consent_info.get_consent_status())
-	if OS.get_name() == "iOS":
-		return raw == 2
 	return raw == int(ConsentInformation.ConsentStatus.NOT_REQUIRED)
 
 func _consent_is_obtained() -> bool:
 	if _consent_info == null:
 		return false
-	return int(_consent_info.get_consent_status()) == 3
+	return _consent_info.get_consent_status() == ConsentInformation.ConsentStatus.OBTAINED
 
 func _privacy_options_are_required() -> bool:
 	if _consent_info == null:
 		return false
 	var raw := int(_consent_info.get_privacy_options_requirement_status())
-	if OS.get_name() == "iOS":
-		return raw == 1
 	return raw == int(ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED)
 
 static func new_id() -> String:
@@ -143,17 +136,17 @@ func _start_consent_flow() -> void:
 	changed.emit()
 
 	var params := ConsentRequestParameters.new()
-	if UMP_DEBUG_FORCE_EEA:
-		_ump_log("DEBUG ON | forcing EEA | test_device=" + UMP_TEST_DEVICE_ID)
-		# Simula una prima installazione in area SEE/EEA.
-		# reset() è SOLO per test: con questa costante a true il popup può
-		# ricomparire a ogni avvio.
+	if OS.is_debug_build() and UMP_DEBUG_RESET:
 		_consent_info.reset()
 		_ump_dump_state("after reset")
+	if OS.is_debug_build() and UMP_DEBUG_FORCE_EEA and not UMP_TEST_DEVICE_ID.is_empty():
+		_ump_log("Debug geography EEA richiesta; verificare riconoscimento dispositivo nei log UMP nativi.")
 		var debug_settings := ConsentDebugSettings.new()
 		debug_settings.debug_geography = DebugGeography.Values.EEA
 		debug_settings.test_device_hashed_ids.append(UMP_TEST_DEVICE_ID)
 		params.consent_debug_settings = debug_settings
+	elif OS.is_debug_build() and UMP_DEBUG_FORCE_EEA:
+		_ump_log("EEA NON forzata: inserire l'identificatore test stampato da <UMP SDK>, non l'UUID dell'iPhone.")
 
 	_ump_log("calling consent_information.update()")
 	_consent_info.update(
@@ -177,9 +170,13 @@ func _handle_consent_info_updated() -> void:
 	_ump_dump_state("_handle_consent_info_updated")
 
 	if _consent_is_required():
-		_ump_log("consent status REQUIRED (platform-aware)")
+		_ump_log("consent status REQUIRED (enum Poing)")
 		if not _consent_info.get_is_consent_form_available():
-			_ump_log("form_available=false from bridge; trying load anyway on REQUIRED state")
+			privacy_message = "Il modulo privacy non è disponibile. Riprova tra poco."
+			consent_ready = false
+			_consent_started = false
+			changed.emit()
+			return
 
 		_ump_log("loading consent form...")
 		UserMessagingPlatform.load_consent_form(
@@ -202,12 +199,13 @@ func _handle_consent_info_updated() -> void:
 					privacy_message += " " + str(error.message)
 				# Se il consenso è REQUIRED non inizializziamo AdMob.
 				consent_ready = false
+				_consent_started = false
 				changed.emit()
 		)
 		return
 
 	if _consent_is_not_required():
-		_ump_log("consent status NOT_REQUIRED (platform-aware)")
+		_ump_log("consent status NOT_REQUIRED (enum Poing): il server UMP non richiede un modulo.")
 	elif _consent_is_obtained():
 		_ump_log("consent status OBTAINED")
 	else:
@@ -218,11 +216,15 @@ func _handle_consent_info_updated() -> void:
 	changed.emit()
 
 func _can_request_ads_from_consent() -> bool:
+	# Compatibilità Poing 5.1: non espone il canRequestAds nativo.
+	# Valutare solo dopo update/callback, mai da un consenso salvato dall'app.
 	return _consent_is_not_required() or _consent_is_obtained()
 
 func _finish_consent_state() -> void:
 	_ump_dump_state("_finish_consent_state")
 	consent_ready = _can_request_ads_from_consent()
+	if not consent_ready:
+		_consent_started = false
 	_ump_log("consent_ready=" + str(consent_ready) + " | mobile_ads_initialized=" + str(_initialized))
 	if consent_ready and not _initialized:
 		MobileAds.initialize()
@@ -256,7 +258,7 @@ func request_reward(placement: String, context := "") -> void:
 	if not supported():
 		_set_message("Video disponibili nelle build Android e iOS con AdMob.")
 		return
-	if not _initialized:
+	if not consent_ready or not _initialized:
 		if not _consent_started:
 			_start_consent_flow()
 		_set_message("Completa le preferenze privacy prima di vedere il video.")

@@ -403,8 +403,10 @@ func _render_directory(entries: Array) -> void:
 			lock.custom_minimum_size = Vector2(36, 36)
 			lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			row.add_child(lock)
-		var join: Button = menu._button(row, "ENTRA", func():
-			if item.get("private", true):
+		var join: Button = menu._button(row, "RIENTRA" if item.get("rejoin", false) else "ENTRA", func():
+			if item.get("rejoin", false):
+				net.connect_room(net.endpoint, {"op": "rejoin", "code": net.room_code, "token": net.token})
+			elif item.get("private", true):
 				code.text = ""
 				_show_form(false)
 			else:

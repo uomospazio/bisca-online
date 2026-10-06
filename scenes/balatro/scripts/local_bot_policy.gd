@@ -3,7 +3,7 @@ extends "res://scenes/balatro/scripts/bot_policy.gd"
 # Single-player only. Yield between simulated moves (not entire rollouts),
 # keeping input/rendering responsive even in thread-free mobile Web exports.
 const FRAME_BUDGET_USEC := 1500
-const LOCAL_BID_SAMPLES := 8
+const LOCAL_BID_SAMPLES := 4
 
 func decide(view: Dictionary, actor: int, tree: SceneTree, valid: Callable) -> Dictionary:
 	if not valid.is_valid() or not valid.call():
@@ -12,11 +12,18 @@ func decide(view: Dictionary, actor: int, tree: SceneTree, valid: Callable) -> D
 	if view.hand_size == 1:
 		return {"bid": choose_bid(view, actor)} if bidding else choose_play(view, actor)
 	var options: Array = view.legal_bids if bidding else _options(view.players[actor].hand)
+	if not bidding:
+		var own: Dictionary = view.players[actor]
+		if own.hand.size() == 1 and own.hand[0] == JOKER:
+			return {"index": 0, "high": own.taken < own.bid}
+		var ordinary := options.filter(func(move): return own.hand[move.index] != JOKER)
+		if not ordinary.is_empty():
+			options = ordinary
 	var scores: Array[float] = []
 	scores.resize(options.size())
 	scores.fill(0.0)
 	var deadline := Time.get_ticks_usec() + FRAME_BUDGET_USEC
-	var sample_count := LOCAL_BID_SAMPLES if bidding else PLAY_SAMPLES
+	var sample_count := LOCAL_BID_SAMPLES if bidding else 8
 	for sample in range(sample_count):
 		var world := _sample_world(view, actor)
 		for index in range(options.size()):

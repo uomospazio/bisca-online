@@ -29,7 +29,7 @@ func _run() -> void:
 			var sync_ms := (Time.get_ticks_usec() - started) / 1000.0
 			var first_tick := ticks
 			var decision: Dictionary = await local.decide(view, actor, self, func(): return true)
-			assert(decision.bid == bid, "Bid changed")
+			assert(decision.bid in view.legal_bids, "Illegal bid")
 			assert(view == before, "View mutated")
 			print("BID players=%d cards=%d synchronous=%.1fms yielded_frames=%d" % [count, size, sync_ms, ticks - first_tick])
 			if size == 5 and count == 8:
@@ -45,7 +45,9 @@ func _run() -> void:
 			local.rng.seed = 9876
 			var play: Dictionary = sync.choose_play(view, actor)
 			decision = await local.decide(view, actor, self, func(): return true)
-			assert(decision == play, "Play changed")
+			assert(decision.index >= 0 and decision.index < view.players[actor].hand.size())
+			if size > 1:
+				assert(view.players[actor].hand[decision.index] != 30, "Preserve joker as backup")
 	var rules = Rules.new()
 	rules.start(8, 67)
 	var local = LocalBot.new()
@@ -59,5 +61,9 @@ func _run() -> void:
 	result = await local.decide(rules.view_for(rules.current), rules.current, self, func(): return true)
 	assert(Time.get_ticks_msec() - start >= 60, "Ignored pause")
 	assert(not result.is_empty())
-	print("PASS: equivalent decisions, responsive frames, unchanged views, cancellation and pause")
+	for needs_trick in [true, false]:
+		var view := {"phase": "play", "hand_size": 3, "players": [{"hand": [30], "taken": 0 if needs_trick else 1, "bid": 1}]}
+		var decision: Dictionary = await local.decide(view, 0, self, func(): return true)
+		assert(decision.high == needs_trick)
+	print("PASS: legal decisions, joker backup, responsive frames, unchanged views, cancellation and pause")
 	quit()

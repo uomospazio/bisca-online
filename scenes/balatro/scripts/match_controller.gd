@@ -4,8 +4,9 @@ const Rules = preload("res://scenes/balatro/scripts/match_rules.gd")
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 var bot_policy = preload("res://scenes/balatro/scripts/local_bot_policy.gd").new()
 var local_bot_generation := 0
-const LOCAL_BOT_PREDICTION_DELAY := 0.3
-const LOCAL_BOT_PLAY_DELAY := 0.1
+const LOCAL_BOT_PREDICTION_DELAY := 0.0
+const LOCAL_BOT_PLAY_DELAY := 0.0
+var skip_solo_requested := false
 const Deck = preload("res://scenes/balatro/scripts/deck.gd")
 const CardScene = preload("res://scenes/balatro/card.tscn")
 var BACK: Texture2D:
@@ -340,6 +341,7 @@ func _fit_full_screen_shade(shade: Control, screen_size: Vector2) -> void:
 	shade.size = screen_size
 
 func _show_menu() -> void:
+	skip_solo_requested = false
 	if solo_connecting:
 		solo_connecting = false
 		solo_generation += 1
@@ -547,6 +549,7 @@ func _set_button_radius(button: Button, radius: int) -> void:
 var solo_ad_match := ""
 
 func _start(count: int) -> void:
+	skip_solo_requested = false
 	solo_ad_match = preload("res://scenes/balatro/scripts/rewarded_ads.gd").new_id()
 	presented_damage_round = -1
 	if busy:
@@ -845,6 +848,8 @@ func _refresh() -> void:
 		status.set_mixed_text(heading + ("Fine round" if rules.phase == "round_complete" else "%s vince la partita!" % _name_of(rules.winner)))
 	if not rules.players[0].active and rules.phase not in ["finished", "round_complete"]:
 		status.set_mixed_text("%s\nSei eliminato: puoi seguire la partita" % status.text)
+		if not online:
+			_button("SALTA PARTITA", func(): skip_solo_requested = true)
 	hand.allow_play = rules.phase == "play" and rules.hand_size > 1 and rules.current == 0 and not busy and pending_joker == null
 
 func _show_victory() -> void:
@@ -1116,6 +1121,16 @@ func _drive() -> void:
 		return
 	busy = true
 	while true:
+		if skip_solo_requested:
+			skip_solo_requested = false
+			if not rules.players[0].active:
+				var survivors: Array[int] = []
+				for id in range(1, rules.players.size()):
+					if rules.players[id].active:
+						survivors.append(id)
+				if not survivors.is_empty():
+					rules.winner = survivors.pick_random()
+					rules.phase = "finished"
 		_refresh()
 		if rules.hand_size == 1 and rules.phase == "play":
 			status.set_mixed_text("Predizioni complete · Rivelazione delle carte")
@@ -1173,7 +1188,10 @@ func _drive() -> void:
 			return
 		var id: int = rules.current
 		var bot_delay := LOCAL_BOT_PREDICTION_DELAY if rules.phase == "prediction" else LOCAL_BOT_PLAY_DELAY
-		await get_tree().create_timer(bot_delay, false).timeout
+		if bot_delay > 0.0:
+			await get_tree().create_timer(bot_delay, false).timeout
+		else:
+			await get_tree().process_frame
 		# Bots only consume their own redacted view, never another hand.
 		var view: Dictionary = rules.view_for(id)
 		var generation := local_bot_generation

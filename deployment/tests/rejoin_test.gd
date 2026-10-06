@@ -11,6 +11,10 @@ func _initialize() -> void:
 	assert(net._rejoin_slot(room, "private-seat") == 0)
 	assert(net._rejoin_slot(room, "") == -1)
 	assert(net._rejoin_slot(room, "wrong-seat") == -1)
+	room.people[0]["account_id"] = "verified-host"
+	assert(net._account_slot(room, "verified-host") == 0)
+	assert(net._account_slot(room, "") == -1)
+	assert(net._account_slot(room, "other-account") == -1)
 	room.people[0].peer = 0
 	assert(net._rejoin_slot(room, "private-seat") == 0)
 	var hand: Array = rules.players[0].hand.duplicate()

@@ -72,13 +72,13 @@ const CLOCKWISE_SEATS := [0, 1, 2, 3, 4, 5, 6, 7]
 # Player 0 is local; the other seats run from left to right around the table.
 const SEAT_POSITIONS := [
 	Vector2(40, 705),
-	Vector2(45, 345),
-	Vector2(245, 80),
-	Vector2(550, 40),
-	Vector2(850, 30),
-	Vector2(1150, 40),
-	Vector2(1450, 80),
-	Vector2(1655, 345),
+	Vector2(20, 345),
+	Vector2(185, 20),
+	Vector2(550, 10),
+	Vector2(850, 10),
+	Vector2(1150, 10),
+	Vector2(1510, 20),
+	Vector2(1680, 345),
 ]
 
 @onready var hand = $Parallax/Hand/HBoxContainer

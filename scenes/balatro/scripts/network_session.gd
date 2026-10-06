@@ -107,6 +107,8 @@ func connect_room(address: String, command: Dictionary) -> void:
 	command = command.duplicate(true)
 	if command.get("op", "") == "list_lobbies":
 		command.merge({"resume_code": room_code, "resume_token": token})
+	if command.get("op", "") == "join_public" and address.strip_edges() == endpoint:
+		command.merge({"resume_code": room_code, "resume_token": token})
 	# Entering the same code after a reload must reclaim our seat, not try
 	# to add a new player to a match that is already running.
 	if command.get("op", "") == "join" and not token.is_empty() and str(command.get("code", "")).strip_edges().to_upper() == room_code and address.strip_edges() == endpoint:
@@ -232,7 +234,8 @@ func send(command: Dictionary) -> void:
 		request.rpc_id(1, command)
 
 func leave() -> void:
-	var keep_seat: bool = not token.is_empty() and (latest.is_empty() or (latest.get("stage", "lobby") != "lobby" and latest.get("phase", "") != "finished"))
+	# Anche la lobby conserva il posto (e il ruolo host) sul server.
+	var keep_seat: bool = not token.is_empty() and latest.get("phase", "") != "finished"
 	var voice := get_node_or_null("/root/VoiceChat")
 	if voice:
 		voice.leave()
@@ -294,6 +297,15 @@ func _rejoin_slot(room: Dictionary, credential: String) -> int:
 	for i in range(room.people.size()):
 		var person: Dictionary = room.people[i]
 		if not person.bot and person.token == credential:
+			return i
+	return -1
+
+func _account_slot(room: Dictionary, account_id: String) -> int:
+	# Solo identità verificata dal server: mai fidarsi di nome/avatar/id inviati.
+	if account_id.is_empty():
+		return -1
+	for i in range(room.people.size()):
+		if not room.people[i].bot and str(room.people[i].get("account_id", "")) == account_id:
 			return i
 	return -1
 
@@ -473,8 +485,16 @@ func request(command: Dictionary) -> void:
 			_reject(peer, "Account online non disponibile per la solitaria")
 			return
 		var slot := -1
+		if op == "join":
+			if str(command.get("resume_code", "")) == code:
+				slot = _rejoin_slot(room, str(command.get("resume_token", "")))
+			if slot < 0:
+				slot = _account_slot(room, account_id)
+			if slot >= 0:
+				op = "rejoin"
 		if op == "rejoin":
-			slot = _rejoin_slot(room, str(command.get("token", "")))
+			if slot < 0:
+				slot = _rejoin_slot(room, str(command.get("token", "")))
 			if slot < 0:
 				_reject(peer, "Posto non disponibile per il rientro")
 				return

@@ -15,6 +15,12 @@ var _completed: Dictionary = {}
 var _account: Node
 var _earned := false
 
+# UMP / privacy consent state.
+var consent_ready := false
+var privacy_message := ""
+var _consent_started := false
+var _consent_info: ConsentInformation
+
 static func new_id() -> String:
 	var h := Crypto.new().generate_random_bytes(16).hex_encode()
 	return "%s-%s-%s-%s-%s" % [h.substr(0, 8), h.substr(8, 4), h.substr(12, 4), h.substr(16, 4), h.substr(20, 12)]
@@ -27,9 +33,114 @@ func _ready() -> void:
 		_pending = config.get_value("ads", "pending", {})
 		_completed = config.get_value("ads", "completed", {})
 	_account.changed.connect(func(): changed.emit())
+	if supported():
+		call_deferred("_start_consent_flow")
 
 func supported() -> bool:
 	return OS.get_name() in ["Android", "iOS"] and Engine.has_singleton("PoingGodotAdMobRewardedAd")
+
+
+func privacy_supported() -> bool:
+	return (
+		OS.get_name() in ["Android", "iOS"]
+		and Engine.has_singleton("PoingGodotAdMobConsentInformation")
+		and Engine.has_singleton("PoingGodotAdMobUserMessagingPlatform")
+	)
+
+func privacy_options_required() -> bool:
+	if not privacy_supported() or _consent_info == null:
+		return false
+	return _consent_info.get_privacy_options_requirement_status() == ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+
+func show_privacy_options() -> void:
+	if not privacy_supported():
+		privacy_message = "Le opzioni privacy sono disponibili nell'app Android e iOS."
+		changed.emit()
+		return
+	if _consent_info == null:
+		_consent_info = UserMessagingPlatform.consent_information
+	if not privacy_options_required():
+		privacy_message = "Non sono richieste opzioni privacy aggiuntive per questo dispositivo."
+		changed.emit()
+		return
+	privacy_message = "Apertura preferenze privacy..."
+	changed.emit()
+	UserMessagingPlatform.show_privacy_options_form(func(error: FormError):
+		if error != null:
+			privacy_message = "Impossibile aprire le preferenze privacy: " + str(error.message)
+		else:
+			privacy_message = ""
+		_finish_consent_state()
+		changed.emit()
+	)
+
+func _start_consent_flow() -> void:
+	if _consent_started or not privacy_supported():
+		return
+	_consent_started = true
+	_consent_info = UserMessagingPlatform.consent_information
+	consent_ready = false
+	privacy_message = ""
+	changed.emit()
+	var params := ConsentRequestParameters.new()
+	_consent_info.update(
+		params,
+		func():
+			_handle_consent_info_updated(),
+		func(error: FormError):
+			# Se esiste già una decisione valida salvata, possiamo continuare.
+			# Con stato UNKNOWN/REQUIRED non richiediamo annunci.
+			privacy_message = "Impossibile aggiornare il consenso privacy."
+			if error != null and not str(error.message).is_empty():
+				privacy_message += " " + str(error.message)
+			_finish_consent_state()
+			changed.emit()
+	)
+
+func _handle_consent_info_updated() -> void:
+	var status := _consent_info.get_consent_status()
+	if status == ConsentInformation.ConsentStatus.REQUIRED:
+		if not _consent_info.get_is_consent_form_available():
+			privacy_message = "Il modulo privacy non è ancora disponibile. Riprova tra poco."
+			_finish_consent_state()
+			changed.emit()
+			return
+		UserMessagingPlatform.load_consent_form(
+			func(form: ConsentForm):
+				form.show(func(error: FormError):
+					if error != null:
+						privacy_message = "Errore nel modulo privacy: " + str(error.message)
+					else:
+						privacy_message = ""
+					_finish_consent_state()
+					changed.emit()
+				),
+			func(error: FormError):
+				privacy_message = "Impossibile caricare il modulo privacy."
+				if error != null and not str(error.message).is_empty():
+					privacy_message += " " + str(error.message)
+				_finish_consent_state()
+				changed.emit()
+		)
+		return
+	privacy_message = ""
+	_finish_consent_state()
+	changed.emit()
+
+func _can_request_ads_from_consent() -> bool:
+	if _consent_info == null:
+		return false
+	var status := _consent_info.get_consent_status()
+	return status in [
+		ConsentInformation.ConsentStatus.NOT_REQUIRED,
+		ConsentInformation.ConsentStatus.OBTAINED
+	]
+
+func _finish_consent_state() -> void:
+	consent_ready = _can_request_ads_from_consent()
+	if consent_ready and not _initialized:
+		MobileAds.initialize()
+		_initialized = true
 
 func _key(placement: String, context: String) -> String:
 	return str(_account.user_id) + ":" + placement + ":" + context
@@ -59,6 +170,11 @@ func request_reward(placement: String, context := "") -> void:
 	if not supported():
 		_set_message("Video disponibili nelle build Android e iOS con AdMob.")
 		return
+	if not _initialized:
+		if not _consent_started:
+			_start_consent_flow()
+		_set_message("Completa le preferenze privacy prima di vedere il video.")
+		return
 	busy = true
 	_serial += 1
 	var serial := _serial
@@ -70,9 +186,6 @@ func request_reward(placement: String, context := "") -> void:
 		_finish(str(check.get("message", "Account cambiato.")))
 		return
 	_set_message("Caricamento video di test...")
-	if not _initialized:
-		MobileAds.initialize()
-		_initialized = true
 	var callback := RewardedAdLoadCallback.new()
 	callback.on_ad_failed_to_load = func(_error: LoadAdError):
 		if serial == _serial: _finish("Video non disponibile. Riprova tra poco.")

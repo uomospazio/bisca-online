@@ -25,6 +25,8 @@ var push_status: Label
 var account_name: Label
 var account_id: Label
 var save_progress: Button
+var privacy_button: Button
+var privacy_status: Label
 
 func _text(it: String, en: String) -> String:
 	return en if settings.values.language == "en" else it
@@ -152,6 +154,23 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	var push_note := _label("", 26)
 	_translated(push_note, "Al primo avvio ti chiederemo il permesso. Se lo rifiuti, puoi riprovare da qui; potrebbe essere necessario abilitarlo anche nelle impostazioni del dispositivo.", "We will ask for permission the first time. If you decline, you can try again here; you may also need to enable it in your device settings.")
 	account.add_child(push_note)
+
+	privacy_button = menu._button(account, "", func():
+		get_node("/root/RewardedAds").show_privacy_options()
+	)
+	_translated(privacy_button, "GESTISCI PRIVACY", "MANAGE PRIVACY")
+	privacy_button.custom_minimum_size = Vector2(600, 76)
+	privacy_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	privacy_button.add_theme_font_size_override("font_size", 30)
+	_set_button_radius(privacy_button, 38)
+	privacy_status = _label("", 24)
+	privacy_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	privacy_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	account.add_child(privacy_status)
+	var rewarded_ads := get_node("/root/RewardedAds")
+	rewarded_ads.changed.connect(_sync_privacy)
+	_sync_privacy()
+
 	var row := _row(chapters, "")
 	_translated(row.get_child(0), "LINGUA", "LANGUAGE")
 	language = OptionButton.new()
@@ -214,6 +233,29 @@ func _layout_page() -> void:
 	footer_label.size = Vector2(width, 32)
 	footer_buttons.position = Vector2(bounds.get_center().x - 335.0, buttons_y)
 	footer_buttons.size = Vector2(670.0, 80.0)
+
+func _sync_privacy() -> void:
+	if not is_instance_valid(privacy_button):
+		return
+	var ads := get_node_or_null("/root/RewardedAds")
+	if ads == null or not ads.privacy_supported():
+		privacy_button.disabled = true
+		privacy_status.text = _text("Disponibile nell'app mobile.", "Available in the mobile app.")
+		return
+	var required: bool = bool(ads.privacy_options_required())
+	privacy_button.disabled = not required
+	if not str(ads.privacy_message).is_empty():
+		privacy_status.text = str(ads.privacy_message)
+	elif required:
+		privacy_status.text = _text(
+			"Puoi modificare o revocare qui le preferenze pubblicitarie.",
+			"You can change or withdraw your advertising preferences here."
+		)
+	else:
+		privacy_status.text = _text(
+			"Al momento non sono richieste opzioni privacy aggiuntive.",
+			"No additional privacy options are currently required."
+		)
 
 func _on_push_registration_changed(registered: bool, message: String) -> void:
 	if not is_instance_valid(push_status):
@@ -347,3 +389,4 @@ func _sync() -> void:
 	for entry in translations:
 		entry[0].set(entry[1], _text(entry[2], entry[3]))
 	language.select(1 if settings.values.language == "en" else 0)
+	_sync_privacy()

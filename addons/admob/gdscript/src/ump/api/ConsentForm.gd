@@ -1,17 +1,13 @@
 # MIT License
-
 # Copyright (c) 2023-present Poing Studios
-
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,21 +23,20 @@ static var _plugin := _get_plugin("PoingGodotAdMobUserMessagingPlatform")
 
 var _uid: int
 
-
 func _init(UID: int):
 	self._uid = UID
 
-
 var _on_consent_form_dismissed_callback
-
 
 func show(on_consent_form_dismissed := func(form_error: FormError): pass) -> void:
 	if _plugin:
 		self._on_consent_form_dismissed_callback = on_consent_form_dismissed
 		UserMessagingPlatform.active_consent_form = self
-		_plugin.show(_uid)
+
+		# Connect BEFORE presenting; dismissal can be immediate in error cases.
 		safe_connect(_plugin, "on_consent_form_dismissed", _on_consent_form_dismissed)
 
+		_plugin.show(_uid)
 
 func _on_consent_form_dismissed(uid: int, form_error_dictionary: Dictionary) -> void:
 	if uid == _uid:

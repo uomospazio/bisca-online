@@ -1,17 +1,13 @@
 # MIT License
-
 # Copyright (c) 2023-present Poing Studios
-
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,13 +22,11 @@ extends MobileSingletonPlugin
 static var _plugin := _get_plugin("PoingGodotAdMobUserMessagingPlatform")
 
 static var consent_information := ConsentInformation.new()
-
 static var active_consent_form: ConsentForm
 
 static var _on_consent_form_load_success_listener_callback
 static var _on_consent_form_load_failure_listener_callback
 static var _on_privacy_options_form_dismissed_callback
-
 
 static func load_consent_form(
 	on_consent_form_load_success_listener := func(consent_form: ConsentForm): pass,
@@ -41,7 +35,9 @@ static func load_consent_form(
 	if _plugin:
 		_on_consent_form_load_success_listener_callback = on_consent_form_load_success_listener
 		_on_consent_form_load_failure_listener_callback = on_consent_form_load_failure_listener
-		_plugin.load_consent_form()
+
+		# IMPORTANT: connect BEFORE asking the native plugin to load.
+		# On iOS the native callback may arrive immediately.
 		safe_connect(
 			_plugin,
 			"on_consent_form_load_success_listener",
@@ -55,13 +51,15 @@ static func load_consent_form(
 			CONNECT_ONE_SHOT
 		)
 
+		_plugin.load_consent_form()
 
 static func show_privacy_options_form(
 	on_privacy_options_form_dismissed := func(form_error: FormError): pass
 ) -> void:
 	if _plugin:
 		_on_privacy_options_form_dismissed_callback = on_privacy_options_form_dismissed
-		_plugin.show_privacy_options_form()
+
+		# Connect first to avoid losing an immediate native callback.
 		safe_connect(
 			_plugin,
 			"on_privacy_options_form_dismissed_listener",
@@ -69,16 +67,15 @@ static func show_privacy_options_form(
 			CONNECT_ONE_SHOT
 		)
 
+		_plugin.show_privacy_options_form()
 
 static func _on_consent_form_load_success_listener(UID: int) -> void:
 	_on_consent_form_load_success_listener_callback.call_deferred(ConsentForm.new(UID))
-
 
 static func _on_consent_form_load_failure_listener(form_error_dictionary: Dictionary) -> void:
 	_on_consent_form_load_failure_listener_callback.call_deferred(
 		FormError.create(form_error_dictionary)
 	)
-
 
 static func _on_privacy_options_form_dismissed_listener(form_error_dictionary: Dictionary) -> void:
 	var form_error := (

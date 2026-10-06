@@ -25,6 +25,55 @@ var privacy_message := ""
 var _consent_started := false
 var _consent_info: ConsentInformation
 
+func _ump_log(text: String) -> void:
+	print("[BISCA UMP] " + text)
+
+func _ump_dump_state(where: String) -> void:
+	if _consent_info == null:
+		_ump_log(where + " | consent_info=NULL")
+		return
+	_ump_log(
+		where
+		+ " | consent_status=" + str(_consent_info.get_consent_status())
+		+ " | form_available=" + str(_consent_info.get_is_consent_form_available())
+		+ " | privacy_options=" + str(_consent_info.get_privacy_options_requirement_status())
+	)
+
+# Poing 5.1 espone enum GDScript con ordine Android-style:
+# UNKNOWN=0, NOT_REQUIRED=1, REQUIRED=2, OBTAINED=3.
+# L'SDK UMP nativo iOS usa invece:
+# UNKNOWN=0, REQUIRED=1, NOT_REQUIRED=2, OBTAINED=3.
+# I log su iPhone mostrano i valori nativi, quindi su iOS li interpretiamo
+# esplicitamente per evitare di inizializzare gli ads quando il consenso è richiesto.
+func _consent_is_required() -> bool:
+	if _consent_info == null:
+		return false
+	var raw := int(_consent_info.get_consent_status())
+	if OS.get_name() == "iOS":
+		return raw == 1
+	return raw == int(ConsentInformation.ConsentStatus.REQUIRED)
+
+func _consent_is_not_required() -> bool:
+	if _consent_info == null:
+		return false
+	var raw := int(_consent_info.get_consent_status())
+	if OS.get_name() == "iOS":
+		return raw == 2
+	return raw == int(ConsentInformation.ConsentStatus.NOT_REQUIRED)
+
+func _consent_is_obtained() -> bool:
+	if _consent_info == null:
+		return false
+	return int(_consent_info.get_consent_status()) == 3
+
+func _privacy_options_are_required() -> bool:
+	if _consent_info == null:
+		return false
+	var raw := int(_consent_info.get_privacy_options_requirement_status())
+	if OS.get_name() == "iOS":
+		return raw == 1
+	return raw == int(ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED)
+
 static func new_id() -> String:
 	var h := Crypto.new().generate_random_bytes(16).hex_encode()
 	return "%s-%s-%s-%s-%s" % [h.substr(0, 8), h.substr(8, 4), h.substr(12, 4), h.substr(16, 4), h.substr(20, 12)]
@@ -37,6 +86,7 @@ func _ready() -> void:
 		_pending = config.get_value("ads", "pending", {})
 		_completed = config.get_value("ads", "completed", {})
 	_account.changed.connect(func(): changed.emit())
+	_ump_log("ready | os=" + OS.get_name() + " | rewarded_supported=" + str(supported()) + " | privacy_supported=" + str(privacy_supported()))
 	if supported():
 		call_deferred("_start_consent_flow")
 
@@ -54,7 +104,7 @@ func privacy_supported() -> bool:
 func privacy_options_required() -> bool:
 	if not privacy_supported() or _consent_info == null:
 		return false
-	return _consent_info.get_privacy_options_requirement_status() == ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+	return _privacy_options_are_required()
 
 func show_privacy_options() -> void:
 	if not privacy_supported():
@@ -79,7 +129,12 @@ func show_privacy_options() -> void:
 	)
 
 func _start_consent_flow() -> void:
-	if _consent_started or not privacy_supported():
+	_ump_log("_start_consent_flow()")
+	if _consent_started:
+		_ump_log("flow already started; skip")
+		return
+	if not privacy_supported():
+		_ump_log("privacy_supported=false; skip")
 		return
 	_consent_started = true
 	_consent_info = UserMessagingPlatform.consent_information
@@ -89,20 +144,26 @@ func _start_consent_flow() -> void:
 
 	var params := ConsentRequestParameters.new()
 	if UMP_DEBUG_FORCE_EEA:
+		_ump_log("DEBUG ON | forcing EEA | test_device=" + UMP_TEST_DEVICE_ID)
 		# Simula una prima installazione in area SEE/EEA.
 		# reset() è SOLO per test: con questa costante a true il popup può
 		# ricomparire a ogni avvio.
 		_consent_info.reset()
+		_ump_dump_state("after reset")
 		var debug_settings := ConsentDebugSettings.new()
 		debug_settings.debug_geography = DebugGeography.Values.EEA
 		debug_settings.test_device_hashed_ids.append(UMP_TEST_DEVICE_ID)
 		params.consent_debug_settings = debug_settings
 
+	_ump_log("calling consent_information.update()")
 	_consent_info.update(
 		params,
 		func():
+			_ump_log("update SUCCESS")
+			_ump_dump_state("after update success")
 			_handle_consent_info_updated(),
 		func(error: FormError):
+			_ump_log("update FAILURE | " + ("null error" if error == null else str(error.message)))
 			# Se esiste già una decisione valida salvata, possiamo continuare.
 			# Con stato UNKNOWN/REQUIRED non richiediamo annunci.
 			privacy_message = "Impossibile aggiornare il consenso privacy."
@@ -113,16 +174,20 @@ func _start_consent_flow() -> void:
 	)
 
 func _handle_consent_info_updated() -> void:
-	var status := _consent_info.get_consent_status()
-	if status == ConsentInformation.ConsentStatus.REQUIRED:
+	_ump_dump_state("_handle_consent_info_updated")
+
+	if _consent_is_required():
+		_ump_log("consent status REQUIRED (platform-aware)")
 		if not _consent_info.get_is_consent_form_available():
-			privacy_message = "Il modulo privacy non è ancora disponibile. Riprova tra poco."
-			_finish_consent_state()
-			changed.emit()
-			return
+			_ump_log("form_available=false from bridge; trying load anyway on REQUIRED state")
+
+		_ump_log("loading consent form...")
 		UserMessagingPlatform.load_consent_form(
 			func(form: ConsentForm):
+				_ump_log("consent form LOADED; showing...")
 				form.show(func(error: FormError):
+					_ump_log("consent form DISMISSED | " + ("no error" if error == null else str(error.message)))
+					_ump_dump_state("after form dismissed")
 					if error != null:
 						privacy_message = "Errore nel modulo privacy: " + str(error.message)
 					else:
@@ -131,28 +196,34 @@ func _handle_consent_info_updated() -> void:
 					changed.emit()
 				),
 			func(error: FormError):
+				_ump_log("consent form LOAD FAILURE | " + ("null error" if error == null else str(error.message)))
 				privacy_message = "Impossibile caricare il modulo privacy."
 				if error != null and not str(error.message).is_empty():
 					privacy_message += " " + str(error.message)
-				_finish_consent_state()
+				# Se il consenso è REQUIRED non inizializziamo AdMob.
+				consent_ready = false
 				changed.emit()
 		)
 		return
+
+	if _consent_is_not_required():
+		_ump_log("consent status NOT_REQUIRED (platform-aware)")
+	elif _consent_is_obtained():
+		_ump_log("consent status OBTAINED")
+	else:
+		_ump_log("consent status UNKNOWN/unexpected; ads remain blocked")
+
 	privacy_message = ""
 	_finish_consent_state()
 	changed.emit()
 
 func _can_request_ads_from_consent() -> bool:
-	if _consent_info == null:
-		return false
-	var status := _consent_info.get_consent_status()
-	return status in [
-		ConsentInformation.ConsentStatus.NOT_REQUIRED,
-		ConsentInformation.ConsentStatus.OBTAINED
-	]
+	return _consent_is_not_required() or _consent_is_obtained()
 
 func _finish_consent_state() -> void:
+	_ump_dump_state("_finish_consent_state")
 	consent_ready = _can_request_ads_from_consent()
+	_ump_log("consent_ready=" + str(consent_ready) + " | mobile_ads_initialized=" + str(_initialized))
 	if consent_ready and not _initialized:
 		MobileAds.initialize()
 		_initialized = true

@@ -13,6 +13,11 @@ func _ready() -> void:
 	add_theme_constant_override("separation", 8)
 	button = preload("res://scenes/balatro/scripts/rounded_square_button.gd").new()
 	button.custom_minimum_size = Vector2(350, 64)
+	button.icon = load("res://scenes/balatro/trick_asset/ui_bisca/ad.svg")
+	button.expand_icon = true
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.add_theme_constant_override("icon_max_width", 34)
 	button.add_theme_font_override("font", KIDS_FONT)
 	button.add_theme_font_size_override("font_size", 24)
 	button.add_theme_color_override("font_color", Style.TEXT)
@@ -37,7 +42,8 @@ func _update() -> void:
 	var pending: bool = ads.pending_for_account()
 	var used: bool = ads.claimed(placement, context)
 	if placement == "refresh": used = not get_node("/root/ShopManager").daily_refresh_available
-	button.text = "RECUPERA PREMIO" if pending else ("PREMIO GIÀ RICEVUTO" if used and placement != "refresh" else caption)
+	var clean_caption := caption.replace("VIDEO · ", "")
+	button.text = "RECUPERA PREMIO" if pending else ("PREMIO GIÀ RICEVUTO" if used and placement != "refresh" else clean_caption)
 	button.disabled = ads.busy or (used and not pending) or (not ads.supported() and not pending)
 	status.text = ads.message
 	if status.text.is_empty():

@@ -37,14 +37,14 @@ func setup(controller: Control) -> void:
 		textures.append(load(path) as Texture2D if not filename.is_empty() and ResourceLoader.exists(path) else null)
 	menu_button = RoundedSquareButton.new()
 	add_child(menu_button)
-	menu_button.size = Vector2(54, 54)
+	menu_button.size = Vector2(60, 60)
 	menu_button.expand_icon = true
 	menu_button.icon = _svg("res://scenes/balatro/trick_asset/ui_bisca/message.svg")
-	menu_button.add_theme_constant_override("icon_max_width", 32)
+	menu_button.add_theme_constant_override("icon_max_width", 36)
 	menu_button.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var style := Style.button_style(Style.HOVER if state in ["hover", "focus"] else Style.NORMAL)
-		style.set_corner_radius_all(27)
+		style.set_corner_radius_all(30)
 		menu_button.add_theme_stylebox_override(state, style)
 	menu_button.pressed.connect(func(): _open(not opened))
 	for index in range(3):

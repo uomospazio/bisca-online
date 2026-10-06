@@ -117,7 +117,7 @@ func setup(menu: Control) -> void:
 	add_child(video)
 	var refresh_video := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
 	refresh_video.placement = "refresh"
-	refresh_video.caption = "VIDEO · CAMBIA OFFERTE"
+	refresh_video.caption = "CAMBIA OFFERTE"
 	refresh_video.position = Vector2(40, 870)
 	refresh_video.size.x = 350
 	add_child(refresh_video)

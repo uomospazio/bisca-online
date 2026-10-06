@@ -69,15 +69,17 @@ var prediction_players_revealed := false
 const BOT_NAMES := ["", "Luca", "Sofia", "Marco", "Giulia", "Leo", "Emma", "Nico"]
 # The turn order follows the visual order of the seats around the table.
 const CLOCKWISE_SEATS := [0, 1, 2, 3, 4, 5, 6, 7]
+const LOCAL_PROFILE_SCALE := 1.65
+var seat_edge_controls: Dictionary = {}
 # Player 0 is local; the other seats run from left to right around the table.
 const SEAT_POSITIONS := [
 	Vector2(40, 705),
 	Vector2(20, 345),
-	Vector2(185, 20),
-	Vector2(550, 10),
+	Vector2(145, 55),
+	Vector2(480, 10),
 	Vector2(850, 10),
-	Vector2(1150, 10),
-	Vector2(1510, 20),
+	Vector2(1220, 10),
+	Vector2(1550, 55),
 	Vector2(1680, 345),
 ]
 
@@ -122,6 +124,7 @@ func _ready() -> void:
 	_set_button_radius(pause_button, 32)
 	pause_button.z_index = 200
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(pause_button)
+	seat_edge_controls[1] = pause_button
 	var card_info = preload("res://scenes/balatro/scripts/card_info.gd").new()
 	add_child(card_info)
 	card_info.setup(self)
@@ -144,6 +147,7 @@ func _ready() -> void:
 	info_button.z_index = 200
 	menu._add_gloss_button_style(info_button)
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info_button, true)
+	seat_edge_controls[7] = info_button
 
 	var voice = get_node("/root/VoiceChat")
 	var voice_button: Button = menu._round_icon_button(game_ui, "mic-off.svg", "Chat vocale", func():
@@ -783,10 +787,16 @@ func _refresh() -> void:
 		# positions. A refresh must not move a visible/revealing badge back to
 		# its seat for one frame.
 		if not prediction_focus or p.id == 0:
-			badge.position = SEAT_POSITIONS[_visual_seat_for_player(p.id)]
+			var seat := _visual_seat_for_player(p.id)
+			badge.position = SEAT_POSITIONS[seat]
+			if seat_edge_controls.has(seat):
+				var edge: Control = seat_edge_controls[seat]
+				var point := Vector2.ZERO if seat == 1 else Vector2(edge.size.x, 0)
+				var target: Vector2 = scores.get_global_transform_with_canvas().affine_inverse() * (edge.get_global_transform_with_canvas() * point)
+				badge.position.x = target.x - (160.0 * 1.35 if seat == 7 else 0.0)
 		if not prediction_focus:
 			badge.modulate.a = 1.0
-		var badge_scale := 1.5 if p.id == 0 else 1.35
+		var badge_scale := LOCAL_PROFILE_SCALE if p.id == 0 else 1.35
 		if not prediction_focus or p.id == 0:
 			badge.scale = Vector2.ONE * badge_scale
 		var presentation_modulate := badge.modulate

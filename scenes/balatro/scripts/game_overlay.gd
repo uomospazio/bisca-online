@@ -35,7 +35,7 @@ func setup_rewarded_offer(placement: String, match_id: String) -> void:
 	var offer := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
 	offer.placement = placement
 	offer.context = match_id
-	offer.caption = "VIDEO · +50 MONETE EXTRA" if placement == "multi" else "VIDEO · +30 MONETE"
+	offer.caption = "+50 MONETE EXTRA" if placement == "multi" else "+30 MONETE"
 	offer.custom_minimum_size.x = 450
 	offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var column := buttons.get_parent()

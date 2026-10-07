@@ -1,4 +1,5 @@
 extends Control
+const Look = preload("res://scenes/balatro/scripts/friends_look.gd")
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 var manager: Node
 var menu: Control
@@ -15,38 +16,93 @@ var search_timer: Timer
 func setup(host: Control) -> void:
 	menu = host
 	manager = get_node("/root/FriendsManager")
+	set_meta("cartoon_style_children_excluded", true)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var back: Button = menu._button(self, "INDIETRO", menu.show_home)
-	back.position = Vector2(40, 1080 - 40 - 96)
-	back.size = Vector2(260,96)
-	_set_button_radius(back, 48)
-
-	var title := preload("res://scenes/balatro/scripts/idle_subtitle.gd").new()
-	add_child(title)
-	title.text = "AMICI"
-	title.position = Vector2(710,55)
-	title.size = Vector2(500,90)
-	title.add_theme_font_override("font",menu.KIDS_FONT)
-	title.add_theme_font_size_override("font_size",58)
-	title.set_animated(true)
-
+	var back := action_button(self, "←", menu.show_home, "Indietro")
+	back.position = Vector2(40, 40)
+	back.size = Vector2(110, 110)
+	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(back)
+	friends_box = Panel.new()
+	add_child(friends_box)
+	friends_box.position = Vector2(260, 50)
+	friends_box.size = Vector2(1400, 960)
+	friends_box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	Look.decorate(friends_box, 70.0, Color("231b44"))
+	var title := label("AMICI", friends_box)
+	title.position = Vector2(40, 42)
+	title.size = Vector2(1320, 90)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 68)
+	title.add_theme_color_override("font_shadow_color", Color("090512"))
+	title.add_theme_constant_override("shadow_offset_y", 7)
+	title.add_theme_color_override("font_outline_color", Color("6c49ad"))
+	title.add_theme_constant_override("outline_size", 3)
+	var search_bar := Panel.new()
+	friends_box.add_child(search_bar)
+	search_bar.position = Vector2(42, 165)
+	search_bar.size = Vector2(1316, 100)
+	search_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	Look.decorate(search_bar, 50.0, Color("1a162b"))
+	var magnify := label("⌕", search_bar)
+	magnify.position = Vector2(25, 10)
+	magnify.add_theme_font_size_override("font_size", 58)
+	magnify.add_theme_font_override("font", ThemeDB.fallback_font)
 	query = LineEdit.new()
-	add_child(query)
-	query.position = Vector2(180,180)
-	query.size = Vector2(1050,70)
-	query.custom_minimum_size.y = 70
+	search_bar.add_child(query)
+	query.position = Vector2(105, 12)
+	query.size = Vector2(1105, 76)
 	query.placeholder_text = "Cerca un amico per nome o #codice"
 	query.max_length = 64
-	query.add_theme_font_size_override("font_size",30)
-	_set_line_edit_radius(query, 35)
-	# Ricerca automatica mentre si scrive, con un piccolo debounce
-	# per evitare una richiesta di rete a ogni singolo tasto.
+	query.add_theme_font_override("font", menu.KIDS_FONT)
+	query.add_theme_font_size_override("font_size", 28)
+	query.add_theme_color_override("font_color", Color("faf6ff"))
+	query.add_theme_color_override("font_placeholder_color", Color("b6a0ed"))
+	for state in ["normal", "focus", "read_only"]:
+		query.add_theme_stylebox_override(state, Look.padding(14))
+	var icon := TextureRect.new()
+	search_bar.add_child(icon)
+	icon.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/add_friends.svg")
+	icon.position = Vector2(1222, 23)
+	icon.size = Vector2(54, 54)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notice = label("", friends_box)
+	notice.position = Vector2(55, 272)
+	notice.size = Vector2(1290, 55)
+	notice.add_theme_font_size_override("font_size", 22)
+	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var well := Panel.new()
+	friends_box.add_child(well)
+	well.position = Vector2(40, 330)
+	well.size = Vector2(1320, 580)
+	var well_skin := StyleBoxFlat.new()
+	well_skin.bg_color = Color("171129")
+	well_skin.set_corner_radius_all(30)
+	well.add_theme_stylebox_override("panel", well_skin)
+	results = column(Vector2.ZERO)
+	contacts = column(Vector2.ZERO)
+	for box in [contacts, results]:
+		var scroll := box.get_parent() as ScrollContainer
+		scroll.reparent(friends_box)
+		scroll.position = Vector2(48, 340)
+		scroll.size = Vector2(1304, 560)
+		var bar := scroll.get_v_scroll_bar()
+		var track := StyleBoxFlat.new()
+		track.bg_color = Color("30234e")
+		track.set_corner_radius_all(7)
+		track.content_margin_left = 7
+		track.content_margin_right = 7
+		bar.add_theme_stylebox_override("scroll", track)
+		for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
+			var grab := track.duplicate()
+			grab.bg_color = Color("b38af8")
+			bar.add_theme_stylebox_override(state, grab)
 	search_timer = Timer.new()
 	search_timer.one_shot = true
 	search_timer.wait_time = 0.35
 	add_child(search_timer)
 	search_timer.timeout.connect(search)
-
 	query.text_changed.connect(func(_text):
 		search_generation += 1
 		search_timer.stop()
@@ -55,51 +111,81 @@ func setup(host: Control) -> void:
 		notice.text = ""
 		if query.text.strip_edges().length() >= 2:
 			search_timer.start()
-		else:
-			clear(results)
-			notice.text = ""
 	)
-
-	notice = label("",self)
-	notice.position = Vector2(180,270)
-	notice.size = Vector2(1560,90)
-	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	results = column(Vector2(180,380))
-	contacts = column(Vector2(990,380))
-
-	friends_box = Panel.new()
-	add_child(friends_box)
-	friends_box.position = Vector2(180, 210)
-	friends_box.size = Vector2(1500, 720)
-	friends_box.add_theme_stylebox_override("panel", Style.button_style(Style.PANEL, Style.HOVER, 4))
-	query.reparent(friends_box)
-	query.position = Vector2(24, 24)
-	query.size = Vector2(1452, 70)
-	_set_line_edit_radius(query, 35)
-	var search_icon := TextureRect.new()
-	query.add_child(search_icon)
-	search_icon.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/add_friends.svg")
-	search_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	search_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	search_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	search_icon.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	search_icon.position = Vector2(query.size.x - 62, 11)
-	search_icon.size = Vector2(48, 48)
 	query.text_submitted.connect(func(_text): search_timer.stop(); search())
-	notice.reparent(friends_box)
-	notice.position = Vector2(24, 106)
-	notice.size = Vector2(1452, 56)
-	for box in [contacts, results]:
-		var scroll := box.get_parent() as ScrollContainer
-		scroll.reparent(friends_box)
-		scroll.position = Vector2(24, 174)
-		scroll.size = Vector2(1452, 522)
 	_show_search_results()
-
 	manager.changed.connect(update_contacts)
 	get_node("/root/AccountSession").changed.connect(_identity_changed)
 	identity = str(get_node("/root/AccountSession").user_id)
 	update_contacts()
+
+func action_button(parent: Node, text: String, callback: Callable, hint := "", positive := false) -> Button:
+	var button := Button.new()
+	parent.add_child(button)
+	button.text = text
+	button.tooltip_text = hint
+	button.custom_minimum_size = Vector2(82, 82) if text.length() <= 2 else Vector2(245, 82)
+	button.size_flags_vertical = SIZE_SHRINK_CENTER
+	button.add_theme_font_override("font", ThemeDB.fallback_font if text.length() <= 2 else menu.KIDS_FONT)
+	button.add_theme_font_size_override("font_size", 50 if text.length() <= 2 else 28)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		button.add_theme_color_override(state, Color("faf6ff"))
+	button.add_theme_color_override("font_shadow_color", Color("0b0620"))
+	button.add_theme_constant_override("shadow_offset_y", 3)
+	Look.decorate(button, 50.0, Color("08762e") if positive else Color("38245a"))
+	button.pressed.connect(callback)
+	return button
+
+func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:
+	var tile := PanelContainer.new()
+	tile.custom_minimum_size.y = 124
+	tile.add_theme_stylebox_override("panel", Look.padding(20))
+	parent.add_child(tile)
+	Look.decorate(tile, 30.0)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 18)
+	tile.add_child(line)
+	var dot := Panel.new()
+	dot.custom_minimum_size = Vector2(28, 28)
+	dot.size_flags_vertical = SIZE_SHRINK_CENTER
+	var dot_skin := StyleBoxFlat.new()
+	dot_skin.bg_color = Color("0ce229") if row.get("online", false) else Color("82779e")
+	dot_skin.border_color = Color("b7aad8")
+	dot_skin.set_border_width_all(1)
+	dot_skin.set_corner_radius_all(14)
+	dot.add_theme_stylebox_override("panel", dot_skin)
+	dot.tooltip_text = "Online di recente" if row.get("online", false) else "Offline"
+	line.add_child(dot)
+	var portrait := PanelContainer.new()
+	portrait.custom_minimum_size = Vector2(80, 80)
+	portrait.size_flags_vertical = SIZE_SHRINK_CENTER
+	var portrait_skin := StyleBoxFlat.new()
+	portrait_skin.bg_color = Color("443462")
+	portrait_skin.border_color = Color("bba2f2")
+	portrait_skin.set_border_width_all(3)
+	portrait_skin.set_corner_radius_all(40)
+	portrait.add_theme_stylebox_override("panel", portrait_skin)
+	line.add_child(portrait)
+	var name_text := str(row.get("username", "") if row.get("username") != null else "")
+	var initial := label(name_text.left(1).to_upper() if not name_text.is_empty() else "?", portrait)
+	initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	initial.add_theme_font_size_override("font_size", 38)
+	var identity_rows := VBoxContainer.new()
+	identity_rows.name = "Identity"
+	identity_rows.size_flags_horizontal = SIZE_EXPAND_FILL
+	identity_rows.size_flags_vertical = SIZE_SHRINK_CENTER
+	line.add_child(identity_rows)
+	var name_line := HBoxContainer.new()
+	identity_rows.add_child(name_line)
+	name_line.add_theme_constant_override("separation", 18)
+	var name_label := label(name_text if not name_text.is_empty() else "Giocatore", name_line)
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	var code := label("#" + str(row.get("public_id", "")), name_line)
+	code.add_theme_color_override("font_color", Color("bda0ee"))
+	code.add_theme_font_size_override("font_size", 24)
+	return line
 
 func _show_search_results() -> void:
 	var searching := query.text.strip_edges().length() >= 2
@@ -194,10 +280,8 @@ func search() -> void:
 	if not response.data is Array: return
 	notice.text = "Nessun profilo trovato." if response.data.is_empty() else ""
 	for row in response.data:
-		label(manager.display_name(row),results)
-		var button: Button = menu._button(results,"AGGIUNGI",act.bind(str(row.id),"request"))
-		button.custom_minimum_size = Vector2(0,60)
-		_set_button_radius(button, 30)
+		var line := contact_tile(row, results)
+		action_button(line, "+", act.bind(str(row.id), "request"), "Aggiungi amico")
 
 func act(target: String, action: String) -> void:
 	if working: return
@@ -271,62 +355,29 @@ func answer_invite(sender: String, accept: bool) -> void:
 
 func update_contacts() -> void:
 	clear(contacts)
-	label("AMICI E RICHIESTE",contacts)
+	if manager.entries.is_empty():
+		var empty := label("Non hai ancora amici. Cerca un nome o un #codice.", contacts)
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty.custom_minimum_size.y = 130
 	for row in manager.entries:
-		var tile := PanelContainer.new()
-		tile.custom_minimum_size.y = 110
-		var skin := Style.button_style(Style.NORMAL)
-		skin.set_corner_radius_all(28)
-		skin.set_content_margin_all(18)
-		tile.add_theme_stylebox_override("panel",skin)
-		contacts.add_child(tile)
-
-		var line := HBoxContainer.new()
-		line.add_theme_constant_override("separation",20)
-		tile.add_child(line)
-
-		var dot := Panel.new()
-		dot.custom_minimum_size = Vector2(22,22)
-		dot.size_flags_vertical = SIZE_SHRINK_CENTER
-		var dot_skin := StyleBoxFlat.new()
-		dot_skin.bg_color = Color("48cf83") if row.get("online",false) else Color("777583")
-		dot_skin.set_corner_radius_all(11)
-		dot.add_theme_stylebox_override("panel",dot_skin)
-		dot.tooltip_text = "Online di recente" if row.get("online",false) else "Offline"
-		line.add_child(dot)
-
-		var identity_rows := VBoxContainer.new()
-		identity_rows.size_flags_horizontal = SIZE_EXPAND_FILL
-		line.add_child(identity_rows)
-		label(manager.display_name(row),identity_rows)
+		var line := contact_tile(row, contacts)
+		var identity_rows := line.get_node("Identity")
 		if row.status == "accepted":
-			var remove := Button.new()
-			remove.text = "×"
-			remove.tooltip_text = "Rimuovi dagli amici"
-			remove.custom_minimum_size = Vector2(58, 58)
-			remove.size_flags_vertical = SIZE_SHRINK_CENTER
-			remove.add_theme_font_override("font", menu.KIDS_FONT)
-			remove.add_theme_font_size_override("font_size", 38)
-			remove.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-			_set_button_radius(remove, 29)
-			remove.pressed.connect(_ask_remove_friend.bind(str(row.id), manager.display_name(row)))
-			line.add_child(remove)
-
+			action_button(line, "×", _ask_remove_friend.bind(str(row.id), manager.display_name(row)), "Rimuovi amico")
 		if row.has("invite_code"):
-			label("Invito alla lobby " + str(row.invite_code),identity_rows)
-			for accept in [true,false]:
-				var invitation_button: Button = menu._button(line,"ACCETTA" if accept else "RIFIUTA",answer_invite.bind(str(row.id),accept))
-				invitation_button.custom_minimum_size = Vector2(210,60)
-				invitation_button.size_flags_vertical = SIZE_SHRINK_CENTER
-				_set_button_radius(invitation_button, 30)
-
+			var invite := label("Invito alla lobby " + str(row.invite_code), identity_rows)
+			invite.add_theme_font_size_override("font_size", 22)
+			action_button(line, "×", answer_invite.bind(str(row.id), false), "Rifiuta invito")
+			action_button(line, "✓", answer_invite.bind(str(row.id), true), "Accetta invito", true)
 		if row.status != "accepted":
-			label("Richiesta ricevuta" if row.incoming else "Richiesta inviata",identity_rows)
-			var actions := ["accept","decline"] if row.incoming else ["cancel"]
-			for action in actions:
-				var button: Button = menu._button(line,{"accept":"ACCETTA","decline":"RIFIUTA","cancel":"ANNULLA"}[action],act.bind(str(row.id),action))
-				button.custom_minimum_size = Vector2(210,60)
-				button.size_flags_vertical = SIZE_SHRINK_CENTER
-				_set_button_radius(button, 30)
-
-	if not manager.error.is_empty(): notice.text = manager.error
+			var status_label := label("Richiesta ricevuta" if row.incoming else "Richiesta inviata", identity_rows)
+			status_label.add_theme_font_size_override("font_size", 22)
+			status_label.add_theme_color_override("font_color", Color("bda0ee"))
+			if row.incoming:
+				action_button(line, "×", act.bind(str(row.id), "decline"), "Rifiuta richiesta")
+				action_button(line, "✓", act.bind(str(row.id), "accept"), "Accetta richiesta", true)
+			else:
+				action_button(line, "ANNULLA", act.bind(str(row.id), "cancel"), "Annulla richiesta")
+	if not manager.error.is_empty():
+		notice.text = manager.error

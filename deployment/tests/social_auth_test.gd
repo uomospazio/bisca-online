@@ -64,6 +64,18 @@ func _test() -> void:
 	await auth.start("google", false)
 	auth.cancel()
 	assert(not auth.pending and auth.verifier.is_empty())
+	account.accepted = false
+	account.response = {"ok": false}
+	await auth.start("google", false)
+	bridge.callback = Auth.REDIRECT + "?flow=" + auth.flow + "&code=expired"
+	auth._process(0)
+	assert(not account.accepted and not auth.pending)
+	account.response = {"ok": true, "data": {}}
+	await auth.start("google", false)
+	account.user_id = "another-account"
+	bridge.callback = Auth.REDIRECT + "?flow=" + auth.flow + "&code=stale-owner"
+	auth._process(0)
+	assert(not account.accepted and not auth.pending)
 	account.queue_free()
 	print("PASS: PKCE vector, strict callbacks, stale callback rejection, login/link distinction, cancellation")
 	quit()

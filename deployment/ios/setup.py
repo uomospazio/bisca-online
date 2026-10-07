@@ -85,7 +85,7 @@ def main():
         if value not in obj.setdefault(key, []):
             obj[key].append(value)
 
-    for name, kind in [("BiscaVoice.swift", "sourcecode.swift"), ("BiscaVoice.mm", "sourcecode.cpp.objcpp")]:
+    for name, kind in [("BiscaVoice.swift", "sourcecode.swift"), ("BiscaAuth.swift", "sourcecode.swift"), ("BiscaVoice.mm", "sourcecode.cpp.objcpp")]:
         ref, build = uid(name), uid(name + "build")
         objects[ref] = {"isa": "PBXFileReference", "lastKnownFileType": kind,
                         "path": str(repo_sources / name), "sourceTree": "<absolute>"}

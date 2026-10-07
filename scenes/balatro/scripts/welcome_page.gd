@@ -22,6 +22,7 @@ func setup(host: Control) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	z_index = 90
 	cloud.changed.connect(_sync_pending_name)
+	cloud.changed.connect(_refresh_username)
 	# Gli account email già salvati continuano a ripristinare la sessione:
 	# non devono scegliere un nuovo ospite né rifare l'accesso ad ogni avvio.
 	if not account.user_id.is_empty() and (account.password_ready or account.social_ready) and not bool(config.get_value("welcome", "completed", false)):
@@ -187,6 +188,13 @@ func _set_home_name(value: String) -> void:
 	menu.account_default_name = value
 	menu._refresh_single_profile()
 
+func _refresh_username() -> void:
+	# The profile may arrive after OAuth completed; never overwrite typed input.
+	if is_instance_valid(username) and username.text.is_empty() and str(cloud.profile.get("id", "")) == str(account.user_id):
+		var existing = cloud.profile.get("username")
+		if existing != null:
+			username.text = str(existing)
+
 func _finish() -> void:
 	if working:
 		return
@@ -227,6 +235,8 @@ func _sync_pending_name() -> void:
 	if syncing or not bool(config.get_value("welcome", "pending_name", false)) or not account.is_authenticated() or not cloud._loaded:
 		return
 	var owner := str(config.get_value("welcome", "owner", ""))
+	if owner.is_empty() and not account.anonymous:
+		return # An offline guest's pending name must not overwrite a social account.
 	if not owner.is_empty() and owner != str(account.user_id):
 		return
 	config.set_value("welcome", "owner", str(account.user_id))

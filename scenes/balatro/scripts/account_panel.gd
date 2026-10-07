@@ -298,6 +298,14 @@ func _show(next: String) -> void:
 					_show("logout")
 			)
 
+	elif mode == "social":
+		_button("APPLE", func(): _show("apple"))
+		_button("GOOGLE", func(): _show("google"))
+	elif mode in ["apple", "google"]:
+		_text("ACCEDI CON " + mode.to_upper())
+		_text("Collega per mantenere questo profilo e i progressi. Accedi a un altro account per recuperarne uno esistente: i profili non vengono uniti.")
+		_button("COLLEGA QUESTO ACCOUNT", func(): _run_social(true))
+		_button("ACCEDI A UN ALTRO ACCOUNT", func(): _run_social(false))
 	elif mode == "username":
 		_text("Username account: 3–24 caratteri, lettere, numeri, punto o underscore. Vuoto = solo codice.")
 		username_field = _field("Username")
@@ -421,6 +429,29 @@ func _show(next: String) -> void:
 				_show("home")
 	)
 
+
+func _run_social(link_current: bool) -> void:
+	if working:
+		return
+	working = true
+	var social := account.get_node("SocialAuth")
+	for button in buttons:
+		button.disabled = true
+	notice.text = "Completa l'accesso nel browser."
+	var cancel_button := _button("ANNULLA ACCESSO", social.cancel)
+	social.completed.connect(func(result: Dictionary):
+		working = false
+		buttons.erase(cancel_button)
+		cancel_button.queue_free()
+		for button in buttons:
+			button.disabled = false
+		if result.get("ok", false):
+			action_completed.emit("social")
+			_show("home")
+		else:
+			notice.text = str(result.get("message", "Accesso non riuscito."))
+	, CONNECT_ONE_SHOT)
+	social.start(mode, link_current)
 
 func _run(action: String) -> void:
 	if working:

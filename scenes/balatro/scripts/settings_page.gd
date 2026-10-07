@@ -103,6 +103,7 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	account_dot = menu._notification_dot(username_button)
 	save_progress = _account_action(menu, account, "SALVA I TUOI PROGRESSI", "SAVE YOUR PROGRESS", "save", back_action.is_valid())
 	_account_action(menu, account, "ACCEDI A UN ACCOUNT", "SIGN IN TO AN ACCOUNT", "login", back_action.is_valid())
+	_account_action(menu, account, "APPLE / GOOGLE", "APPLE / GOOGLE", "social", back_action.is_valid())
 	_account_action(menu, account, "CONTINUA CON UN NUOVO OSPITE", "CONTINUE AS A NEW GUEST", "new_guest", back_action.is_valid())
 	get_node("/root/AccountProfile").changed.connect(_refresh_account_dot)
 	get_node("/root/AccountSession").changed.connect(_refresh_account_dot)

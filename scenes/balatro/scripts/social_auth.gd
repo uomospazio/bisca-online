@@ -28,6 +28,8 @@ static func callback_params(url: String) -> Dictionary:
 		return {}
 	var result := {}
 	for pair in url.get_slice("?", 1).split("&"):
+		if not pair.contains("="):
+			return {}
 		var key := pair.get_slice("=", 0).uri_decode()
 		if result.has(key):
 			return {}
@@ -94,6 +96,15 @@ func _process(_delta: float) -> void:
 func _exchange(code: String) -> void:
 	exchanging = true
 	var attempt := generation
+	# Token refresh may already be in flight when the browser returns.
+	var wait_until := Time.get_ticks_msec() + 20000
+	while account._busy and Time.get_ticks_msec() < wait_until:
+		await get_tree().create_timer(0.1).timeout
+		if attempt != generation:
+			return
+	if account.user_id != account_owner:
+		_finish({"ok": false, "message": "Account cambiato durante l'accesso. Riprova."})
+		return
 	var response: Dictionary = await account._auth_action("token?grant_type=pkce", HTTPClient.METHOD_POST, {"auth_code": code, "code_verifier": verifier}, false)
 	if attempt != generation:
 		return

@@ -1,21 +1,13 @@
 extends Control
 
-# Altezza delle tessere giocatore; radius automaticamente pari a Y / 2.
-const PLAYER_SLOT_HEIGHT := 78.0
-# Larghezze indipendenti: lascia almeno 48 px fra box e tessere per i margini.
-const PLAYER_SLOT_WIDTH := 600.0
-const PLAYERS_PANEL_WIDTH := 660.0
-const OPTIONS_PANEL_WIDTH := 740.0
-const LOBBY_COLUMN_GAP := 40.0
-const LOBBY_LEFT_X := (1920.0 - PLAYERS_PANEL_WIDTH - LOBBY_COLUMN_GAP - OPTIONS_PANEL_WIDTH) / 2.0
-const LOBBY_RIGHT_X := LOBBY_LEFT_X + PLAYERS_PANEL_WIDTH + LOBBY_COLUMN_GAP
-# Spaziatura e dimensioni degli elementi centrati nel pulsante codice.
-const LOBBY_CODE_ICON_SIZE := 96.0
-const LOBBY_CODE_ICON_GAP := 16
+# Dimensioni logiche degli slot nella nuova lista illustrata.
+const PLAYER_SLOT_HEIGHT := 80.0
+const PLAYER_SLOT_WIDTH := 564.0
 # Dimensioni box elenco: X = 0 segue la larghezza di BISCA; Y = altezza.
 # Per una larghezza personalizzata, usa ad esempio Vector2(650, 440).
 const LOBBY_DIRECTORY_SIZE := Vector2(750, 440)
 
+var lobby_ui: Control
 var menu: Control
 var net: Node
 var address: LineEdit
@@ -23,7 +15,6 @@ var code: LineEdit
 var match_options: PanelContainer
 var info: Label
 var start_button: Button
-var ready_label: Label
 var controls: VBoxContainer
 var session_controls: Control
 var lobby_options: PanelContainer
@@ -135,9 +126,6 @@ func setup(owner_menu: Control) -> void:
 	add_child(session_controls)
 	session_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	session_controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var invite_button: Button = menu._round_icon_button(session_controls,"add_friends.svg","Invita amici",_open_invites)
-	invite_button.position = Vector2(LOBBY_RIGHT_X + OPTIONS_PANEL_WIDTH - menu.ROUND_BUTTON_SIZE, 95)
-	invite_button.size = Vector2.ONE * menu.ROUND_BUTTON_SIZE
 	invite_box = AcceptDialog.new()
 	invite_box.title = "INVITA AMICI IN LOBBY"
 	invite_box.ok_button_text = "CHIUDI"
@@ -150,144 +138,24 @@ func setup(owner_menu: Control) -> void:
 	invite_rows.size_flags_horizontal = SIZE_EXPAND_FILL
 	invite_scroll.add_child(invite_rows)
 	get_node("/root/FriendsManager").changed.connect(_refresh_invites)
-	code_button = menu._button(session_controls, "CODICE PARTITA", func():
-		DisplayServer.clipboard_set(code_button.get_meta("room_code", ""))
-		copied_code = str(code_button.get_meta("room_code", ""))
-		info.text = "Codice copiato negli appunti"
-	)
-	code_button.position = Vector2(LOBBY_RIGHT_X + (OPTIONS_PANEL_WIDTH - 540.0) / 2.0, 95)
-	code_button.custom_minimum_size = Vector2(540, 200)
-	code_button.size = Vector2(540, 200)
-	_set_button_radius(code_button, 100)
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var style := code_button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
-		if style:
-			style.border_color = menu.BUTTON_CYAN
-			style.set_border_width_all(4)
-			code_button.add_theme_stylebox_override(state, style)
-
-	# Icona e codice formano un unico gruppo centrato automaticamente nel Button.
-	# Il gruppo si ricentra anche quando cambia il testo (codice stanza).
-	code_button.text = ""
-	code_button.icon = null
-	var code_center := CenterContainer.new()
-	code_center.name = "CodeCenter"
-	code_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	code_button.add_child(code_center)
-	code_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var code_row := HBoxContainer.new()
-	code_row.name = "CodeRow"
-	code_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	code_row.add_theme_constant_override("separation", LOBBY_CODE_ICON_GAP)
-	code_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	code_center.add_child(code_row)
-
-	copy_icon = TextureRect.new()
-	code_row.add_child(copy_icon)
-	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/copy.svg")
-	copy_icon.custom_minimum_size = Vector2.ONE * LOBBY_CODE_ICON_SIZE
-	copy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	copy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	copy_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	copy_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	code_label = Label.new()
-	code_row.add_child(code_label)
-	code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	code_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	code_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	code_label.add_theme_font_override("font", menu.KIDS_FONT)
-	code_label.add_theme_font_size_override("font_size", 84)
-	code_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	# Il pivot segue le dimensioni calcolate dal contenitore, per il tween.
-	code_label.resized.connect(func(): code_label.pivot_offset = code_label.size / 2.0)
-	copy_icon.resized.connect(func(): copy_icon.pivot_offset = copy_icon.size / 2.0)
-
-	# Al click tweenano SOLO testo e copy, non il bottone.
-	code_button.pressed.connect(func():
-		var tween := create_tween()
-
-		tween.set_ease(Tween.EASE_IN)
-		tween.set_trans(Tween.TRANS_BACK)
-		tween.tween_property(code_label, "scale", Vector2.ZERO, 0.12)
-		# tween.parallel().tween_property(copy_icon, "scale", Vector2.ZERO, 0.12)
-
-		tween.tween_callback(func():
-			copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/copy-success.svg")
-		)
-
-		tween.set_ease(Tween.EASE_OUT)
-		tween.set_trans(Tween.TRANS_BACK)
-		tween.tween_property(code_label, "scale", Vector2.ONE, 0.22)
-		# tween.parallel().tween_property(copy_icon, "scale", Vector2.ONE, 0.22)
-	)
-	
+	# The existing option controls remain the authoritative value/signal model.
 	lobby_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	session_controls.add_child(lobby_options)
-	lobby_options.position = Vector2(LOBBY_RIGHT_X, 325)
-	lobby_options.size = Vector2(OPTIONS_PANEL_WIDTH, 560)
 	lobby_options.setup(menu, true)
-	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count]:
+	lobby_options.hide()
+	for slider in [lobby_options.lives, lobby_options.rounds, lobby_options.bot_count, lobby_options.turn_timer]:
 		slider.value_changed.connect(func(_value): _send_options())
-	lobby_options.turn_timer.value_changed.connect(func(_index): _send_options())
 	lobby_options.fill_bots.toggled.connect(func(_value): _send_options())
 	lobby_private = CheckButton.new()
-	lobby_private.text = "LOBBY PRIVATA (CON CODICE)"
-	lobby_private.position = Vector2(LOBBY_RIGHT_X, 895)
-	lobby_private.size = Vector2(OPTIONS_PANEL_WIDTH, 60)
-	lobby_private.add_theme_font_override("font", menu.KIDS_FONT)
-	lobby_private.add_theme_font_size_override("font_size", 28)
 	session_controls.add_child(lobby_private)
+	lobby_private.hide()
 	lobby_private.toggled.connect(func(value):
 		if not syncing_options and is_host:
 			net.send({"op": "visibility", "private": value})
 	)
-	var participant_panel := PanelContainer.new()
-	session_controls.add_child(participant_panel)
-	participant_panel.position = Vector2(LOBBY_LEFT_X, 95)
-	participant_panel.size = Vector2(PLAYERS_PANEL_WIDTH, 790)
-	var panel_style = menu._menu_button_style(menu.LexispellStyle.PANEL, menu.BUTTON_CYAN, 4)
-	panel_style.content_margin_left = 24
-	panel_style.content_margin_right = 24
-	panel_style.content_margin_top = 24
-	panel_style.content_margin_bottom = 32
-	participant_panel.add_theme_stylebox_override("panel", panel_style)
-	var participant_content := VBoxContainer.new()
-	participant_content.add_theme_constant_override("separation", 14)
-	participant_panel.add_child(participant_content)
-
-	players_label = Label.new()
-	players_label.text = "PLAYERS 0/8"
-	players_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	players_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	players_label.custom_minimum_size.y = 42
-	players_label.add_theme_font_override("font", menu.KIDS_FONT)
-	players_label.add_theme_font_size_override("font_size", 28)
-	players_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	participant_content.add_child(players_label)
-
-	players_box = VBoxContainer.new()
-	players_box.add_theme_constant_override("separation", 8)
-	participant_content.add_child(players_box)
-	start_button = menu._button(session_controls, "PRONTO", func():
-		var people: Array = net.latest.get("people", [])
-		var own := int(net.latest.get("you", -1))
-		if own >= 0 and own < people.size():
-			net.send({"op": "ready", "ready": not bool(people[own].get("ready", false))})
-	)
-	start_button.position = Vector2(1920 - 40 - 260, 1080 - 40 - 96)
-	start_button.size = Vector2(260, 96)
-	start_button.custom_minimum_size.y = 96
-	start_button.set_meta("safe_bottom", true)
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(start_button, true)
-	# PLAY a capsula: radius = meta della sua altezza (Y/2).
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var base_style := start_button.get_theme_stylebox(state)
-		if base_style is StyleBoxFlat:
-			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
-			style.set_corner_radius_all(int(start_button.size.y / 2.0))
-			start_button.add_theme_stylebox_override(state, style)
-	_set_icon(start_button, "play")
+	lobby_ui = preload("res://scenes/balatro/scripts/in_lobby_ui.gd").new()
+	session_controls.add_child(lobby_ui)
+	lobby_ui.setup(self)
 	session_controls.hide()
 	info = Label.new()
 	add_child(info)
@@ -416,11 +284,13 @@ func _render_directory(entries: Array) -> void:
 		join.add_theme_font_size_override("font_size", 28)
 
 func open() -> void:
+	lobby_ui.stop_pop()
 	match_options.reset_multiplayer()
 	menu.show_network_entry_extras()
 	show()
 	entry.show()
 	for button in entry_buttons:
+		button.show()
 		# Il layout iniziale dei Container puo' ripristinare la scala.
 		# Restano trasparenti fino all'inizio del proprio pop.
 		button.modulate.a = 0.0
@@ -497,6 +367,8 @@ func _pop_form_controls(items: Array[Control]) -> void:
 
 func _back() -> void:
 	profile_picker.close()
+	entry_buttons[-1].show()
+	lobby_ui.stop_pop()
 	if controls.visible and not session_controls.visible:
 		controls.hide()
 		entry.show()
@@ -544,17 +416,22 @@ func _update(state: Dictionary) -> void:
 		if is_instance_valid(menu.home_character):
 			menu.home_character.hide()
 		menu.friends_subtitle.hide()
-		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, entry if entry.visible else controls, session_controls)
+		entry.hide()
+		controls.hide()
+		session_controls.show()
+		entry_buttons[-1].hide()
+		lobby_ui.pop()
 	start_button.disabled = false
 	var own_ready: bool = bool(state.people[int(state.you)].get("ready", false))
-	ready_label.text = "ANNULLA" if own_ready else "PRONTO"
+	lobby_ui.set_ready(own_ready)
 	is_host = state.you == 0
 	lobby_private.disabled = not is_host
 	lobby_private.set_pressed_no_signal(bool(state.get("private", true)))
 	_sync_options(state)
+	lobby_ui.sync_options()
 	code_label.text = str(state.code)
 	code_button.set_meta("room_code", state.code)
-	players_label.text = "PLAYERS %d/8" % min(8, state.people.size())
+	players_label.text = "%d/8" % min(8, state.people.size())
 	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
 	# Le opzioni stanza cambiano spesso senza modificare gli slot. In quel caso
 	# conserviamo nodi, focus e tween invece di ricreare otto card.
@@ -573,32 +450,8 @@ func _update(state: Dictionary) -> void:
 		row.custom_minimum_size = Vector2(PLAYER_SLOT_WIDTH, PLAYER_SLOT_HEIGHT)
 		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		row.clip_contents = false
-		# Decorate the entire player tile, leaving name/microphone/kick intact.
-		row.draw.connect(func():
-			var left := PLAYER_SLOT_HEIGHT * 0.5
-			var right := row.size.x - left
-			row.draw_line(Vector2(left, row.size.y - 9), Vector2(right, row.size.y - 9), Color(0, 0, 0, 0.26), 7, true)
-		)
-		var row_style = menu._menu_button_style(menu.BUTTON_PURPLE)
-		row_style.shadow_size = 0
-		row_style.shadow_offset = Vector2.ZERO
-		_style_player_slot(row_style)
-		row.add_theme_stylebox_override("panel", row_style)
-
+		lobby_ui.skin_slot(row, index >= state.people.size())
 		if index >= state.people.size():
-			var empty_style = menu._menu_button_style(menu.LexispellStyle.DISABLED)
-			empty_style.shadow_size = 0
-			empty_style.shadow_offset = Vector2.ZERO
-			_style_player_slot(empty_style)
-			row.add_theme_stylebox_override("panel", empty_style)
-			var empty := Label.new()
-			empty.text = "EMPTY"
-			empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			empty.add_theme_font_override("font", menu.KIDS_FONT)
-			empty.add_theme_font_size_override("font_size", 24)
-			empty.add_theme_color_override("font_color", menu.LexispellStyle.DISABLED_TEXT)
-			row.add_child(empty)
 			players_box.add_child(row)
 			continue
 		var p: Dictionary = state.people[index]
@@ -625,10 +478,13 @@ func _update(state: Dictionary) -> void:
 		name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		name_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		name_button.add_theme_font_override("font", menu.KIDS_FONT)
+		name_button.add_theme_font_override("font", lobby_ui.scalable_font)
 		name_button.add_theme_font_size_override("font_size", 24)
 		name_button.add_theme_color_override("font_color", menu.BUTTON_TEXT)
 		name_button.flat = true
+		var name_padding := StyleBoxEmpty.new()
+		name_padding.content_margin_top = 6
+		name_button.add_theme_stylebox_override("normal", name_padding)
 		line.add_child(name_button)
 		var ready_dot := Label.new()
 		ready_dot.text = "●"
@@ -636,36 +492,18 @@ func _update(state: Dictionary) -> void:
 		ready_dot.add_theme_font_size_override("font_size", 24)
 		ready_dot.add_theme_color_override("font_color", Color("48cf83") if bool(p.get("ready", false)) else Color("777583"))
 		line.add_child(ready_dot)
+		line.move_child(ready_dot, 0)
 		if index == 0:
-			var crown := TextureRect.new()
-			crown.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/crown.svg")
-			crown.custom_minimum_size = Vector2(30, 30)
-			crown.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			crown.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			crown.tooltip_text = "Creatore della lobby"
-			line.add_child(crown)
+			name_button.tooltip_text = "Creatore della lobby"
+		name_button.clip_text = true
 		if index == int(state.you):
-			var self_badge := PanelContainer.new()
-			self_badge.custom_minimum_size = Vector2(44, 44)
+			var self_badge := TextureRect.new()
+			self_badge.texture = load(lobby_ui.ART + "tu.png")
+			self_badge.custom_minimum_size = Vector2(41, 41)
+			self_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			self_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			self_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			self_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var badge_style := StyleBoxFlat.new()
-			badge_style.bg_color = menu.LexispellStyle.HOVER
-			badge_style.set_corner_radius_all(99)
-			badge_style.corner_detail = 16
-			badge_style.set_border_width_all(2)
-			badge_style.border_color = menu.LexispellStyle.SHADOW
-			self_badge.add_theme_stylebox_override("panel", badge_style)
-			var self_label := Label.new()
-			self_label.text = "TU"
-			self_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			self_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			self_label.add_theme_font_override("font", menu.KIDS_FONT)
-			self_label.add_theme_font_size_override("font_size", 16)
-			self_label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-			self_badge.add_child(self_label)
 			line.add_child(self_badge)
 		var voice = get_node("/root/VoiceChat")
 		var voice_id := str(p.get("voice_id", ""))
@@ -705,21 +543,10 @@ func _update(state: Dictionary) -> void:
 			speaker.focus_mode = Control.FOCUS_NONE
 		var remove := Button.new()
 		RoundedSquareButton.ButtonAudio.attach(remove)
-		remove.text = "×"
-		remove.custom_minimum_size = Vector2(44, 44)
+		remove.custom_minimum_size = Vector2(41, 41)
 		remove.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		remove.add_theme_font_override("font", menu.KIDS_FONT)
-		remove.add_theme_font_size_override("font_size", 30)
-		for state_color in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			remove.add_theme_color_override(state_color, menu.BUTTON_TEXT)
-		for skin_state in ["normal", "hover", "pressed", "focus"]:
-			var remove_style := StyleBoxFlat.new()
-			remove_style.bg_color = menu.LexispellStyle.NORMAL if skin_state == "pressed" else menu.LexispellStyle.HOVER
-			remove_style.set_corner_radius_all(99)
-			remove_style.corner_detail = 16
-			remove_style.set_border_width_all(2)
-			remove_style.border_color = menu.BUTTON_TEXT if skin_state in ["hover", "focus"] else menu.LexispellStyle.SHADOW
-			remove.add_theme_stylebox_override(skin_state, remove_style)
+		remove.tooltip_text = "Rimuovi giocatore"
+		lobby_ui.skin_button(remove, "eliminaPlayer.png")
 		# Only the lobby creator sees removal controls, never on their own row.
 		if state.you == 0 and index > 0:
 			remove.pressed.connect(func(): net.send({"op": "kick", "slot": index}))
@@ -727,7 +554,7 @@ func _update(state: Dictionary) -> void:
 			remove.hide()
 		line.add_child(remove)
 		players_box.add_child(row)
-	info.text = "In attesa dei giocatori…"
+	info.text = ""
 	refresh_own_card()
 	_update_voice_buttons()
 
@@ -783,20 +610,6 @@ func _set_button_radius(button: Button, radius: int) -> void:
 			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
 			style.set_corner_radius_all(radius)
 			button.add_theme_stylebox_override(state, style)
-
-func _style_player_slot(style: StyleBoxFlat) -> void:
-	style.set_corner_radius_all(int(PLAYER_SLOT_HEIGHT / 2.0))
-	style.corner_detail = 16
-	style.set_border_width_all(4)
-	style.border_width_bottom = 8
-	style.border_color = menu.LexispellStyle.SHADOW
-	style.shadow_color = Color(0.047059, 0.035294, 0.094118, 0.28)
-	style.shadow_size = 1
-	style.shadow_offset = Vector2(0, 5)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
 
 func _update_voice_buttons() -> void:
 	if players_box == null:
@@ -865,44 +678,6 @@ func _set_voice_icon(icon: TextureRect, icon_name: String) -> void:
 		return
 	icon.set_meta("current_icon", icon_name)
 	icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
-
-
-func _set_icon(button: Button, icon_name: String) -> void:
-	# Centra icona e testo PLAY come un singolo gruppo.
-	button.text = ""
-	button.icon = null
-
-	var center := CenterContainer.new()
-	center.name = "PlayCenter"
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(center)
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-	var content := HBoxContainer.new()
-	content.name = "PlayContent"
-	content.alignment = BoxContainer.ALIGNMENT_CENTER
-	content.add_theme_constant_override("separation", 12)
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_child(content)
-
-	var icon := TextureRect.new()
-	icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
-	icon.custom_minimum_size = Vector2(56, 56)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(icon)
-
-	var label := Label.new()
-	label.text = "PRONTO"
-	ready_label = label
-	label.add_theme_font_override("font", menu.KIDS_FONT)
-	label.add_theme_font_size_override("font_size", 32)
-	label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(label)
 
 
 func _send_options() -> void:

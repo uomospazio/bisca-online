@@ -1,9 +1,10 @@
 extends Control
 const Look = preload("res://scenes/balatro/scripts/friends_look.gd")
 const UI := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/AmiciUI/"
-const BOX_SIZE := Vector2(1400, 790)
+const BOX_SIZE := Vector2(1160, 800)
+const PAGE_SIZE := Vector2(1840, 800)
 # Scala uniforme dal centro: 1.0 = attuale, 1.1 = +10%.
-@export_range(0.1, 3.0, 0.01) var friends_scale := 1.25:
+@export_range(0.1, 3.0, 0.01) var friends_scale := 1.15:
 	set(value):
 		friends_scale = maxf(value, 0.1)
 		_apply_friends_transform()
@@ -21,28 +22,114 @@ var contacts: VBoxContainer
 var notice: Label
 var working := false
 var search_generation := 0
+var search_rows: Array = []
+var rendered_query := ""
 var identity := ""
 var friends_box: Panel
+var account_box: TextureRect
+var blocks_pop: Tween
 var search_timer: Timer
+var content_root: Control
+var back_button: Button
+var back_pop: Tween
+var back_pop_amount := 1.0
+
+func _set_back_pop(amount: float) -> void:
+	back_pop_amount = amount
+	if not is_instance_valid(back_button):
+		return
+	var fitted := content_root.scale.x
+	back_button.scale = Vector2.ONE * fitted * amount
+	back_button.position = content_root.position + back_button.size * fitted * (1.0 - amount) * 0.5
+
+func _pop_back_button() -> void:
+	if back_pop and back_pop.is_valid():
+		back_pop.kill()
+	back_button.release_focus()
+	back_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	back_button.focus_mode = Control.FOCUS_NONE
+	_set_back_pop(0.0)
+	back_pop = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	back_pop.tween_interval(0.6)
+	back_pop.tween_method(_set_back_pop, 0.0, 1.0, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	back_pop.tween_callback(func():
+		back_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		back_button.focus_mode = Control.FOCUS_ALL)
+var account_name: Label
+var account_code: Label
+var account_photo: TextureRect
+var stat_values: Array[RichTextLabel] = []
+
+func _pop_page_blocks() -> void:
+	if blocks_pop and blocks_pop.is_valid():
+		blocks_pop.kill()
+	blocks_pop = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).set_parallel(true)
+	var blocks: Array[Control] = [friends_box, account_box]
+	for index in blocks.size():
+		var block := blocks[index]
+		# Friends at 0.4 s, account at 0.5 s, Back at 0.6 s.
+		var delay := 0.4 + index * 0.1
+		block.pivot_offset = block.size * 0.5
+		block.scale = Vector2.ZERO
+		block.modulate.a = 0.0
+		blocks_pop.tween_property(block, "modulate:a", 1.0, 0.0).set_delay(delay)
+		blocks_pop.tween_property(block, "scale", Vector2.ONE, 0.38).from(Vector2.ZERO).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _apply_friends_transform() -> void:
-	if not is_instance_valid(friends_box):
+	if not is_instance_valid(content_root) or not is_inside_tree():
 		return
-	friends_box.pivot_offset = BOX_SIZE * 0.5
-	friends_box.scale = Vector2.ONE * friends_scale
-	friends_box.position = (Vector2(1920, 1080) - BOX_SIZE) * 0.5 + friends_offset
+	var viewport_size := get_viewport_rect().size
+	var safe := Rect2(Vector2.ZERO, viewport_size)
+	if OS.has_feature("web"):
+		var encoded = JavaScriptBridge.eval("typeof window.biscaSafeArea === 'function' ? window.biscaSafeArea() : '[0,0,1,1]'", true)
+		var fractions = JSON.parse_string(str(encoded))
+		if fractions is Array and fractions.size() == 4:
+			safe = Rect2(Vector2(float(fractions[0]), float(fractions[1])) * viewport_size, Vector2(float(fractions[2]), float(fractions[3])) * viewport_size)
+	elif OS.has_feature("mobile"):
+		var window := get_window()
+		var physical := Rect2(DisplayServer.get_display_safe_area()).intersection(Rect2(Vector2(window.position), Vector2(window.size)))
+		if physical.has_area():
+			var ratio := viewport_size / Vector2(window.size)
+			safe = Rect2((physical.position - Vector2(window.position)) * ratio, physical.size * ratio)
+	# Convert viewport coordinates into this page's centered canvas coordinates.
+	var inverse := get_global_transform_with_canvas().affine_inverse()
+	var bounds := Rect2(inverse * safe.position, inverse * safe.end - inverse * safe.position).grow(-40)
+	_layout_in_bounds(bounds)
+
+func _layout_in_bounds(bounds: Rect2) -> void:
+	# Center the visible panels, not the invisible status area below them.
+	# Reserve equal space above/below for status messages without moving the UI.
+	var fitted := maxf(0.01, minf(friends_scale, minf(bounds.size.x / PAGE_SIZE.x, bounds.size.y / (PAGE_SIZE.y + 136.0))))
+	var rendered := PAGE_SIZE * fitted
+	var desired := bounds.get_center() - rendered * 0.5 + friends_offset
+	content_root.pivot_offset = Vector2.ZERO
+	content_root.scale = Vector2.ONE * fitted
+	content_root.position = Vector2(
+		clampf(desired.x, bounds.position.x, bounds.end.x - rendered.x),
+		clampf(desired.y, bounds.position.y, bounds.end.y - rendered.y))
+	if is_instance_valid(back_button):
+		# Back and account artwork share an origin and scale, preserving the cutout.
+		_set_back_pop(back_pop_amount)
 
 func setup(host: Control) -> void:
 	menu = host
 	manager = get_node("/root/FriendsManager")
 	set_meta("cartoon_style_children_excluded", true)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	content_root = Control.new()
+	add_child(content_root)
+	content_root.size = PAGE_SIZE
+	_apply_friends_transform()
+	_build_account_panel()
 	var back := action_button(self, "←", menu.show_home, "Indietro")
-	back.position = Vector2(10, 40)
-	back.size = Vector2(140, 140)
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(back)
+	back_button = back
+	back.position = Vector2(40, 40)
+	back.size = Vector2(412, 120)
+	get_viewport().size_changed.connect(_apply_friends_transform, CONNECT_DEFERRED)
+	_apply_friends_transform.call_deferred()
 	friends_box = Panel.new()
-	add_child(friends_box)
+	content_root.add_child(friends_box)
+	friends_box.position = Vector2(680, 0)
 	friends_box.size = BOX_SIZE
 	_apply_friends_transform()
 	friends_box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
@@ -55,8 +142,8 @@ func setup(host: Control) -> void:
 	# Title, magnifier and add-friend symbol are already baked into the panel.
 	query = LineEdit.new()
 	friends_box.add_child(query)
-	query.position = Vector2(166, 157)
-	query.size = Vector2(1070, 88)
+	query.position = Vector2(160, 145)
+	query.size = Vector2(855, 88)
 	query.placeholder_text = "Cerca un amico per nome o #codice"
 	query.max_length = 64
 	query.add_theme_font_override("font", menu.KIDS_FONT)
@@ -67,7 +154,7 @@ func setup(host: Control) -> void:
 		query.add_theme_stylebox_override(state, Look.padding(4))
 	notice = label("", friends_box)
 	notice.position = Vector2(48, 802)
-	notice.size = Vector2(1304, 66)
+	notice.size = Vector2(1064, 66)
 	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	notice.add_theme_font_size_override("font_size", 22)
 	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -76,8 +163,8 @@ func setup(host: Control) -> void:
 	for box in [contacts, results]:
 		var scroll := box.get_parent() as ScrollContainer
 		scroll.reparent(friends_box)
-		scroll.position = Vector2(48, 270)
-		scroll.size = Vector2(1304, 487)
+		scroll.position = Vector2(40, 270)
+		scroll.size = Vector2(1080, 486)
 		var bar := scroll.get_v_scroll_bar()
 		var track := StyleBoxFlat.new()
 		track.bg_color = Color("30234e")
@@ -109,33 +196,101 @@ func setup(host: Control) -> void:
 	get_node("/root/AccountSession").changed.connect(_identity_changed)
 	identity = str(get_node("/root/AccountSession").user_id)
 	update_contacts()
+	get_node("/root/AccountProfile").changed.connect(_refresh_account_panel)
+	_refresh_account_panel()
+
+func _build_account_panel() -> void:
+	var panel := TextureRect.new()
+	account_box = panel
+	content_root.add_child(panel)
+	panel.texture = load(UI + "slotAccount.png")
+	panel.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# Restored upper cutout: top aligns with Back, bottom with the friends panel.
+	panel.size = Vector2(652, 800)
+	panel.position = Vector2.ZERO
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	account_photo = TextureRect.new()
+	panel.add_child(account_photo)
+	account_photo.position = Vector2(52, 220)
+	account_photo.size = Vector2(174, 174)
+	account_photo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	account_photo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	account_photo.draw.connect(func():
+		if account_photo.texture == null:
+			account_photo.draw_circle(Vector2(87, 87), 85, Color("d8ddd9")))
+	account_name = label("", panel)
+	account_name.position = Vector2(250, 265)
+	account_name.size = Vector2(345, 48)
+	account_name.add_theme_font_size_override("font_size", 36)
+	account_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	account_code = label("", panel)
+	account_code.position = Vector2(250, 350)
+	account_code.size = Vector2(345, 48)
+	account_code.add_theme_font_size_override("font_size", 36)
+	for i in range(4):
+		var origin := Vector2(38 + (i % 2) * 304, 484 + (i / 2) * 164)
+		var value := RichTextLabel.new()
+		panel.add_child(value)
+		value.add_theme_font_override("normal_font", menu.KIDS_FONT)
+		value.add_theme_color_override("default_color", Style.TEXT)
+		value.scroll_active = false
+		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		value.position = origin
+		value.size = Vector2(276, 72)
+		value.add_theme_font_size_override("normal_font_size", 56)
+		stat_values.append(value)
+		# Captions are baked into slotAccount.png; only values are dynamic.
+
+func _refresh_account_panel() -> void:
+	var profile: Dictionary = get_node("/root/AccountProfile").profile
+	var owner := str(get_node("/root/AccountSession").user_id)
+	if owner.is_empty() or str(profile.get("id", "")) != owner:
+		profile = {}
+	account_name.text = str(profile.get("username") if profile.get("username") != null else "Giocatore")
+	account_code.text = "#" + str(profile.get("public_id", "—"))
+	var config := ConfigFile.new()
+	var encoded := ""
+	if config.load("user://profile_photo.cfg") == OK:
+		encoded = str(config.get_value("profile", "avatar", ""))
+	account_photo.texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(encoded)
+	account_photo.queue_redraw()
+	var played := maxi(0, int(profile.get("games_played", 0)))
+	var wins := clampi(int(profile.get("wins", 0)), 0, played)
+	var values := [str(played), str(wins), str(played - wins), str(roundi(100.0 * wins / played)) + "%" if played > 0 else "0%"]
+	for i in range(4):
+		var value := stat_values[i]
+		value.clear()
+		value.push_paragraph(HORIZONTAL_ALIGNMENT_CENTER)
+		if i == 3 and not profile.is_empty():
+			value.add_text(values[i].trim_suffix("%"))
+			value.push_font_size(32)
+			value.add_text("%")
+			value.pop()
+		else:
+			value.add_text(values[i] if not profile.is_empty() else "—")
+		value.pop()
 
 func action_button(parent: Node, text: String, callback: Callable, hint := "", positive := false) -> Button:
 	var button := Button.new()
 	parent.add_child(button)
 	button.tooltip_text = hint
-	button.custom_minimum_size = Vector2(72, 72) if text != "ANNULLA" else Vector2(242, 72)
+	button.custom_minimum_size = Vector2(242, 72) if text in ["ANNULLA", "+"] else Vector2(72, 72)
 	button.size_flags_vertical = SIZE_SHRINK_CENTER
 	var asset := "confermaAmici.png" if positive else "declinaAmici.png"
-	if text == "←": asset = "tastoIndietro.png"
+	if text == "←": asset = "pulsanteIndietro.png"
 	elif text == "ANNULLA": asset = "annullaAmici.png"
-	if text == "+":
-		button.text = "+"
-		button.add_theme_font_override("font", ThemeDB.fallback_font)
-		button.add_theme_font_size_override("font_size", 48)
-		Look.decorate(button, 36.0, Color("38245a"))
-	else:
-		for state in ["normal", "hover", "pressed", "disabled"]:
-			var skin := StyleBoxTexture.new()
-			skin.texture = load(UI + asset)
-			skin.modulate_color = Color(1.15, 1.15, 1.15) if state == "hover" else (Color(0.8, 0.8, 0.8) if state == "pressed" else Color.WHITE)
-			button.add_theme_stylebox_override(state, skin)
-		var focus := StyleBoxFlat.new()
-		focus.bg_color = Color.TRANSPARENT
-		focus.border_color = Color("baa0ff")
-		focus.set_border_width_all(2)
-		focus.set_corner_radius_all(36)
-		button.add_theme_stylebox_override("focus", focus)
+	elif text == "+": asset = "pulsanteAggiungi.png"
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var skin := StyleBoxTexture.new()
+		skin.texture = load(UI + asset)
+		skin.modulate_color = Color(1.15, 1.15, 1.15) if state == "hover" else (Color(0.8, 0.8, 0.8) if state == "pressed" else Color.WHITE)
+		button.add_theme_stylebox_override(state, skin)
+	var focus := StyleBoxFlat.new()
+	focus.bg_color = Color.TRANSPARENT
+	focus.border_color = Color("baa0ff")
+	focus.set_border_width_all(2)
+	focus.set_corner_radius_all(36)
+	button.add_theme_stylebox_override("focus", focus)
 	button.pressed.connect(callback)
 	return button
 
@@ -258,6 +413,8 @@ func _identity_changed() -> void:
 	var next_identity := str(get_node("/root/AccountSession").user_id)
 	if identity == next_identity: return
 	identity = next_identity
+	search_rows.clear()
+	rendered_query = ""
 	search_generation += 1
 	if search_timer:
 		search_timer.stop()
@@ -266,6 +423,9 @@ func _identity_changed() -> void:
 	_show_search_results()
 
 func open() -> void:
+	_pop_back_button()
+	_pop_page_blocks()
+	_refresh_account_panel()
 	search_generation += 1
 	search_timer.stop()
 	query.clear()
@@ -300,9 +460,24 @@ func search() -> void:
 		return
 	if not response.data is Array: return
 	notice.text = "Nessun profilo trovato." if response.data.is_empty() else ""
-	for row in response.data:
+	search_rows = response.data
+	rendered_query = search_text
+	_render_search_rows()
+
+func _render_search_rows() -> void:
+	if rendered_query != query.text.strip_edges(): return
+	clear(results)
+	for profile in search_rows:
+		var row: Dictionary = profile.duplicate()
+		for contact in manager.entries:
+			if str(contact.id) == str(row.id):
+				row.merge(contact, true)
+				break
 		var line := contact_tile(row, results)
-		action_button(line, "+", act.bind(str(row.id), "request"), "Aggiungi amico")
+		if row.has("status"):
+			_add_contact_actions(row, line)
+		else:
+			action_button(line, "+", act.bind(str(row.id), "request"), "Aggiungi amico")
 
 func act(target: String, action: String) -> void:
 	if working: return
@@ -311,8 +486,30 @@ func act(target: String, action: String) -> void:
 	var response: Dictionary = await manager.call_api("bisca_friend_action",{"target":target,"action":action})
 	working = false
 	if generation != search_generation: return
-	notice.text = "Operazione completata." if response.ok else response.message
+	notice.text = "" if response.ok else response.message
+	if response.ok:
+		_apply_friend_action(target, action)
 	manager.refresh()
+
+func _apply_friend_action(target: String, action: String) -> void:
+	# Update only after server success, then reconcile with the next refresh.
+	var existing := -1
+	for i in manager.entries.size():
+		if str(manager.entries[i].id) == target:
+			existing = i
+			break
+	if action == "request" and existing < 0:
+		for profile in search_rows:
+			if str(profile.id) == target:
+				var row: Dictionary = profile.duplicate()
+				row.merge({"status": "pending", "incoming": false}, true)
+				manager.entries.append(row)
+				break
+	elif action == "accept" and existing >= 0:
+		manager.entries[existing]["status"] = "accepted"
+	elif action in ["cancel", "decline", "remove"] and existing >= 0:
+		manager.entries.remove_at(existing)
+	update_contacts()
 
 func _ask_remove_friend(target: String, display_name: String) -> void:
 	var dialog := ConfirmationDialog.new()
@@ -383,23 +580,27 @@ func update_contacts() -> void:
 		empty.custom_minimum_size.y = 130
 	for row in manager.entries:
 		var line := contact_tile(row, contacts)
-		var identity_rows := line.get_node("Identity")
-		if row.status == "accepted" and not row.has("invite_code"):
-			action_button(line, "×", _ask_remove_friend.bind(str(row.id), manager.display_name(row)), "Rimuovi amico")
-		if row.has("invite_code"):
-			var invite := label("Ti ha invitato in lobby", identity_rows)
-			invite.add_theme_font_size_override("font_size", 22)
-			invite.add_theme_color_override("font_color", Color("bda0ee"))
-			action_button(line, "×", answer_invite.bind(str(row.id), false), "Rifiuta invito")
-			action_button(line, "✓", answer_invite.bind(str(row.id), true), "Accetta invito", true)
-		elif row.status != "accepted":
-			var status_label := label("Richiesta ricevuta" if row.incoming else "Richiesta inviata", identity_rows)
-			status_label.add_theme_font_size_override("font_size", 22)
-			status_label.add_theme_color_override("font_color", Color("bda0ee"))
-			if row.incoming:
-				action_button(line, "×", act.bind(str(row.id), "decline"), "Rifiuta richiesta")
-				action_button(line, "✓", act.bind(str(row.id), "accept"), "Accetta richiesta", true)
-			else:
-				action_button(line, "ANNULLA", act.bind(str(row.id), "cancel"), "Annulla richiesta")
+		_add_contact_actions(row, line)
+	_render_search_rows()
 	if not manager.error.is_empty():
 		notice.text = manager.error
+
+func _add_contact_actions(row: Dictionary, line: HBoxContainer) -> void:
+	var identity_rows := line.get_node("Identity")
+	if row.status == "accepted" and not row.has("invite_code"):
+		action_button(line, "×", _ask_remove_friend.bind(str(row.id), manager.display_name(row)), "Rimuovi amico")
+	if row.has("invite_code"):
+		var invite := label("Ti ha invitato in lobby", identity_rows)
+		invite.add_theme_font_size_override("font_size", 22)
+		invite.add_theme_color_override("font_color", Color("bda0ee"))
+		action_button(line, "×", answer_invite.bind(str(row.id), false), "Rifiuta invito")
+		action_button(line, "✓", answer_invite.bind(str(row.id), true), "Accetta invito", true)
+	elif row.status != "accepted":
+		var status_label := label("Richiesta ricevuta" if row.incoming else "Richiesta inviata", identity_rows)
+		status_label.add_theme_font_size_override("font_size", 22)
+		status_label.add_theme_color_override("font_color", Color("bda0ee"))
+		if row.incoming:
+			action_button(line, "×", act.bind(str(row.id), "decline"), "Rifiuta richiesta")
+			action_button(line, "✓", act.bind(str(row.id), "accept"), "Accetta richiesta", true)
+		else:
+			action_button(line, "ANNULLA", act.bind(str(row.id), "cancel"), "Annulla richiesta")

@@ -53,8 +53,8 @@ network/server_url="wss://bisca-server-v3z3.onrender.com"
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
-window/size/window_width_override=1280
-window/size/window_height_override=720
+window/size/window_width_override=1912
+window/size/window_height_override=880
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4

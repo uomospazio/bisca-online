@@ -6,7 +6,6 @@ const FULL_SPEED_THROW_DISTANCE := 1800.0
 const MAX_THROW_SPEED_MULTIPLIER := 1.8
 const FAST_THROW = preload("res://scenes/balatro/audio/fast-throw.mp3")
 const LONG_THROW = preload("res://scenes/balatro/audio/long-throw.mp3")
-const IMPACT = preload("res://scenes/balatro/audio/impact.mp3")
 const GameAudio = preload("res://scenes/balatro/scripts/game_audio.gd")
 const Catalog = preload("res://scenes/balatro/scripts/throw_catalog.gd")
 var textures: Array[Texture2D] = []
@@ -223,6 +222,7 @@ func _launch(sender: int, target: int, local_origin := Vector2.INF, object_id :=
 	projectile.position = origin
 	var distance := origin.distance_to(destination)
 	var sound: AudioStream = FAST_THROW if distance <= SHORT_THROW_DISTANCE else LONG_THROW
+	var impact_sound: AudioStream = Catalog.impact_sound(object_id)
 	var distance_ratio := clampf((distance - SHORT_THROW_DISTANCE) / (FULL_SPEED_THROW_DISTANCE - SHORT_THROW_DISTANCE), 0.0, 1.0)
 	var speed_multiplier := lerpf(1.0, MAX_THROW_SPEED_MULTIPLIER, distance_ratio)
 	var flight_duration := maxf(sound.get_length(), 0.1) / speed_multiplier
@@ -241,7 +241,7 @@ func _launch(sender: int, target: int, local_origin := Vector2.INF, object_id :=
 	, 0.0, 1.0, flight_duration)
 	flight.tween_callback(func():
 		flight_audio.stop()
-		GameAudio.play(projectile, IMPACT, -10.0)
+		GameAudio.play(projectile, impact_sound, -10.0)
 	)
 	flight.tween_property(projectile, "scale", Vector2(1.3, 0.8), 0.12)
 	flight.tween_property(projectile, "scale", Vector2.ONE, 0.15)

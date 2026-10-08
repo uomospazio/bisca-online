@@ -37,14 +37,36 @@ func run() -> void:
 	for child in invite_line.get_children():
 		if child is Button: buttons += 1
 	assert(buttons == 2, "Invites must have only reject and accept actions")
-	assert(page.friends_box.size == Vector2(1400, 790))
+	assert(page.friends_box.size == Vector2(1160, 800))
+	assert(page.stat_values.size() == 4)
+	var account = root.get_node("AccountSession")
+	var profile = root.get_node("AccountProfile")
+	var previous_id = account.user_id
+	var previous_profile = profile.profile
+	account.user_id = "layout-test"
+	profile.profile = {"id": "layout-test", "username": "Uomospazio", "public_id": "7P33XD", "games_played": 128, "wins": 76}
+	page._refresh_account_panel()
+	assert(page.account_name.text == "Uomospazio")
+	assert(page.stat_values[2].get_parsed_text().strip_edges() == "52")
+	assert(page.stat_values[3].get_parsed_text().strip_edges() == "59%")
 	if "--snapshot" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("/tmp/bisca-friends-preview.png")
+	account.user_id = previous_id
+	profile.profile = previous_profile
 	page.query.text = "Space"
 	page._show_search_results()
 	assert(page.results.get_parent().visible and not page.contacts.get_parent().visible)
 	manager.entries.clear()
+	page.search_rows = [{"id": "new-friend", "username": "Space", "public_id": "TEST01"}]
+	page.rendered_query = "Space"
+	page._render_search_rows()
+	page._apply_friend_action("new-friend", "request")
+	var request_line = page.results.get_child(0).get_child(0)
+	assert(request_line.get_child(-1).tooltip_text == "Annulla richiesta")
+	assert(request_line.get_node("Identity").get_child(-1).text == "Richiesta inviata")
+	page._apply_friend_action("new-friend", "cancel")
+	assert(page.results.get_child(0).get_child(0).get_child(-1).tooltip_text == "Aggiungi amico")
 	page.query.clear()
 	page.update_contacts()
 	assert(page.contacts.get_child_count() == 1)

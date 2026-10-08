@@ -91,6 +91,12 @@ func reset_preview() -> void:
 
 	_refresh_owned_backs()
 	_update_textures()
+	_ensure_inventory()
+
+func _ensure_inventory() -> void:
+	var shop := get_node_or_null("/root/ShopManager")
+	if shop and not shop.loading and (not shop.inventory_ready or shop.stale or not shop.last_error.is_empty()):
+		shop.refresh()
 
 
 ## La proprietà resta quella dell'inventario;
@@ -118,14 +124,12 @@ func _owned_backs() -> Array[int]:
 func _refresh_owned_backs() -> void:
 	var backs := _owned_backs()
 
-	if backs.has(selected_back):
-		_update_textures()
-		return
-
 	var saved := int(get_node("/root/GameSettings").values.deck_back)
 
 	if backs.has(saved):
 		selected_back = saved
+	elif backs.has(selected_back):
+		pass
 	elif not backs.is_empty():
 		selected_back = backs[0]
 	else:
@@ -151,6 +155,7 @@ func _cycle_front() -> void:
 
 
 func _cycle_back() -> void:
+	_ensure_inventory()
 	var backs := _owned_backs()
 
 	if backs.is_empty():

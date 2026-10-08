@@ -7,6 +7,30 @@ var busy := false
 var _owner := ""
 var _generation := 0
 var _account: Node
+var _avatar_uploaded := ""
+var _avatar_owner := ""
+var _avatar_busy := false
+
+func sync_avatar() -> void:
+	if _avatar_busy or _account == null or not _account.is_authenticated():
+		return
+	var config := ConfigFile.new()
+	if config.load("user://profile_photo.cfg") != OK:
+		return
+	var photo := str(config.get_value("profile", "avatar", ""))
+	var owner := str(_account.user_id)
+	if owner == _avatar_owner and photo == _avatar_uploaded:
+		return
+	if not photo.is_empty() and preload("res://scenes/balatro/scripts/avatar_data.gd").decode(photo) == null:
+		return
+	_avatar_busy = true
+	var result := await call_api("bisca_set_profile_avatar", {"photo": photo})
+	_avatar_busy = false
+	if result.ok and owner == str(_account.user_id):
+		_avatar_owner = owner
+		_avatar_uploaded = photo
+		# A new photo may have been confirmed while the request was in flight.
+		sync_avatar.call_deferred()
 
 func _ready() -> void:
 	_account = get_node("/root/AccountSession")
@@ -55,7 +79,11 @@ func refresh() -> void:
 		return
 	busy = true
 	var generation := _generation
-	var result := await call_api("bisca_friends_presence")
+	sync_avatar()
+	var result := await call_api("bisca_friends_presence_with_avatars")
+	# Keep friends usable until the new SQL migration is installed.
+	if not result.ok:
+		result = await call_api("bisca_friends_presence")
 	var invites := await call_api("bisca_list_invites") if result.ok else {}
 	busy = false
 	if generation != _generation:

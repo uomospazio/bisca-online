@@ -757,6 +757,7 @@ func _set_home_profile(avatar: String) -> void:
 	var profile_config := ConfigFile.new()
 	profile_config.set_value("profile", "avatar", avatar)
 	profile_config.save("user://profile_photo.cfg")
+	get_node("/root/FriendsManager").sync_avatar()
 	profile_button.queue_redraw()
 	_refresh_single_profile()
 	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:

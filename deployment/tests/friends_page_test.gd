@@ -21,12 +21,26 @@ func run() -> void:
 		{"id":"4", "username":"Space", "public_id":"NJC4AJ", "status":"accepted", "invite_code":"TEST12"}
 	]
 	page.update_contacts()
+	manager.entries[0]["avatar"] = preload("res://scenes/balatro/scripts/avatar_catalog.gd").encoded(0)
+	manager.entries[1]["avatar"] = "invalid-photo"
+	page.update_contacts()
 	for i in range(5): await process_frame
 	assert(page.contacts.get_child_count() == 4)
+	assert(page.contacts.get_child(0).find_child("FriendPhoto", true, false) != null)
+	assert(page.contacts.get_child(1).find_child("FriendPhoto", true, false) == null)
 	for tile in page.contacts.get_children():
-		assert(tile.size.x <= 1304 and tile.size.y >= 124)
+		assert(tile.size.x <= 1304 and tile.size.y == 110)
 		var identity = tile.find_child("Identity", true, false)
 		assert(identity != null and identity.size.x > 100)
+	var invite_line = page.contacts.get_child(3).get_child(0)
+	var buttons := 0
+	for child in invite_line.get_children():
+		if child is Button: buttons += 1
+	assert(buttons == 2, "Invites must have only reject and accept actions")
+	assert(page.friends_box.size == Vector2(1400, 790))
+	if "--snapshot" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("/tmp/bisca-friends-preview.png")
 	page.query.text = "Space"
 	page._show_search_results()
 	assert(page.results.get_parent().visible and not page.contacts.get_parent().visible)

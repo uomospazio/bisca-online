@@ -38,7 +38,7 @@ func setup(host: Control) -> void:
 	set_meta("cartoon_style_children_excluded", true)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var back := action_button(self, "←", menu.show_home, "Indietro")
-	back.position = Vector2(40, 40)
+	back.position = Vector2(10, 40)
 	back.size = Vector2(140, 140)
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(back)
 	friends_box = Panel.new()

@@ -3,7 +3,7 @@ extends Control
 const ART := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/InLobbyUI/"
 const ICONS := "res://scenes/balatro/trick_asset/ui_bisca/"
 const PAGE_SIZE := Vector2(1606, 800)
-const CONTENT_RECT := Rect2(212, 0, 1394, 800)
+const CONTENT_RECT := Rect2(212, 0, 1394, 796)
 var page
 var scalable_font: FontFile
 var content: Control
@@ -217,10 +217,17 @@ func _fit() -> void:
 			safe = Rect2((physical.position - Vector2(window.position)) * ratio, physical.size * ratio)
 	var inverse := get_global_transform_with_canvas().affine_inverse()
 	var bounds := Rect2(inverse * safe.position, inverse * safe.end - inverse * safe.position).grow(-40)
+	_layout_in_bounds(bounds, inverse * (viewport_size * 0.5))
+
+func _layout_in_bounds(bounds: Rect2, screen_center: Vector2) -> void:
+	# Center the visible lobby vertically on screen, not on the asymmetric
+	# safe area or on the Back button. Keep 40px safe margins when fitting.
+	var center := Vector2(bounds.get_center().x, clampf(screen_center.y, bounds.position.y, bounds.end.y))
+	var available_height := maxf(0.0, 2.0 * minf(center.y - bounds.position.y, bounds.end.y - center.y))
 	# Reserve equal space on both sides, so centering never overlaps Back.
-	var factor := maxf(0.01, minf(bounds.size.x / (CONTENT_RECT.size.x + 264.0), bounds.size.y / PAGE_SIZE.y))
+	var factor := maxf(0.01, minf(bounds.size.x / (CONTENT_RECT.size.x + 264.0), available_height / CONTENT_RECT.size.y))
 	content.scale = Vector2.ONE * factor
-	content.position = bounds.get_center() - CONTENT_RECT.get_center() * factor
+	content.position = center - CONTENT_RECT.get_center() * factor
 	back_anchor.position = bounds.position
 	back_anchor.scale = Vector2.ONE * factor
 

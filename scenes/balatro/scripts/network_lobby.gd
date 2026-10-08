@@ -3,10 +3,8 @@ extends Control
 # Dimensioni logiche degli slot nella nuova lista illustrata.
 const PLAYER_SLOT_HEIGHT := 80.0
 const PLAYER_SLOT_WIDTH := 564.0
-# Dimensioni box elenco: X = 0 segue la larghezza di BISCA; Y = altezza.
-# Per una larghezza personalizzata, usa ad esempio Vector2(650, 440).
-const LOBBY_DIRECTORY_SIZE := Vector2(750, 440)
 
+var entry_ui: Control
 var lobby_ui: Control
 var menu: Control
 var net: Node
@@ -26,7 +24,7 @@ var players_label: Label
 var code_button: Button
 var code_label: Label
 var copy_icon: TextureRect
-var entry: VBoxContainer
+var entry: Control
 var create_button: Button
 var join_button: Button
 var rejoin_button: Button
@@ -40,11 +38,10 @@ var invite_box: AcceptDialog
 var invite_rows: VBoxContainer
 var sending_invite := false
 var directory_rows: VBoxContainer
-var directory_panel: PanelContainer
+var directory_panel: Control
 var lobby_private: CheckButton
 var directory_timer: Timer
 var rendered_directory: Variant = null
-var directory_intro: Tween
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
@@ -54,23 +51,10 @@ func setup(owner_menu: Control) -> void:
 	net.connection_lost.connect(profile_picker.close)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	entry = VBoxContainer.new()
-	add_child(entry)
-	entry.position = Vector2(1100, 460) + menu.MULTIPLAYER_CONTENT_OFFSET
-	entry.size = Vector2(640, 200)
-	entry.add_theme_constant_override("separation", 24)
-	var choices := VBoxContainer.new()
-	entry.add_child(choices)
-	choices.add_theme_constant_override("separation", 24)
-	var create: Button = menu._button(choices, "CREA LOBBY", func(): net.connect_room(net.endpoint, {"op": "create", "name": menu.chosen_name(), "directory_name": get_node("/root/AccountProfile").account_display_name(), "capacity": 8, "private": false}))
-	entry_buttons = [create]
-	# Stesse dimensioni e forma a capsula dei pulsanti principali della HOME.
-	for button in [create]:
-		button.custom_minimum_size = menu.PLAY_BUTTON_SIZE
-		button.size = menu.PLAY_BUTTON_SIZE
-		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		menu._set_play_button_radius(button)
-	_build_directory()
+	entry_ui = preload("res://scenes/balatro/scripts/multiplayer_entry_ui.gd").new()
+	add_child(entry_ui)
+	entry_ui.setup(self)
+	_render_directory([])
 	net.lobby_directory_updated.connect(_render_directory)
 	directory_timer = Timer.new()
 	directory_timer.wait_time = 5.0
@@ -164,162 +148,43 @@ func setup(owner_menu: Control) -> void:
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_size_override("font_size", 24)
 	info.add_theme_color_override("font_color", Color("f3effe"))
-	var back_button: Button = menu._button(self, "Indietro", _back)
-	menu.match_singleplayer_back(back_button)
-	back_button.set_meta("safe_bottom", false)
-	back_button.position = Vector2(40, 40)
-	entry_buttons.append(back_button)
+	entry_ui.attach_form()
 	net.updated.connect(_update)
 	net.problem.connect(func(message): info.text = message)
 	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)
 
-func _build_directory() -> void:
-	directory_panel = PanelContainer.new()
-	directory_panel.name = "LobbyDirectory"
-	add_child(directory_panel)
-	# Match the actual BISCA letters, not their wider centering container.
-	# Keep the panel in the fixed composition, like the title and characters.
-	var heading_width: float = -8.0 * (menu.title_letters.size() - 1)
-	for letter in menu.title_letters:
-		heading_width += letter.custom_minimum_size.x
-	if LOBBY_DIRECTORY_SIZE.x > 0:
-		heading_width = LOBBY_DIRECTORY_SIZE.x
-	directory_panel.position.y = 600 + menu.MULTIPLAYER_CONTENT_OFFSET.y
-	directory_panel.size = Vector2(heading_width, LOBBY_DIRECTORY_SIZE.y)
-	# Usa la dimensione effettiva, anche dopo il layout dei contenitori.
-	directory_panel.resized.connect(_center_directory)
-	_center_directory()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("2d2646")
-	style.border_color = Color("7b68b5")
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(24)
-	style.content_margin_left = 24
-	style.content_margin_right = 24
-	style.content_margin_top = 18
-	style.content_margin_bottom = 18
-	directory_panel.add_theme_stylebox_override("panel", style)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 16)
-	directory_panel.add_child(content)
-	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = SIZE_EXPAND_FILL
-	content.add_child(scroll)
-	directory_rows = VBoxContainer.new()
-	directory_rows.size_flags_horizontal = SIZE_EXPAND_FILL
-	directory_rows.add_theme_constant_override("separation", 12)
-	scroll.add_child(directory_rows)
-	_render_directory([])
+func _create_public_lobby() -> void:
+	net.connect_room(net.endpoint, {"op": "create", "name": menu.chosen_name(), "directory_name": get_node("/root/AccountProfile").account_display_name(), "capacity": 8, "private": false})
 
-func _center_directory() -> void:
-	var center_x: float = menu.SOLO_TITLE_POSITION.x + menu.TITLE_WIDTH * 0.5 + menu.MULTIPLAYER_CONTENT_OFFSET.x
-	directory_panel.position.x = center_x - directory_panel.size.x * 0.5
-	directory_panel.pivot_offset = directory_panel.size * 0.5
+func _join_directory(item: Dictionary) -> void:
+	if item.get("rejoin", false):
+		net.connect_room(net.endpoint, {"op": "rejoin", "code": net.room_code, "token": net.token})
+	elif item.get("private", true):
+		code.text = ""
+		_show_form(false)
+	else:
+		net.connect_room(net.endpoint, {"op": "join_public", "id": item.id, "name": menu.chosen_name()})
 
 func _render_directory(entries: Array) -> void:
-	if entry.visible and is_instance_valid(info):
-		info.text = ""
+	# Polling must not erase connection/error messages while a request is pending.
 	if rendered_directory != null and rendered_directory == entries:
 		return
 	rendered_directory = entries.duplicate(true)
-	for child in directory_rows.get_children():
-		directory_rows.remove_child(child)
-		child.queue_free()
-	if entries.is_empty():
-		var empty := Label.new()
-		empty.text = "Nessuna lobby disponibile. Crea la tua!"
-		empty.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-		empty.add_theme_font_override("font", menu.KIDS_FONT)
-		empty.add_theme_font_size_override("font_size", 28)
-		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		empty.size_flags_horizontal = SIZE_EXPAND_FILL
-		directory_rows.add_child(empty)
-	for item in entries:
-		var card := PanelContainer.new()
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color("393056")
-		style.set_corner_radius_all(18)
-		style.content_margin_left = 20
-		style.content_margin_right = 20
-		style.content_margin_top = 14
-		style.content_margin_bottom = 14
-		card.add_theme_stylebox_override("panel", style)
-		directory_rows.add_child(card)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
-		card.add_child(row)
-		var label := Label.new()
-		label.text = str(item.get("name", "Lobby"))
-		label.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-		label.add_theme_font_override("font", menu.KIDS_FONT)
-		label.add_theme_font_size_override("font_size", 28)
-		label.size_flags_horizontal = SIZE_EXPAND_FILL
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		row.add_child(label)
-		var count := Label.new()
-		count.text = "%s/%s" % [item.get("participants", 0), item.get("capacity", 8)]
-		count.add_theme_color_override("font_color", menu.BUTTON_TEXT)
-		count.add_theme_font_override("font", menu.KIDS_FONT)
-		count.add_theme_font_size_override("font_size", 28)
-		row.add_child(count)
-		if item.get("private", true):
-			var lock := TextureRect.new()
-			lock.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/lock.svg")
-			lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			lock.custom_minimum_size = Vector2(36, 36)
-			lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			row.add_child(lock)
-		var join: Button = menu._button(row, "RIENTRA" if item.get("rejoin", false) else "ENTRA", func():
-			if item.get("rejoin", false):
-				net.connect_room(net.endpoint, {"op": "rejoin", "code": net.room_code, "token": net.token})
-			elif item.get("private", true):
-				code.text = ""
-				_show_form(false)
-			else:
-				net.connect_room(net.endpoint, {"op": "join_public", "id": item.id, "name": menu.chosen_name()})
-		)
-		join.custom_minimum_size = Vector2(150, 68)
-		join.add_theme_font_size_override("font_size", 28)
+	entry_ui.render(entries)
 
 func open() -> void:
 	lobby_ui.stop_pop()
 	match_options.reset_multiplayer()
 	menu.show_network_entry_extras()
 	show()
-	entry.show()
-	for button in entry_buttons:
-		button.show()
-		# Il layout iniziale dei Container puo' ripristinare la scala.
-		# Restano trasparenti fino all'inizio del proprio pop.
-		button.modulate.a = 0.0
-		button.scale = Vector2.ZERO
 	controls.hide()
 	session_controls.hide()
 	info.text = ""
-	menu._show_menu_title(true)
-	_pop_directory()
+	entry_ui.attach_status()
+	menu.title.hide()
+	menu.friends_subtitle.hide()
+	entry_ui.pop()
 	net.browse_lobbies()
-	_animate_entry_buttons.call_deferred()
-
-func _pop_directory() -> void:
-	if directory_intro and directory_intro.is_valid():
-		directory_intro.kill()
-	directory_panel.show()
-	directory_panel.modulate.a = 0.0
-	directory_panel.scale = Vector2.ZERO
-	directory_intro = create_tween()
-	directory_intro.tween_interval(menu.HOME_INTRO_DELAY + menu.HOME_INTRO_STAGGER)
-	directory_intro.tween_callback(func():
-		directory_panel.pivot_offset = directory_panel.size / 2.0
-		directory_panel.modulate.a = 1.0
-	)
-	directory_intro.tween_property(directory_panel, "scale", Vector2.ONE, menu.HOME_INTRO_DURATION).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-func _animate_entry_buttons() -> void:
-	if is_visible_in_tree() and entry.visible:
-		menu.animate_buttons_like_home(entry_buttons)
 
 func _show_form(creating: bool) -> void:
 	code.visible = not creating
@@ -367,31 +232,16 @@ func _pop_form_controls(items: Array[Control]) -> void:
 
 func _back() -> void:
 	profile_picker.close()
-	entry_buttons[-1].show()
 	lobby_ui.stop_pop()
-	if controls.visible and not session_controls.visible:
+	if session_controls.visible:
+		menu._send_profile_name()
+		net.leave()
+		profile_room = ""
+		open()
+	elif controls.visible:
 		controls.hide()
-		entry.show()
 		info.text = ""
-		# Indietro, titolo e personaggio restano gia' visibili.
-		_pop_directory()
-		var choices: Array[Control] = [entry_buttons[0]]
-		_pop_form_controls(choices)
-		return
-	if controls.visible or session_controls.visible:
-		var previous: Control = session_controls if session_controls.visible else controls
-		if session_controls.visible:
-			menu._send_profile_name()
-			net.leave()
-			profile_room = ""
-		menu.profile_panel.hide()
-		info.text = ""
-		menu._show_menu_title(true)
-		menu.show_network_entry_extras()
-		menu._animate_mode_heading("WITH YOUR FRIENDS")
-		preload("res://scenes/balatro/scripts/page_transition.gd").slide(self, previous, entry, true)
-		_pop_directory()
-		net.browse_lobbies()
+		entry_ui.pop()
 	else:
 		menu.show_home()
 
@@ -418,6 +268,10 @@ func _update(state: Dictionary) -> void:
 		menu.friends_subtitle.hide()
 		entry.hide()
 		controls.hide()
+		entry_ui.hide()
+		info.reparent(self, false)
+		info.position = Vector2(500, 970)
+		info.size = Vector2(920, 65)
 		session_controls.show()
 		entry_buttons[-1].hide()
 		lobby_ui.pop()

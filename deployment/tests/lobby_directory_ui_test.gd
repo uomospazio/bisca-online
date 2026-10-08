@@ -24,15 +24,12 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	assert(network.directory_rows.get_child_count() == 10)
-	var heading_width: float = -8.0 * (menu.title_letters.size() - 1)
-	for letter in menu.title_letters:
-		heading_width += letter.custom_minimum_size.x
-	assert(is_equal_approx(network.directory_panel.size.x, heading_width))
+	assert(network.directory_panel.size == Vector2(1000, 616))
 	assert(network.directory_rows.size.y > network.directory_panel.size.y)
-	assert(network.directory_panel.size.y <= 440)
 	assert(not network.directory_panel.has_meta("safe_edge"))
 	var network_back: Control = network.entry_buttons[-1]
-	assert(network_back.position - Vector2(network_back.get_meta("safe_edge")) == Vector2(40, 40))
+	assert(network_back == network.entry_ui.back)
+	assert(network_back.position.is_equal_approx(Vector2(40, 40)))
 	print("PASS: fullMarket, safe-area back buttons, lobby card layout and scrolling")
 	menu.queue_free()
 	await process_frame

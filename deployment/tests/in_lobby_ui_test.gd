@@ -37,6 +37,12 @@ func _run() -> void:
 	var visual_center: Vector2 = ui.content.position + ui.CONTENT_RECT.get_center() * ui.content.scale
 	var viewport_center: Vector2 = ui.get_global_transform_with_canvas().affine_inverse() * (ui.get_viewport_rect().size / 2)
 	assert(visual_center.is_equal_approx(viewport_center))
+	# Unequal top/bottom insets must not pull the lobby away from screen center.
+	ui._layout_in_bounds(Rect2(40, 100, 1840, 920), Vector2(960, 540))
+	var centered: Vector2 = ui.content.position + ui.CONTENT_RECT.get_center() * ui.content.scale
+	assert(is_equal_approx(centered.y, 540))
+	assert(ui.back_anchor.position == Vector2(40, 100))
+	ui._fit()
 	assert(ui.blocks[-1].get_parent() == ui.back_anchor)
 	assert(lobby.code_label.get_theme_font_size("font_size") == 56)
 	assert(lobby.code_label.get_theme_font("font").multichannel_signed_distance_field)

@@ -152,7 +152,7 @@ func _switch_page(next: Control, backwards := false) -> void:
 	if is_instance_valid(home_persistent_ui):
 		home_persistent_ui.visible = show_home_extras
 	if is_instance_valid(home_character):
-		home_character.visible = show_home_extras or next == setup_page or network_entry or (next == personalization_page and not customization_character_ready)
+		home_character.visible = show_home_extras or next == setup_page or (next == personalization_page and not customization_character_ready)
 	if is_instance_valid(shop_character):
 		shop_character.visible = next == personalization_page and customization_character_ready
 	# Foto e nome seguono la HOME o il pannello di configurazione.
@@ -722,7 +722,8 @@ func show_network_entry_extras() -> void:
 	_place_deck_selector_home()
 	home_persistent_ui.hide()
 	if is_instance_valid(home_character):
-		home_character.show()
+		home_character.hide()
+	second_character.hide()
 
 func hide_network_entry_extras() -> void:
 	home_persistent_ui.hide()
@@ -825,7 +826,6 @@ func _show_network() -> void:
 		network_page.setup(self)
 	network_page.open()
 	_switch_page(network_page)
-	_animate_mode_heading("WITH YOUR FRIENDS")
 
 func _refresh_friends_dot() -> void:
 	if is_instance_valid(friends_dot):

@@ -61,7 +61,7 @@ func setup(owner_page: Control) -> void:
 	page.entry.mouse_filter = MOUSE_FILTER_IGNORE
 	header = _image(page.entry, ART + "nuovapartitaBanner.png", Rect2(0, 0, 1000, 145))
 	var create := _button(header, ART + "creaLobby.png", Rect2(590, 20, 395, 105), page._create_public_lobby)
-	page.directory_panel = _image(page.entry, ART + "lobbyDisponibili.png", Rect2(0, 170, 1000, 616))
+	page.directory_panel = _image(page.entry, ART + "lobbyDisponibili.png", Rect2(0, 340, 1000, 616))
 	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	page.directory_panel.add_child(scroll)
 	scroll.position = Vector2(40, 130)
@@ -71,7 +71,7 @@ func setup(owner_page: Control) -> void:
 	scroll.add_child(page.directory_rows)
 	page.directory_rows.size_flags_horizontal = SIZE_EXPAND_FILL
 	page.directory_rows.add_theme_constant_override("separation", 18)
-	footer = _image(page.entry, ART + "codiceBanner.png", Rect2(0, 810, 1000, 145))
+	footer = _image(page.entry, ART + "codiceBanner.png", Rect2(0, 170, 1000, 145))
 	_button(footer, ART + "entraconCodice.png", Rect2(590, 20, 395, 105), func(): page._show_form(false))
 	back = _button(self, UI + "pngUI/AmiciUI/pulsanteIndietro.png", Rect2(40, 40, 400, 117.33), page._back)
 	back.tooltip_text = "Indietro"

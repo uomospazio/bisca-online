@@ -2,6 +2,16 @@ extends Control
 const Look = preload("res://scenes/balatro/scripts/friends_look.gd")
 const UI := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/AmiciUI/"
 const BOX_SIZE := Vector2(1400, 790)
+# Scala uniforme dal centro: 1.0 = attuale, 1.1 = +10%.
+@export_range(0.1, 3.0, 0.01) var friends_scale := 1.25:
+	set(value):
+		friends_scale = maxf(value, 0.1)
+		_apply_friends_transform()
+# Spostamento dal centro: X positivo = destra, Y positivo = basso.
+@export var friends_offset := Vector2.ZERO:
+	set(value):
+		friends_offset = value
+		_apply_friends_transform()
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 var manager: Node
 var menu: Control
@@ -15,6 +25,13 @@ var identity := ""
 var friends_box: Panel
 var search_timer: Timer
 
+func _apply_friends_transform() -> void:
+	if not is_instance_valid(friends_box):
+		return
+	friends_box.pivot_offset = BOX_SIZE * 0.5
+	friends_box.scale = Vector2.ONE * friends_scale
+	friends_box.position = (Vector2(1920, 1080) - BOX_SIZE) * 0.5 + friends_offset
+
 func setup(host: Control) -> void:
 	menu = host
 	manager = get_node("/root/FriendsManager")
@@ -22,12 +39,12 @@ func setup(host: Control) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var back := action_button(self, "←", menu.show_home, "Indietro")
 	back.position = Vector2(40, 40)
-	back.size = Vector2(110, 110)
+	back.size = Vector2(140, 140)
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(back)
 	friends_box = Panel.new()
 	add_child(friends_box)
-	friends_box.position = (Vector2(1920, 1080) - BOX_SIZE) * 0.5
 	friends_box.size = BOX_SIZE
+	_apply_friends_transform()
 	friends_box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var background := TextureRect.new()
 	friends_box.add_child(background)

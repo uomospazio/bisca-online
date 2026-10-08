@@ -39,7 +39,16 @@ Questa implementazione non usa l'SDK nativo Google Sign-In: i soli App ID di AdM
 
 Configurare Sign in with Apple nell'account Apple Developer: App ID primario, Services ID per il flusso web, dominio/Return URL, chiave di firma e identificativi richiesti. Il Bundle ID iOS attuale è `com.uomospazio.bisca.dev`.
 
-Inserire in Supabase la configurazione per il Services ID e il secret Apple generato. Per il flusso OAuth web, il secret Apple va rinnovato entro la sua scadenza (massimo sei mesi). La chiave `.p8` e i secret restano fuori dall'app e dal repository. Non sono incluse credenziali inventate o entitlement di accesso nativo: questo codice usa il browser di autenticazione.
+Inserire in Supabase la configurazione per il Services ID e il secret Apple generato. Per il flusso OAuth web, il secret Apple va rinnovato entro la sua scadenza (massimo sei mesi). La chiave `.p8` e i secret restano fuori dall'app e dal repository. L'export iOS include ora l'entitlement Sign in with Apple: questo codice continua a usare il browser di autenticazione, quindi l'entitlement non sostituisce la configurazione del provider.
+
+### Export iOS con account Developer
+
+- Firebase Messaging e il flusso push iOS sono riattivati.
+- Push Notifications è impostato su Development per i test diretti su iPhone; per distribuzione verificare l'ambiente Production e il provisioning della build firmata.
+- Il Team ID esistente è rimasto invariato: verificare in Xcode che corrisponda al team Developer a pagamento.
+- Abilitare Push Notifications e Sign in with Apple per il Bundle ID nel portale Apple.
+- Configurare la chiave APNs in Firebase per la relativa app iOS.
+- Riavviare Godot e riesportare il progetto Xcode. Non basta aggiornare il PCK.
 
 ## 4. Nuove build
 

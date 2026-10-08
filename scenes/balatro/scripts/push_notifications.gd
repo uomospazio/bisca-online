@@ -5,7 +5,7 @@ signal registration_changed(registered: bool, message: String)
 signal notification_received(title: String, body: String)
 
 const WEBHOOK_RPC := "bisca_register_push_device"
-const IOS_PUSH_ENABLED := false # Re-enable with paid Apple team and APNs entitlement.
+const IOS_PUSH_ENABLED := true # Requires paid Apple team and APNs configuration in Firebase.
 
 var _account: Node
 var _settings: Node

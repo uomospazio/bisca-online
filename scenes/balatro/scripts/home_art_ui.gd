@@ -2,9 +2,9 @@ extends "res://scenes/balatro/scripts/multiplayer_entry_ui.gd"
 
 const ART_HOME := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/"
 const DESIGN := Vector2(1840, 840)
-const TITLE_RECT := Rect2(-40, -30, 1034, 542)
-const SINGLEPLAYER_RECT := Rect2(211, 425, 554, 140)
-const MULTIPLAYER_RECT := Rect2(211, 580, 554, 140)
+const TITLE_RECT := Rect2(-40, -10, 1054, 562)
+const SINGLEPLAYER_RECT := Rect2(216, 455, 559, 143)
+const MULTIPLAYER_RECT := Rect2(216, 610, 559, 143)
 const SHOW_PURPLE_BACKGROUND := true # false per tornare allo sfondo precedente.
 var owner_menu: Control
 var amount: Label

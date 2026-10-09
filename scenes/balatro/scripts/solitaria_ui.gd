@@ -45,7 +45,7 @@ func setup(owner_menu: Control) -> void:
 			plus.modulate.a = 0.45 if plus.disabled else 1.0
 		model.value_changed.connect(refresh)
 		refresh.call()
-	play = _button(composition, SOLO_ART + "gioca.png", Rect2(956, 666, 442, 104), menu._start)
+	play = _button(composition, SOLO_ART + "gioca.png", Rect2(960, 666, 442, 104), menu._start)
 	back_anchor = Control.new()
 	add_child(back_anchor)
 	back_anchor.mouse_filter = MOUSE_FILTER_IGNORE

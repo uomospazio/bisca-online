@@ -101,7 +101,7 @@ func _ready() -> void:
 
 func _sync_text_motion() -> void:
 	var settings := get_node_or_null("/root/GameSettings")
-	text_motion_enabled = settings == null or bool(settings.values.get("text_animations", true))
+	text_motion_enabled = settings != null and bool(settings.values.get("text_animations", false))
 	queue_redraw()
 # Cache limitata al nome corrente: nessun accumulo quando i giocatori cambiano.
 var cached_name := ""

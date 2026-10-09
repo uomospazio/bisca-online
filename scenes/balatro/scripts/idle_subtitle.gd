@@ -19,7 +19,7 @@ func _ready() -> void:
 
 func _sync_motion() -> void:
 	var settings := get_node_or_null("/root/GameSettings")
-	motion_enabled = settings == null or bool(settings.values.get("text_animations", true))
+	motion_enabled = settings != null and bool(settings.values.get("text_animations", false))
 	set_process(animated and motion_enabled)
 	queue_redraw()
 

@@ -13,6 +13,7 @@ var guest := false
 var working := false
 var syncing := false
 var controls: Array[Button] = []
+var intro_art: Control
 
 func setup(host: Control) -> void:
 	menu = host
@@ -48,6 +49,11 @@ func setup(host: Control) -> void:
 	_choices()
 
 func _clear() -> void:
+	if is_instance_valid(intro_art):
+		remove_child(intro_art)
+		intro_art.queue_free()
+		intro_art = null
+	column.show()
 	for child in column.get_children():
 		column.remove_child(child)
 		child.queue_free()
@@ -80,29 +86,21 @@ func _text(value: String) -> Label:
 
 func _choices() -> void:
 	_clear()
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 24)
-	column.add_child(row)
-	_button(row, "APPLE", func(): _social_choices("apple"))
-	_button(row, "GOOGLE", func(): _social_choices("google"))
-	_button(row, "EMAIL", _email_choices)
-	var skip := LinkButton.new()
-	skip.text = "Continua come ospite"
-	skip.add_theme_font_override("font", FONT)
-	skip.add_theme_font_size_override("font_size", 30)
-	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	column.add_child(skip)
-	skip.pressed.connect(func():
-		if account.is_authenticated() and not account.anonymous:
-			notice.text = "Hai già un account collegato. Usa Email per accedere senza perdere i progressi."
-			return
-		guest = true
-		if not account.is_authenticated():
-			account.connect_account()
-		_name_page()
-	)
-	notice = _text("")
+	column.hide()
+	intro_art = preload("res://scenes/balatro/scripts/intro_art_ui.gd").new()
+	add_child(intro_art)
+	intro_art.setup_intro(self)
+	notice = intro_art.notice
+	controls.assign(intro_art.buttons)
+
+func _continue_guest() -> void:
+	if account.is_authenticated() and not account.anonymous:
+		notice.text = "Hai già un account collegato. Usa Email per accedere senza perdere i progressi."
+		return
+	guest = true
+	if not account.is_authenticated():
+		account.connect_account()
+	_name_page()
 
 func _social_choices(provider: String) -> void:
 	_clear()

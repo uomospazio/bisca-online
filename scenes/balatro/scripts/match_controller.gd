@@ -100,7 +100,7 @@ func _ready() -> void:
 	# Slightly enlarge only the player's hand; table cards and the deck keep
 	get_tree().node_added.connect(_style_new_button)
 	# their existing proportions.
-	hand.scale = Vector2.ONE * 1.7
+	hand.scale = Vector2.ONE * 1.8
 	for data in Deck.new().cards:
 		catalog[data.strength - 1] = data
 	_build_ui()

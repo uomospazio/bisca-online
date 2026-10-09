@@ -1,7 +1,7 @@
 extends Node
 
 signal changed
-const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "text_animations": true, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0, "throw_slots": [0, 1, -1], "show_thrown_objects": true, "language": "it", "microphone_enabled": true, "push_to_talk": false, "push_notifications": false, "push_permission_asked": false}
+const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "text_animations": false, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0, "throw_slots": [0, 1, -1], "show_thrown_objects": true, "language": "it", "microphone_enabled": true, "push_to_talk": false, "push_notifications": false, "push_permission_asked": false}
 const FRONT_FOLDERS := ["res://scenes/balatro/trick_asset/mazzo_2/briscola/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_big/Deck/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_color/Deck/"]
 
 func front_texture(colour: int = 3, number: int = 5, index: int = -1) -> Texture2D:
@@ -39,6 +39,8 @@ func load_preferences() -> void:
 	if config.load(save_path) != OK:
 		return
 	for key in DEFAULTS:
+		# Retired option: never restore the old enabled preference.
+		if key == "text_animations": continue
 		var value: Variant = config.get_value("settings", key, DEFAULTS[key])
 		if key == "language":
 			values[key] = value if value in ["it", "en"] else "it"
@@ -55,6 +57,7 @@ func load_preferences() -> void:
 			values[key] = value
 
 func set_value(key: String, value: Variant) -> void:
+	if key == "text_animations": value = false
 	if not DEFAULTS.has(key):
 		return
 	if key == "language":

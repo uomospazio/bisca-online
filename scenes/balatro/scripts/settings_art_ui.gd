@@ -53,7 +53,7 @@ func setup_settings(host_page: Control, host_menu: Control) -> void:
 	_make_slider("effects", 578)
 	language_button = _button(panel, SETTINGS_ART + "italiano.png", Rect2(530, 614, 348, 76), func():
 		language_open.visible = not language_open.visible
-	)
+	, false)
 	language_button.tooltip_text = "Lingua / Language"
 	language_open = _image(panel, SETTINGS_ART + "italianoOpen.png", Rect2(530, 614, 348, 170))
 	language_open.z_index = 5
@@ -103,7 +103,8 @@ func _hotspot(parent: Node, rect: Rect2, action: Callable) -> Button:
 	return button
 
 func _skin(button: Button, path: String) -> void:
-	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
+	if button != language_button:
+		preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var style := StyleBoxTexture.new()
 		style.texture = load(path)

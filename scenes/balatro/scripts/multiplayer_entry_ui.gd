@@ -120,7 +120,7 @@ func _label(parent: Node, text: String, rect: Rect2, font_size: int, color := Co
 	label.mouse_filter = MOUSE_FILTER_IGNORE
 	return label
 
-func _button(parent: Node, path: String, rect: Rect2, action: Callable) -> Button:
+func _button(parent: Node, path: String, rect: Rect2, action: Callable, hover_enabled := true) -> Button:
 	var button := Button.new()
 	parent.add_child(button)
 	button.position = rect.position
@@ -133,7 +133,8 @@ func _button(parent: Node, path: String, rect: Rect2, action: Callable) -> Butto
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.pressed.connect(action)
 	RoundedSquareButton.ButtonAudio.attach(button)
-	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
+	if hover_enabled:
+		preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	return button
 
 func render(entries: Array) -> void:

@@ -165,6 +165,7 @@ func _build_profile() -> void:
 	_sync_profile()
 
 func _sync_profile() -> void:
+	profile_name.add_theme_font_size_override("font_size", 28 if menu_owner.name_input.text.is_empty() else 36)
 	profile_photo.texture_normal = menu_owner.profile_texture
 	profile_photo.get_node("Camera").visible = menu_owner.profile_texture == null
 	if profile_name.text != menu_owner.name_input.text:

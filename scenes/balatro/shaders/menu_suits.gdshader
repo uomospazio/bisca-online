@@ -8,6 +8,8 @@ uniform sampler2D bastoni : filter_linear_mipmap;
 uniform vec2 surface_size = vec2(1920.0, 1080.0);
 uniform vec4 paper : source_color = vec4(0.090196, 0.074510, 0.141176, 1.0); // Dub Together dark PAPER: #171324.
 uniform float ink_opacity = 0.05;
+uniform bool use_purple_background = false;
+uniform sampler2D purple_background : source_color, filter_linear_mipmap;
 // Area libera opzionale per il logo della schermata di avvio.
 uniform vec2 clear_center_size = vec2(0.0);
 
@@ -36,5 +38,6 @@ void fragment() {
 		vec2 distance_from_logo = abs((UV - vec2(0.5)) * surface_size) - clear_center_size * 0.5;
 		mask *= smoothstep(0.0, 65.0, max(distance_from_logo.x, distance_from_logo.y));
 	}
-	COLOR = vec4(mix(paper.rgb, vec3(1.0), symbol.a * mask * ink_opacity), 1.0);
+	vec3 base = use_purple_background ? texture(purple_background, UV).rgb : paper.rgb;
+	COLOR = vec4(mix(base, vec3(1.0), symbol.a * mask * ink_opacity), 1.0);
 }

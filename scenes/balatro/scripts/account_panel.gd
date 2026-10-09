@@ -4,6 +4,7 @@ signal action_completed(action: String)
 
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
+const GenericSkin = preload("res://scenes/balatro/scripts/generic_ui_skin.gd")
 
 var account: Node
 var menu: Control
@@ -17,6 +18,9 @@ var working := false
 var mode := ""
 var username_field: LineEdit
 var direct_action := false
+var provider_intent := ""
+var panel: PanelContainer
+var scalable_font: FontFile
 
 func setup(host: Control, initial_mode: String = "home") -> void:
 	direct_action = initial_mode != "home"
@@ -26,35 +30,20 @@ func setup(host: Control, initial_mode: String = "home") -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	z_index = 100
 
-	var shade := ColorRect.new()
-	# Overlay coerente con il fondo dark del menu: il nero opaco rende visibile
-	# il rettangolo dell'area logica 1920x1080 sui display piu' larghi.
-	shade.color = Color("171324", 0.62)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(shade)
-
-	var panel := PanelContainer.new()
+	set_meta("cartoon_style_children_excluded", true)
+	# Transparent input blocker: modal interaction without the dark rectangle.
+	var blocker := Control.new()
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(blocker)
+	scalable_font = FONT.duplicate() as FontFile
+	scalable_font.multichannel_signed_distance_field = true
+	scalable_font.msdf_size = 64
+	panel = PanelContainer.new()
 	add_child(panel)
-
-	panel.position = Vector2(460, 120)
-	panel.size = Vector2(1000, 840)
-
-	var skin := Style.button_style(
-		Style.PANEL,
-		Style.HOVER,
-		4
-	)
-
-	for edge in ["left", "right", "top", "bottom"]:
-		skin.set(
-			"content_margin_" + edge,
-			28.0
-		)
-
-	panel.add_theme_stylebox_override(
-		"panel",
-		skin
-	)
+	panel.size = Vector2(900, 680)
+	GenericSkin.apply(panel, false, 44.0)
+	get_viewport().size_changed.connect(_fit_panel)
+	_fit_panel.call_deferred()
 
 	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -74,7 +63,11 @@ func setup(host: Control, initial_mode: String = "home") -> void:
 	var cloud := get_node("/root/AccountProfile")
 	cloud.changed.connect(_account_changed)
 
-	_show(initial_mode)
+	if initial_mode.begins_with("signin_"):
+		provider_intent = "login"
+		_show(initial_mode.trim_prefix("signin_"))
+	else:
+		_show(initial_mode)
 
 
 func _account_changed() -> void:
@@ -113,7 +106,7 @@ func _text(
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_override("font", scalable_font)
 	label.add_theme_font_size_override("font_size", size_value)
 	label.add_theme_color_override("font_color", Style.TEXT)
 
@@ -166,24 +159,19 @@ func _button(
 	action: Callable
 ) -> Button:
 
-	var button: Button = menu._button(
-		rows,
-		text,
-		action
-	)
-
-	button.custom_minimum_size = Vector2(
-		0,
-		60
-	)
-
-	# Altezza 60 px -> radius Y/2 = 30 px.
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var base_style := button.get_theme_stylebox(state)
-		if base_style is StyleBoxFlat:
-			var style := (base_style as StyleBoxFlat).duplicate() as StyleBoxFlat
-			style.set_corner_radius_all(30)
-			button.add_theme_stylebox_override(state, style)
+	var button := Button.new()
+	rows.add_child(button)
+	button.text = text
+	button.pressed.connect(action)
+	preload("res://scenes/balatro/scripts/button_audio.gd").attach(button)
+	button.custom_minimum_size = Vector2(320, 92)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.add_theme_font_override("font", scalable_font)
+	button.add_theme_font_size_override("font_size", 22)
+	GenericSkin.apply(button, true)
+	# Long captions can grow while preserving the 160:46 aspect ratio.
+	var width := maxf(320, scalable_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 32)
+	button.custom_minimum_size = Vector2(width, width / GenericSkin.BUTTON_RATIO)
 
 	buttons.append(button)
 
@@ -202,110 +190,43 @@ func _show(next: String) -> void:
 
 	buttons.clear()
 
-	_text("ACCOUNT", 44)
+	_text("CREA NUOVO ACCOUNT" if mode == "new_guest" else "ACCOUNT", 44)
 
 	if mode == "home":
-
-		_text(
-			"OSPITE - SOLO SU QUESTO DISPOSITIVO"
-			if account.anonymous
-			else "EMAIL: " + account.email
-		)
-
-		var cloud := get_node("/root/AccountProfile")
-		var display_name: String = cloud.account_display_name()
-		if not display_name.is_empty():
-			_text("PROFILO: " + display_name)
-		var username_button := _button("MODIFICA USERNAME", func(): _show("username"))
-		var dot: Panel = menu._notification_dot(username_button)
-		dot.visible = cloud.needs_username()
-
-		if cloud.profile.has("public_id"):
-			var public_id := str(
-				cloud.profile.get(
-					"public_id",
-					""
-				)
-			)
-
-			if (
-				not public_id.is_empty()
-				and public_id != "<null>"
-			):
-				_text(
-					"ID BISCA: #" + public_id,
-					24
-				)
-
-		_text(
-			"SALVATAGGIO MAZZO: " +
-			(
-				"IN ATTESA / OFFLINE"
-				if (
-					not account.is_authenticated()
-					or not cloud.last_error.is_empty()
-					or cloud._pending
-					or not cloud._loaded
-				)
-				else "SINCRONIZZATO"
-			),
-			20
-		)
-
-		_text(
-			"Nome e foto della lobby rimangono separati. Qui salvi e recuperi l'account.",
-			20
-		)
-
-		if not account.password_ready:
-			_button(
-				"SALVA I TUOI PROGRESSI",
-				func():
-					_show(
-						"password"
-						if account.email_verified
-						else "link"
-					)
-			)
-
-		if not account.pending_email.is_empty():
-			_button(
-				"HO CONFERMATO L'EMAIL",
-				func():
-					_show("verify")
-			)
-
-		_button(
-			"ACCEDI A UN ACCOUNT",
-			func():
-				_show("login")
-		)
-
-		_button("CONTINUA CON UN NUOVO OSPITE", func(): _show("new_guest"))
-
-		_button(
-			"RICONTROLLA CONNESSIONE",
-			_reconnect
-		)
-
-		if (
-			not account.anonymous
-			and (account.password_ready or account.social_ready)
-		):
-			_button(
-				"ESCI DALL'ACCOUNT",
-				func():
-					_show("logout")
-			)
-
+		provider_intent = ""
+		_button("SALVA I TUOI PROGRESSI", func(): _show("save_providers"))
+		_button("ACCEDI", func(): _show("login_providers"))
+	elif mode in ["save_providers", "login_providers"]:
+		provider_intent = "save" if mode == "save_providers" else "login"
+		_text("SALVA I TUOI PROGRESSI" if provider_intent == "save" else "ACCEDI")
+		_button("APPLE", func(): _show("apple"))
+		_button("GOOGLE", func(): _show("google"))
+		_button("EMAIL", _choose_email)
 	elif mode == "social":
 		_button("APPLE", func(): _show("apple"))
 		_button("GOOGLE", func(): _show("google"))
 	elif mode in ["apple", "google"]:
-		_text("ACCEDI CON " + mode.to_upper())
-		_text("Collega per mantenere questo profilo e i progressi. Accedi a un altro account per recuperarne uno esistente: i profili non vengono uniti.")
-		_button("COLLEGA QUESTO ACCOUNT", func(): _run_social(true))
-		_button("ACCEDI A UN ALTRO ACCOUNT", func(): _run_social(false))
+		_text(("COLLEGA " if provider_intent == "save" else "ACCEDI CON ") + mode.to_upper())
+		if provider_intent == "save":
+			_text("Collega questo profilo per conservare i tuoi progressi.")
+			_button("CONTINUA", func(): _run_social(true))
+		elif provider_intent == "login":
+			_text("Accedi a un account esistente. I progressi del profilo attuale non vengono uniti.")
+			_button("CONTINUA", func(): _run_social(false))
+		else:
+			_text("Collega per mantenere questo profilo e i progressi, oppure accedi a un account esistente.")
+			_button("COLLEGA QUESTO ACCOUNT", func(): _run_social(true))
+			_button("ACCEDI A UN ALTRO ACCOUNT", func(): _run_social(false))
+	elif mode.begins_with("connected_"):
+		var provider := mode.trim_prefix("connected_")
+		_text(provider.to_upper() + " CONNESSO", 32)
+		_text(str(account.provider_accounts.get(provider, "Account collegato")))
+		_button("MODIFICA USERNAME", func(): _show("username"))
+		if provider == "email" and account.email_verified:
+			_button("IMPOSTA PASSWORD", func(): _show("password"))
+		_button("CONTINUA CON UN ALTRO ACCOUNT", func(): _show("new_guest"))
+	elif mode == "email_saved":
+		_text("I tuoi progressi sono già collegati a " + account.email + ".")
 	elif mode == "username":
 		_text("Username account: 3–24 caratteri, lettere, numeri, punto o underscore. Vuoto = solo codice.")
 		username_field = _field("Username")
@@ -393,13 +314,8 @@ func _show(next: String) -> void:
 		)
 
 	elif mode == "new_guest":
-		_text("Creare un nuovo ospite separato? L'account precedente resta nel cloud: se collegato, puoi recuperarlo con email e password. Monete e oggetti NON vengono trasferiti.")
-		_text("Se il precedente account era un ospite senza email, potresti non poterlo piu' recuperare da questo dispositivo.", 22)
-		confirmation = CheckBox.new()
-		confirmation.text = "Confermo di voler cambiare account"
-		confirmation.add_theme_font_size_override("font_size", 26)
-		rows.add_child(confirmation)
-		_button("CREA NUOVO OSPITE", func(): _run("new_guest"))
+		_text("Se l'account attuale non è collegato potresti non poterlo più recuperare.")
+		_button("CONFERMA", func(): _run("new_guest"))
 
 	elif mode == "logout":
 		_text(
@@ -426,8 +342,41 @@ func _show(next: String) -> void:
 			if mode == "home":
 				queue_free()
 			else:
-				_show("home")
+				_go_back()
 	)
+	if mode == "home":
+		_layout_home()
+	elif mode == "new_guest":
+		var material: ShaderMaterial = buttons.back().get_meta("generic_ui_material")
+		material.set_shader_parameter("fill_top", Color("88302c"))
+		material.set_shader_parameter("fill_bottom", Color("5d1f25"))
+		material.set_shader_parameter("border_top", Color("e96872"))
+		material.set_shader_parameter("border_bottom", Color("953143"))
+	_fit_panel.call_deferred()
+
+func _layout_home() -> void:
+	var title := rows.get_child(0) as Label
+	title.hide()
+	notice.hide()
+	var content := Control.new()
+	rows.add_child(content)
+	content.custom_minimum_size = Vector2(812, 400)
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.reparent(content, false)
+	title.show()
+	title.position = Vector2(0, -8)
+	title.size = Vector2(812, 116)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 92)
+	buttons[0].text = "SALVA\nPROGRESSI"
+	for index in buttons.size():
+		var button := buttons[index]
+		button.reparent(content, false)
+		var width := 368.0 if index < 2 else 320.0
+		button.custom_minimum_size = Vector2(width, width / GenericSkin.BUTTON_RATIO)
+		button.size = button.custom_minimum_size
+		button.position = Vector2(12 + index * 420, 160) if index < 2 else Vector2(246, 310)
+		button.add_theme_font_size_override("font_size", 40)
 
 
 func _run_social(link_current: bool) -> void:
@@ -468,7 +417,7 @@ func _run(action: String) -> void:
 		return
 
 	if (
-		action in ["login", "new_guest"]
+		action == "login"
 		and not confirmation.button_pressed
 	):
 		notice.text = "Conferma il cambio account prima di accedere."
@@ -530,3 +479,41 @@ func _run(action: String) -> void:
 		if action == "link"
 		else "Operazione completata."
 	)
+
+func _choose_email() -> void:
+	if provider_intent == "login":
+		_show("login")
+	elif not account.pending_email.is_empty():
+		_show("verify")
+	elif account.email_verified and not account.password_ready:
+		_show("password")
+	elif account.password_ready:
+		_show("email_saved")
+	else:
+		_show("link")
+
+func _go_back() -> void:
+	if mode in ["save_providers", "login_providers"]:
+		_show("home")
+	elif not provider_intent.is_empty():
+		_show("save_providers" if provider_intent == "save" else "login_providers")
+	else:
+		_show("home")
+
+func _fit_panel() -> void:
+	if not is_instance_valid(panel): return
+	var viewport_size := get_viewport_rect().size
+	var safe := Rect2(Vector2.ZERO, viewport_size)
+	if OS.has_feature("mobile"):
+		var window := get_window()
+		var physical := Rect2(DisplayServer.get_display_safe_area()).intersection(Rect2(Vector2(window.position), Vector2(window.size)))
+		if physical.has_area():
+			var ratio := viewport_size / Vector2(window.size)
+			safe = Rect2((physical.position - Vector2(window.position)) * ratio, physical.size * ratio)
+	var bounds: Rect2 = get_global_transform_with_canvas().affine_inverse() * safe
+	bounds = bounds.grow(-40)
+	var height := 508.0 if mode == "home" else 760.0
+	panel.size = Vector2(900, height)
+	var factor := minf(1.0, minf(bounds.size.x / panel.size.x, bounds.size.y / panel.size.y))
+	panel.scale = Vector2.ONE * factor
+	panel.position = bounds.get_center() - panel.size * factor / 2

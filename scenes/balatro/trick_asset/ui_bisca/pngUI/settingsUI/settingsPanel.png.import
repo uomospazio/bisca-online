@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvhf0k180o2nt"
-path="res://.godot/imported/Screenshot 2026-10-06 alle 11.21.17.png-2247261a29d120a1b6d55345261ddac8.ctex"
+uid="uid://c8a8h1t0m8rqg"
+path="res://.godot/imported/settingsPanel.png-3f017df4a221e3da182bb7cba4955a83.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/balatro/scripts/Screenshot 2026-10-06 alle 11.21.17.png"
-dest_files=["res://.godot/imported/Screenshot 2026-10-06 alle 11.21.17.png-2247261a29d120a1b6d55345261ddac8.ctex"]
+source_file="res://scenes/balatro/trick_asset/ui_bisca/pngUI/settingsUI/settingsPanel.png"
+dest_files=["res://.godot/imported/settingsPanel.png-3f017df4a221e3da182bb7cba4955a83.ctex"]
 
 [params]
 

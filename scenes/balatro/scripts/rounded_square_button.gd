@@ -38,6 +38,7 @@ func _on_resized() -> void:
 	_update_state_styles()
 
 func _update_state_styles() -> void:
+	if has_meta("generic_ui_skin"): return
 	# Ogni stato gestito da questa classe usa sempre radius = Y / 2.
 	# `resized` richiama questa funzione quando Container/layout assegnano
 	# l'altezza definitiva al pulsante.

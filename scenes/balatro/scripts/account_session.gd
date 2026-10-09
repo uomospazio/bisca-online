@@ -16,6 +16,7 @@ var email_verified := false
 var pending_email := ""
 var password_ready := false
 var social_ready := false
+var provider_accounts: Dictionary = {}
 var _access_token := ""
 var _refresh_token := ""
 var _expires_at := 0
@@ -127,6 +128,12 @@ func database_headers() -> PackedStringArray:
 		"Authorization: Bearer " + _access_token, "Content-Type: application/json"])
 
 func _read_user(data: Dictionary) -> void:
+	provider_accounts.clear()
+	for identity in data.get("identities", []):
+		if identity is Dictionary:
+			var provider := str(identity.get("provider", ""))
+			var details: Dictionary = identity.get("identity_data", {})
+			provider_accounts[provider] = str(details.get("email", details.get("name", "Account collegato")))
 	email = str(data.get("email", ""))
 	anonymous = bool(data.get("is_anonymous", true))
 	email_verified = data.get("email_confirmed_at") != null

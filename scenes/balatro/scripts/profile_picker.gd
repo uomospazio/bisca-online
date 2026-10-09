@@ -65,6 +65,7 @@ func open(display_name: String) -> void:
 		for edge in ["left", "right", "top", "bottom"]:
 			skin.set("content_margin_" + edge, 32)
 		panel.add_theme_stylebox_override("panel", skin)
+		preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(panel, false, 32)
 		var column := VBoxContainer.new()
 		column.name = "ProfileContent"
 		column.add_theme_constant_override("separation", 24)
@@ -125,6 +126,7 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 	var button: Button = get_parent()._button(parent, text, action)
 	button.custom_minimum_size = Vector2(300, 80)
 	button.add_theme_font_size_override("font_size", 32)
+	preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(button, true)
 	return button
 
 func _avatar_arrow(parent: Control, icon_file: String, step: int) -> void:

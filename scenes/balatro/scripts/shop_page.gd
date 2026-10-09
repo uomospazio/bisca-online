@@ -42,7 +42,7 @@ var rendered_items: Array = []
 var purchase_dialog: Control
 var purchase_text: Label
 var purchase_amount: Label
-var result_dialog: AcceptDialog
+var result_dialog: Control
 var pending_item := ""
 var pending_price := 0
 var pending_user := ""
@@ -108,6 +108,19 @@ func setup(menu: Control) -> void:
 	back.set_meta("safe_bottom", false)
 	back.position = Vector2(40, 40)
 	fixed_controls = [back, counter]
+	counter.show()
+	var support := TextureButton.new()
+	add_child(support)
+	support.texture_normal = preload("res://scenes/balatro/trick_asset/ui_bisca/coffee.png")
+	support.ignore_texture_size = true
+	support.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	support.position = Vector2(55, 230)
+	support.size = Vector2(250, 240)
+	support.tooltip_text = "Supporta il creatore"
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(support)
+	support.pressed.connect(menu._show_support_creator)
+	preload("res://scenes/balatro/scripts/button_audio.gd").attach(support)
+	fixed_controls.append(support)
 	get_node("/root/RewardedAds").changed.connect(func():
 		back.disabled = get_node("/root/RewardedAds").busy
 	)
@@ -126,7 +139,7 @@ func setup(menu: Control) -> void:
 
 	_build_purchase_dialog()
 	get_viewport().size_changed.connect(_fit_offer_scale, CONNECT_DEFERRED)
-	result_dialog = AcceptDialog.new()
+	result_dialog = preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	add_child(result_dialog)
 	manager.changed.connect(_update)
 	visibility_changed.connect(_update)
@@ -145,6 +158,7 @@ func _build_purchase_dialog() -> void:
 	for edge in ["left", "right", "top", "bottom"]:
 		skin.set("content_margin_" + edge, 36.0)
 	panel.add_theme_stylebox_override("panel", skin)
+	preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(panel, false, 36)
 	var rows := Control.new()
 	panel.add_child(rows)
 	rows.position = Vector2(32, 32)
@@ -187,6 +201,7 @@ func _build_purchase_dialog() -> void:
 			for edge in ["left", "right", "top", "bottom"]:
 				button_skin.set("content_margin_" + edge, 6.0)
 			button.add_theme_stylebox_override(state, button_skin)
+		preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(button, true)
 	var fit := func():
 		var screen := get_viewport_rect().size
 		shade.position = -(screen - Vector2(1920, 1080)) * 0.5
@@ -386,6 +401,13 @@ func _build_offer(item: Dictionary, index: int) -> void:
 	tag.add_child(price)
 	if not owned and item.is_available:
 		item_previews[str(item.id)] = [preview, tag]
+		for target in [preview, tag]:
+			target.mouse_filter = Control.MOUSE_FILTER_PASS
+			target.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(target, func():
+				var stretch := get_viewport().get_stretch_transform().get_scale().abs()
+				return Vector2.ONE / maxf(1.0, maxf(stretch.x, stretch.y))
+			)
 
 func _add_item_shadow(preview: TextureRect) -> void:
 	var shadow := Control.new()

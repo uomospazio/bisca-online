@@ -184,6 +184,8 @@ func _ready() -> void:
 	update_voice_icon.call()
 	var menu_background := ShaderMaterial.new()
 	menu_background.shader = preload("res://scenes/balatro/shaders/menu_suits.gdshader")
+	menu_background.set_shader_parameter("use_purple_background", preload("res://scenes/balatro/scripts/home_art_ui.gd").SHOW_PURPLE_BACKGROUND)
+	menu_background.set_shader_parameter("purple_background", preload("res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/sfondoViola.png"))
 	for suit in ["denari", "coppe", "spade", "bastoni"]:
 		menu_background.set_shader_parameter(suit, load("res://scenes/balatro/resources/%s.png" % suit))
 	menu_background.set_shader_parameter("surface_size", $GameBackground.size)

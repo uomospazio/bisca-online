@@ -31,11 +31,12 @@ const HOME_BUTTONS_SIZE := Vector2(820, 204)
 # Inserisci qui il percorso del TUO SVG (o PNG) del personaggio.
 const HOME_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_menu.png"
 const SHOP_CHARACTER_PATH := "res://scenes/balatro/resources/personaggio_shop.png"
-const HOME_CHARACTER_POSITION := Vector2(600, 150) + HOME_CONTENT_OFFSET
-const HOME_CHARACTER_SIZE := Vector2(1320, 1310)
+const HOME_CHARACTER_POSITION := Vector2(880, 55)
+const HOME_CHARACTER_SIZE := Vector2(780, 1200)
 const SOLO_CHARACTER_POSITION := Vector2(-60, 150)
 const MULTI_CHARACTER_POSITION := SOLO_CHARACTER_POSITION + Vector2(-150, 0)
 var solo_buttons: Array[Button] = []
+var solitaria_ui: Control
 const SOLO_TITLE_POSITION := Vector2(920, 170)
 const SOLO_SUBTITLE_POSITION := Vector2(920, 350)
 # Spostamento comune del blocco titolo, creazione ed elenco lobby.
@@ -116,6 +117,8 @@ var home_character: TextureRect
 var profile_picker: Node
 var profile_button: TextureButton
 var profile_avatar := ""
+var profile_save_path := "user://profile_photo.cfg"
+var has_saved_match_name := false
 var profile_texture: Texture2D
 var setup_page: Control
 var profile_panel: Panel
@@ -136,6 +139,7 @@ var settings_page: Control
 var shop_page: Control
 var home_market_button: TextureButton
 var home_support_button: TextureButton
+var home_art: Control
 var shop_return_page: Control
 var personalization_page: Control
 var shop_character: TextureRect
@@ -168,7 +172,7 @@ func _switch_page(next: Control, backwards := false) -> void:
 			_place_deck_selector_profile()
 		profile_panel.visible = next == network_page and network_page.session_controls.visible
 		deck_selector.reset_preview()
-	if network_entry or next == home_page or next == setup_page or next == shop_page or next == personalization_page or next == friends_page:
+	if network_entry or next == home_page or next == setup_page or next == shop_page or next == personalization_page or next == friends_page or next == settings_page:
 		# L'ingresso Multiplayer usa solo il pop dei pulsanti, senza traslare la pagina.
 		if has_meta("page_transition_cleanup"):
 			get_meta("page_transition_cleanup").call()
@@ -452,9 +456,8 @@ func _ready() -> void:
 	profile_button.pressed.connect(func(): profile_picker.open(chosen_name()))
 	profile_picker.selected.connect(_set_home_profile)
 	var profile_config := ConfigFile.new()
-	profile_config.load("user://profile_photo.cfg")
-	_set_home_profile(str(profile_config.get_value("profile", "avatar", "")))
-	_set_home_profile("")
+	profile_config.load(profile_save_path)
+	_set_home_profile(str(profile_config.get_value("profile", "avatar", "")), false)
 	deck_selector = preload("res://scenes/balatro/scripts/deck_selector.gd").new()
 	menu_content.add_child(deck_selector)
 	deck_selector.position = Vector2(515, 375)
@@ -476,6 +479,13 @@ func _ready() -> void:
 	name_input.position = Vector2(60, 665)
 	name_input.size = Vector2(360, 64)
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	has_saved_match_name = profile_config.has_section_key("profile", "name")
+	if has_saved_match_name:
+		name_input.text = str(profile_config.get_value("profile", "name", ""))
+	name_input.text_changed.connect(func(value):
+		has_saved_match_name = true
+		_save_profile_value("name", value)
+	)
 	_add_name_gloss_style()
 	setup_page = Control.new()
 	menu_content.add_child(setup_page)
@@ -494,6 +504,7 @@ func _ready() -> void:
 	single_name_input.hide()
 	single_name_input.text_changed.connect(func(value):
 		name_input.text = value
+		name_input.text_changed.emit(value)
 	)
 	match_options = preload("res://scenes/balatro/scripts/match_options.gd").new()
 	setup_page.add_child(match_options)
@@ -520,6 +531,13 @@ func _ready() -> void:
 			if style:
 				style.set_corner_radius_all(48)
 				button.add_theme_stylebox_override(state, style)
+	# Keep the old controls as the settings model and legacy back-style reference.
+	match_options.hide()
+	buttons.hide()
+	back.hide()
+	solitaria_ui = preload("res://scenes/balatro/scripts/solitaria_ui.gd").new()
+	setup_page.add_child(solitaria_ui)
+	solitaria_ui.setup(self)
 	setup_page.hide()
 	_build_mode_profile()
 	_place_profile_home() # Foto e nome visibili sotto Multiplayer già all'avvio.
@@ -572,6 +590,14 @@ func _ready() -> void:
 	_refresh_default_name()
 	_start_title_wave()
 	_play_home_intro()
+	for control in home_page.get_children():
+		if control is CanvasItem: control.hide()
+	for control in home_persistent_ui.get_children():
+		if control is CanvasItem: control.hide()
+	home_art = preload("res://scenes/balatro/scripts/home_art_ui.gd").new()
+	home_page.add_child(home_art)
+	home_art.setup_home(self)
+	home_art.open()
 	var welcome := preload("res://scenes/balatro/scripts/welcome_page.gd").new()
 	add_child(welcome)
 	welcome.setup(self)
@@ -607,6 +633,9 @@ func _stop_home_intro() -> void:
 		deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
 
 func _play_home_intro() -> void:
+	if is_instance_valid(home_art):
+		home_art.open()
+		return
 	_stop_home_intro()
 	_home_pop_buttons(home_intro_buttons)
 	_animate_home_extras()
@@ -641,7 +670,7 @@ func animate_buttons_like_home(buttons: Array[Button]) -> void:
 func _animate_home_extras() -> void:
 	# Foto, nome e selettore mazzo entrano con lo stesso effetto pop,
 	# dopo i pulsanti (con leggero ritardo fra loro).
-	var home_extras: Array[Control] = [profile_button, name_input, deck_selector, home_market_button, home_support_button]
+	var home_extras: Array[Control] = [deck_selector, home_market_button, home_support_button]
 	for index in home_extras.size():
 		var control: Control = home_extras[index]
 		if control.get_parent() != home_persistent_ui and control != home_market_button and control != home_support_button:
@@ -680,6 +709,8 @@ func _build_mode_profile() -> void:
 
 # Stessi controlli, riposizionati senza duplicarli.
 func _place_profile_home() -> void:
+	profile_button.hide()
+	name_input.hide()
 	if profile_button.get_parent() != home_persistent_ui:
 		profile_button.reparent(home_persistent_ui, false)
 	profile_button.position = HOME_PROFILE_POSITION
@@ -694,6 +725,8 @@ func _place_profile_home() -> void:
 	home_persistent_ui.move_child(profile_button, home_persistent_ui.get_child_count() - 1)
 
 func _place_profile_in_panel() -> void:
+	profile_button.show()
+	name_input.show()
 	if profile_button.get_parent() != profile_panel:
 		profile_button.reparent(profile_panel, false)
 	profile_button.position = Vector2(35, 25)
@@ -711,6 +744,10 @@ func _place_profile_in_panel() -> void:
 func _place_deck_selector_home() -> void:
 	if deck_selector.get_parent() != home_persistent_ui:
 		deck_selector.reparent(home_persistent_ui, false)
+	# Personalization spreads the previews across its panel; restore shared layout.
+	deck_selector.front_preview.position = deck_selector.FRONT_CARD_POSITION
+	deck_selector.back_preview.position = deck_selector.BACK_CARD_POSITION
+	deck_selector.pivot_offset = Vector2.ZERO
 	deck_selector.position = HOME_DECK_POSITION
 	deck_selector.scale = Vector2.ONE * HOME_DECK_SCALE
 	deck_selector.hide()
@@ -749,23 +786,33 @@ func _send_profile_name() -> void:
 	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
 		get_node("/root/NetworkSession").send({"op": "rename", "name": chosen_name()})
 
-func _set_home_profile(avatar: String) -> void:
+func _save_profile_value(key: String, value: String) -> void:
+	var config := ConfigFile.new()
+	var result := config.load(profile_save_path)
+	if result != OK and result != ERR_FILE_NOT_FOUND:
+		push_warning("Impossibile leggere il profilo salvato: " + error_string(result))
+		return
+	config.set_value("profile", key, value)
+	result = config.save(profile_save_path)
+	if result != OK:
+		push_warning("Impossibile salvare il profilo: " + error_string(result))
+
+func _set_home_profile(avatar: String, persist := true) -> void:
 	var is_default := avatar.is_empty()
 	profile_avatar = avatar
 	profile_texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(profile_avatar)
 	profile_button.texture_normal = profile_texture
 	profile_button.get_node("CameraIcon").visible = is_default or profile_texture == null
-	var profile_config := ConfigFile.new()
-	profile_config.set_value("profile", "avatar", avatar)
-	profile_config.save("user://profile_photo.cfg")
-	get_node("/root/FriendsManager").sync_avatar()
+	if persist:
+		_save_profile_value("avatar", avatar)
+		get_node("/root/FriendsManager").sync_avatar()
 	profile_button.queue_redraw()
 	_refresh_single_profile()
 	if is_instance_valid(network_page) and network_page.is_visible_in_tree() and network_page.session_controls.visible:
 		get_node("/root/NetworkSession").send({"op": "profile", "avatar": profile_avatar})
 
 func _show_support_creator() -> void:
-	var dialog := ConfirmationDialog.new()
+	var dialog := preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	add_child(dialog)
 	dialog.title = "SUPPORTA IL CREATORE"
 	dialog.dialog_text = (
@@ -789,14 +836,14 @@ func _open_discord() -> void:
 
 
 func _show_home_info() -> void:
-	var dialog := AcceptDialog.new()
+	var dialog := preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	add_child(dialog)
 	dialog.title = "INFO"
 	dialog.dialog_text = "SEMI: DENARI > COPPE > SPADE > BASTONI\nSTESSO SEME: VINCE IL NUMERO PIU' ALTO (1–10)\n\nJOLLY: ASSO DI DENARI\nPIU' ALTA: BATTE TUTTI. PIU' BASSA: PERDE CONTRO TUTTI.\n\nDICHIARA LE PRESE CHE FARAI: SE SBAGLI PERDI UNA VITA."
 	dialog.get_label().add_theme_font_override("font", KIDS_FONT)
 	dialog.get_label().add_theme_font_size_override("font_size", 24)
 	dialog.get_label().add_theme_color_override("font_color", BUTTON_TEXT)
-	dialog.add_theme_stylebox_override("panel", _menu_button_style(LexispellStyle.PANEL))
+
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2i(1000, 360))
@@ -870,7 +917,6 @@ func _show_personalization() -> void:
 		personalization_page.setup(self)
 	_switch_page(personalization_page)
 	personalization_page.open()
-	_enter_customization_character()
 
 func _show_shop() -> void:
 	shop_return_page = active_page
@@ -1252,6 +1298,8 @@ func _refresh_account_coins() -> void:
 
 # Aggiorna solo la visualizzazione: i crediti vengono letti, mai scritti dal client.
 func set_coins_amount(amount: int) -> void:
+	if is_instance_valid(home_art):
+		home_art.amount.text = str(maxi(amount, 0))
 	if is_instance_valid(coins_label):
 		coins_label.text = str(maxi(amount, 0))
 	if is_instance_valid(shop_page) and is_instance_valid(shop_page.coins_amount):
@@ -1286,7 +1334,7 @@ func _refresh_default_name() -> void:
 			default_name = str(welcome_config.get_value("welcome", "name", default_name))
 	# Solo un valore predefinito: non rinomina chi ha scelto un nome lobby proprio.
 	var net := get_node("/root/NetworkSession")
-	if net.room_code.is_empty() and (name_input.text.strip_edges().is_empty() or name_input.text == account_default_name):
+	if not has_saved_match_name and net.room_code.is_empty() and (name_input.text.strip_edges().is_empty() or name_input.text == account_default_name):
 		name_input.text = default_name
 		_refresh_single_profile()
 	account_default_name = default_name
@@ -1314,11 +1362,9 @@ func show_setup() -> void:
 	title.position = SOLO_TITLE_POSITION
 	single_name_input.text = name_input.text
 	_switch_page(setup_page)
-	_animate_mode_heading("SOLITARIA")
-	_home_pop_buttons(solo_buttons)
-	match_options.pivot_offset = match_options.size / 2.0
-	match_options.scale = Vector2.ZERO
-	home_intro.tween_property(match_options, "scale", Vector2.ONE, HOME_INTRO_DURATION).from(Vector2.ZERO).set_delay(HOME_INTRO_DELAY).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	home_character.hide()
+	second_character.hide()
+	solitaria_ui.pop()
 
 func _animate_mode_heading(subtitle_text: String) -> void:
 	if solo_transition and solo_transition.is_valid():
@@ -1353,17 +1399,15 @@ func show_home() -> void:
 		return
 	returning_home = true
 	var previous := active_page
+	var leaving_personalization := previous == personalization_page and is_instance_valid(personalization_page)
 	if solo_transition and solo_transition.is_valid():
 		solo_transition.kill()
 	if is_instance_valid(previous) and previous != home_page:
 		for item in [previous, title, friends_subtitle]:
 			item.hide()
 		previous.scale = Vector2.ONE
-	var was_customizing := customization_character_ready
 	var character_position := HOME_CHARACTER_POSITION
-	if was_customizing and is_instance_valid(shop_character):
-		character_position = shop_character.position
-	elif is_instance_valid(home_character):
+	if not leaving_personalization and is_instance_valid(home_character):
 		character_position = home_character.position
 	var second_was_visible := second_character.visible
 	_show_menu_title(true)
@@ -1371,19 +1415,9 @@ func show_home() -> void:
 	const CHARACTER_TRANSITION_DURATION := 0.42
 	var entrance := create_tween().set_parallel(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	if is_instance_valid(home_character):
-		# Ripercorriamo al contrario le posizioni finali della transizione verso lo shop.
-		home_character.position = SOLO_CHARACTER_POSITION if was_customizing else character_position
-		home_character.modulate.a = 0.0 if was_customizing else 1.0
+		home_character.position = character_position
+		home_character.modulate.a = 1.0
 		entrance.tween_property(home_character, "position", HOME_CHARACTER_POSITION, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		if was_customizing:
-			entrance.tween_property(home_character, "modulate:a", 1.0, CHARACTER_TRANSITION_DURATION).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	if was_customizing and is_instance_valid(shop_character):
-		shop_character.position = SOLO_CHARACTER_POSITION + Vector2(-80, -30)
-		shop_character.modulate.a = 1.0
-		shop_character.show()
-		entrance.tween_property(shop_character, "position", HOME_CHARACTER_POSITION, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		entrance.tween_property(shop_character, "modulate:a", 0.0, CHARACTER_TRANSITION_DURATION).from(1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		entrance.tween_callback(shop_character.hide).set_delay(CHARACTER_TRANSITION_DURATION)
 	if second_was_visible:
 		second_character.show()
 		entrance.tween_property(second_character, "position:x", 1920.0, CHARACTER_TRANSITION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)

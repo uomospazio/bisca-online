@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cbcowxvtk6uao"
-path="res://.godot/imported/Screenshot 2026-10-06 alle 11.21.17 (2).png-57f9dd9f6823bf457ad488b139d28c47.ctex"
+uid="uid://dbmd6ln1txcr6"
+path="res://.godot/imported/googleConnesso.png-61b9faf0e39fa9c1d10cc9e357434489.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/balatro/scripts/Screenshot 2026-10-06 alle 11.21.17 (2).png"
-dest_files=["res://.godot/imported/Screenshot 2026-10-06 alle 11.21.17 (2).png-57f9dd9f6823bf457ad488b139d28c47.ctex"]
+source_file="res://scenes/balatro/trick_asset/ui_bisca/pngUI/settingsUI/googleConnesso.png"
+dest_files=["res://.godot/imported/googleConnesso.png-61b9faf0e39fa9c1d10cc9e357434489.ctex"]
 
 [params]
 

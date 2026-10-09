@@ -27,6 +27,7 @@ var account_id: Label
 var save_progress: Button
 var privacy_button: Button
 var privacy_status: Label
+var artwork_ui: Control
 
 func _text(it: String, en: String) -> String:
 	return en if settings.values.language == "en" else it
@@ -207,6 +208,14 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	get_viewport().size_changed.connect(_layout_page)
 	_layout_page()
 	_sync()
+	if not back_action.is_valid():
+		# Retain the existing settings models and callbacks; the home page uses
+		# the new compact artwork while pause retains advanced settings.
+		for legacy in [page_title, settings_panel, footer_label, footer_buttons]:
+			legacy.hide()
+		artwork_ui = preload("res://scenes/balatro/scripts/settings_art_ui.gd").new()
+		add_child(artwork_ui)
+		artwork_ui.setup_settings(self, menu)
 
 func _layout_page() -> void:
 	var viewport_size := get_viewport_rect().size

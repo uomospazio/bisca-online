@@ -34,12 +34,27 @@ func run() -> void:
 	cloud.profile = {"id": session.user_id, "public_id": "ABC123", "username": null}
 	assert(cloud.needs_username())
 	panel._show("home")
-	var dots := panel.find_children("UsernameNotification", "Panel", true, false)
-	assert(dots.size() == 1 and dots[0].visible)
+	assert(panel.buttons.size() == 3)
+	assert(panel.buttons[0].text == "SALVA\nPROGRESSI")
+	assert(panel.buttons[1].text == "ACCEDI")
+	panel.buttons[0].pressed.emit()
+	assert(panel.mode == "save_providers" and panel.provider_intent == "save")
+	assert(panel.buttons[0].text == "APPLE" and panel.buttons[1].text == "GOOGLE" and panel.buttons[2].text == "EMAIL")
+	panel.buttons[0].pressed.emit()
+	assert(panel.mode == "apple" and panel.provider_intent == "save")
+	panel._go_back()
+	assert(panel.mode == "save_providers")
+	panel._go_back()
+	panel.buttons[1].pressed.emit()
+	assert(panel.mode == "login_providers" and panel.provider_intent == "login")
+	panel.buttons[2].pressed.emit()
+	assert(panel.mode == "login")
+	panel._go_back()
+	assert(panel.mode == "login_providers")
+	panel._show("home")
 	cloud.profile.username = "Space"
 	cloud.changed.emit()
-	dots = panel.find_children("UsernameNotification", "Panel", true, false)
-	assert(dots.size() == 1 and not dots[0].visible)
+	assert(panel.buttons.size() == 3)
 	cloud.profile.username = "  "
 	assert(cloud.needs_username())
 	cloud.profile.id = "another-account"
@@ -74,6 +89,17 @@ func run() -> void:
 	assert(not (await probe.check_email_confirmation()).ok)
 	assert(not probe.email_verified)
 	probe.free()
+	if "--snapshot" in OS.get_cmdline_user_args():
+		var bg := ColorRect.new()
+		bg.color = Color("1e1833")
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		root.add_child(bg)
+		root.move_child(bg, 0)
+		for screen in ["home", "new_guest", "save_providers"]:
+			panel._show(screen)
+			await create_timer(0.15).timeout
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("/tmp/bisca-account-" + screen + ".png")
 	host.queue_free()
 	await process_frame
 	print("PASS: pannelli account, conferma cambio, email, protezione ospite")

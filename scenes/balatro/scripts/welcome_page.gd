@@ -64,6 +64,7 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 	var button: Button = menu._button(parent, text, action)
 	button.custom_minimum_size = Vector2(300, 90)
 	button.add_theme_font_size_override("font_size", 32)
+	preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(button, true)
 	controls.append(button)
 	return button
 

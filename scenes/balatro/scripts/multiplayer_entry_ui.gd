@@ -61,7 +61,7 @@ func setup(owner_page: Control) -> void:
 	page.entry.mouse_filter = MOUSE_FILTER_IGNORE
 	header = _image(page.entry, ART + "nuovapartitaBanner.png", Rect2(0, 0, 1000, 145))
 	var create := _button(header, ART + "creaLobby.png", Rect2(590, 20, 395, 105), page._create_public_lobby)
-	page.directory_panel = _image(page.entry, ART + "lobbyDisponibili.png", Rect2(0, 340, 1000, 616))
+	page.directory_panel = _image(page.entry, ART + "lobbyDisponibili.png", Rect2(0, 170, 1000, 616))
 	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	page.directory_panel.add_child(scroll)
 	scroll.position = Vector2(40, 130)
@@ -71,9 +71,9 @@ func setup(owner_page: Control) -> void:
 	scroll.add_child(page.directory_rows)
 	page.directory_rows.size_flags_horizontal = SIZE_EXPAND_FILL
 	page.directory_rows.add_theme_constant_override("separation", 18)
-	footer = _image(page.entry, ART + "codiceBanner.png", Rect2(0, 170, 1000, 145))
+	footer = _image(page.entry, ART + "codiceBanner.png", Rect2(0, 810, 1000, 145))
 	_button(footer, ART + "entraconCodice.png", Rect2(590, 20, 395, 105), func(): page._show_form(false))
-	back = _button(self, UI + "pngUI/AmiciUI/pulsanteIndietro.png", Rect2(40, 40, 400, 117.33), page._back)
+	back = _button(self, UI + "pngUI/InLobbyUI/tastoIndietro.png", Rect2(40, 40, 108, 98), page._back)
 	back.tooltip_text = "Indietro"
 	page.entry_buttons.clear()
 	page.entry_buttons.append(create)
@@ -133,6 +133,7 @@ func _button(parent: Node, path: String, rect: Rect2, action: Callable) -> Butto
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.pressed.connect(action)
 	RoundedSquareButton.ButtonAudio.attach(button)
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	return button
 
 func render(entries: Array) -> void:
@@ -184,7 +185,13 @@ func _layout(bounds: Rect2) -> void:
 	var factor := maxf(0.01, minf(bounds.size.x / COMPOSITION_SIZE.x, bounds.size.y / COMPOSITION_SIZE.y))
 	composition.scale = Vector2.ONE * factor
 	composition.position = bounds.get_center() - COMPOSITION_SIZE * factor * 0.5
+	if is_instance_valid(page.info):
+		var center_in_right := right.get_global_transform_with_canvas().affine_inverse() * (get_viewport_rect().size * 0.5)
+		page.info.position.x = center_in_right.x - page.info.size.x * 0.5
 	back.position = bounds.position
+	# Use the room's responsive size, independently of the wider entry artwork.
+	var screen_center := get_global_transform_with_canvas().affine_inverse() * (get_viewport_rect().size * 0.5)
+	back.size = Vector2(108, 98) * preload("res://scenes/balatro/scripts/in_lobby_ui.gd").layout_scale(bounds, screen_center)
 	back.pivot_offset = back.size * 0.5
 
 func pop() -> void:

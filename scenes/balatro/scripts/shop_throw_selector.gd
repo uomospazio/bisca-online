@@ -10,6 +10,24 @@ const SLOT_GAP := 84.0
 var menu: Control
 var buttons: Array[Button] = []
 var vertical_layout := false
+var artwork_skin := false
+
+func apply_personalization_skin(texture: Texture2D) -> void:
+	artwork_skin = true
+	size = Vector2(556, 124)
+	for index in buttons.size():
+		var button := buttons[index]
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			var style := StyleBoxTexture.new()
+			style.texture = texture
+			style.modulate_color = Color(0.8, 0.8, 0.8) if state == "pressed" else Color.WHITE
+			button.add_theme_stylebox_override(state, style)
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		button.custom_minimum_size = Vector2.ZERO
+		button.size = Vector2(124, 124)
+		button.position = Vector2(index * 216, 0)
+		button.add_theme_constant_override("icon_max_width", 88)
+	refresh()
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
@@ -17,7 +35,7 @@ func setup(owner_menu: Control) -> void:
 	var step := SLOT_SIZE + SLOT_GAP
 	size = Vector2(SLOT_SIZE + 8.0, SLOT_SIZE * 3.0 + SLOT_GAP * 2.0) if vertical_layout else Vector2(SLOT_SIZE * 3.0 + SLOT_GAP * 2.0, SLOT_SIZE + 8.0)
 	for index in range(3):
-		var button := ButtonStyle.new()
+		var button: Button = Button.new() if artwork_skin else ButtonStyle.new()
 		button.size = Vector2.ONE * SLOT_SIZE
 		button.position = Vector2(0, index * step) if vertical_layout else Vector2(index * step, 0)
 		button.expand_icon = true
@@ -29,6 +47,8 @@ func setup(owner_menu: Control) -> void:
 			style.set_corner_radius_all(SLOT_SIZE * 0.5)
 			button.add_theme_stylebox_override(state, style)
 		add_child(button)
+		if artwork_skin:
+			preload("res://scenes/balatro/scripts/button_audio.gd").attach(button)
 		button.pressed.connect(func(): _cycle(index))
 		buttons.append(button)
 	refresh()
@@ -39,7 +59,7 @@ func refresh() -> void:
 		var id: int = int(selection[index])
 		var enabled := id >= 0 and id < Catalog.FILES.size() and Catalog.enabled(id)
 		buttons[index].icon = load("res://scenes/balatro/resources/" + Catalog.FILES[id]) if enabled else null
-		buttons[index].text = "" if enabled else "+"
+		buttons[index].text = "" if enabled or artwork_skin else "+"
 		buttons[index].tooltip_text = "Cambia oggetto (o lascia vuoto)"
 
 func _cycle(slot: int) -> void:

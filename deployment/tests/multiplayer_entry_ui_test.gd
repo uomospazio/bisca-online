@@ -66,7 +66,9 @@ func _run() -> void:
 		assert(ui.right.position == ui.RIGHT_POSITION)
 		assert(ui.right.scale == Vector2.ONE * ui.RIGHT_SCALE)
 		assert((ui.composition.position + ui.COMPOSITION_SIZE * ui.composition.scale).x <= bounds.end.x + 0.1)
-	assert(ui.back.size.x == 400)
+		var screen_center: Vector2 = ui.get_global_transform_with_canvas().affine_inverse() * (ui.get_viewport_rect().size * 0.5)
+		var lobby_scale: float = preload("res://scenes/balatro/scripts/in_lobby_ui.gd").layout_scale(bounds, screen_center)
+		assert(ui.back.size.is_equal_approx(Vector2(108, 98) * lobby_scale))
 	await create_timer(0.6).timeout
 	for character in ui.characters.get_children():
 		assert(character.position.is_equal_approx(ui.character_targets[character]))

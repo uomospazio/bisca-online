@@ -39,8 +39,9 @@ func _set_back_pop(amount: float) -> void:
 	if not is_instance_valid(back_button):
 		return
 	var fitted := content_root.scale.x
+	back_button.pivot_offset = back_button.size / 2
 	back_button.scale = Vector2.ONE * fitted * amount
-	back_button.position = content_root.position + back_button.size * fitted * (1.0 - amount) * 0.5
+	back_button.position = content_root.position + back_button.size * (fitted - 1.0) * 0.5
 
 func _pop_back_button() -> void:
 	if back_pop and back_pop.is_valid():
@@ -292,6 +293,7 @@ func action_button(parent: Node, text: String, callback: Callable, hint := "", p
 	focus.set_corner_radius_all(36)
 	button.add_theme_stylebox_override("focus", focus)
 	button.pressed.connect(callback)
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button, (func(): return Vector2.ONE * content_root.scale.x) if text == "←" else Callable())
 	return button
 
 func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:
@@ -512,7 +514,7 @@ func _apply_friend_action(target: String, action: String) -> void:
 	update_contacts()
 
 func _ask_remove_friend(target: String, display_name: String) -> void:
-	var dialog := ConfirmationDialog.new()
+	var dialog := preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	dialog.title = "RIMUOVI AMICO"
 	dialog.dialog_text = "Vuoi rimuovere %s dagli amici?" % display_name
 	dialog.ok_button_text = "RIMUOVI"

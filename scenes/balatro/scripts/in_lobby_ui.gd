@@ -121,6 +121,7 @@ func _label(parent: Node, rect: Rect2, font_size: int) -> Label:
 	return label
 
 func skin_button(button: Button, filename: String) -> void:
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		var style := StyleBoxTexture.new()
 		style.texture = load(ART + filename)
@@ -219,13 +220,17 @@ func _fit() -> void:
 	var bounds := Rect2(inverse * safe.position, inverse * safe.end - inverse * safe.position).grow(-40)
 	_layout_in_bounds(bounds, inverse * (viewport_size * 0.5))
 
+static func layout_scale(bounds: Rect2, screen_center: Vector2) -> float:
+	var center_y := clampf(screen_center.y, bounds.position.y, bounds.end.y)
+	var available_height := maxf(0.0, 2.0 * minf(center_y - bounds.position.y, bounds.end.y - center_y))
+	return maxf(0.01, minf(bounds.size.x / (CONTENT_RECT.size.x + 264.0), available_height / CONTENT_RECT.size.y))
+
 func _layout_in_bounds(bounds: Rect2, screen_center: Vector2) -> void:
 	# Center the visible lobby vertically on screen, not on the asymmetric
 	# safe area or on the Back button. Keep 40px safe margins when fitting.
 	var center := Vector2(bounds.get_center().x, clampf(screen_center.y, bounds.position.y, bounds.end.y))
-	var available_height := maxf(0.0, 2.0 * minf(center.y - bounds.position.y, bounds.end.y - center.y))
 	# Reserve equal space on both sides, so centering never overlaps Back.
-	var factor := maxf(0.01, minf(bounds.size.x / (CONTENT_RECT.size.x + 264.0), available_height / CONTENT_RECT.size.y))
+	var factor := layout_scale(bounds, screen_center)
 	content.scale = Vector2.ONE * factor
 	content.position = center - CONTENT_RECT.get_center() * factor
 	back_anchor.position = bounds.position

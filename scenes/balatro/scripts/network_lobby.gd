@@ -34,7 +34,7 @@ var profile_picker: Node
 var profile_room := ""
 var rendered_people: Array = []
 var rendered_self := -1
-var invite_box: AcceptDialog
+var invite_box: Control
 var invite_rows: VBoxContainer
 var sending_invite := false
 var directory_rows: VBoxContainer
@@ -105,19 +105,21 @@ func setup(owner_menu: Control) -> void:
 	join_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	menu._set_play_button_radius(join_button)
 	rejoin_button = menu._button(controls, "Rientra nella partita", func(): net.connect_room(address.text, {"op": "rejoin", "code": net.room_code, "token": net.token}))
+	for button in [create_button, join_button, rejoin_button]:
+		preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(button, true)
 	controls.hide()
 	session_controls = Control.new()
 	add_child(session_controls)
 	session_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	session_controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	invite_box = AcceptDialog.new()
+	invite_box = preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	invite_box.title = "INVITA AMICI IN LOBBY"
 	invite_box.ok_button_text = "CHIUDI"
 	add_child(invite_box)
 	var invite_scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
-	invite_scroll.custom_minimum_size = Vector2(700,440)
+	invite_scroll.custom_minimum_size = Vector2(620, 300)
 	invite_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	invite_box.add_child(invite_scroll)
+	invite_box.body.add_child(invite_scroll)
 	invite_rows = VBoxContainer.new()
 	invite_rows.size_flags_horizontal = SIZE_EXPAND_FILL
 	invite_scroll.add_child(invite_rows)
@@ -427,9 +429,20 @@ func _refresh_invites() -> void:
 	for friend in manager.entries:
 		if friend.status != "accepted": continue
 		count += 1
-		var button: Button = menu._button(invite_rows,"INVITA " + manager.display_name(friend),_send_invite.bind(str(friend.id)))
+		var username := str(friend.get("username", "") if friend.get("username") != null else "").strip_edges()
+		var public_id := str(friend.get("public_id", "") if friend.get("public_id") != null else "").strip_edges()
+		var caption := username if not username.is_empty() else "#" + public_id
+		var margin := MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 36)
+		margin.add_theme_constant_override("margin_right", 36)
+		margin.add_theme_constant_override("margin_top", 8)
+		margin.add_theme_constant_override("margin_bottom", 8)
+		invite_rows.add_child(margin)
+		var button: Button = menu._button(margin, "INVITA " + caption, _send_invite.bind(str(friend.id)))
+		button.clip_text = true
 		button.custom_minimum_size = Vector2(0,68)
 		_set_button_radius(button, 34)
+		preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(button, true)
 		button.disabled = sending_invite
 	if count == 0:
 		var empty := Label.new()

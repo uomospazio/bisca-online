@@ -4,7 +4,7 @@ const PERSONAL_ART := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/personali
 const SHOP_BUTTON_SIZE := Vector2(330, 316)
 const PAGE_SIZE := Vector2(1820, 820)
 const PANEL_RECT := Rect2(960, 0, 852, 820)
-const HERO_RECT := Rect2(280, 0, 840, 840)
+const HERO_RECT := Rect2(280, 50, 810, 1104)
 const PROFILE_POSITION := Vector2(0, 145)
 const PROFILE_SCALE := 1.0
 var profile_art: TextureRect

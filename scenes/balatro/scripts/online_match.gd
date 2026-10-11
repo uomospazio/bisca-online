@@ -198,6 +198,9 @@ func _sync_hand(ids: Array, blind: bool) -> void:
 	sorted_current.sort()
 	sorted_desired.sort()
 	if sorted_current == sorted_desired:
+		for card in host.hand.cards:
+			card.set_face_down(blind)
+			card.disabled = blind
 		return
 	host.hand.rebuild(desired.size())
 	for i in range(desired.size()):

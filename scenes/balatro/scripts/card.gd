@@ -35,7 +35,8 @@ func show_joker_direction(high: bool) -> void:
 
 func set_face_down(value: bool) -> void:
 	face_down = value
-	_apply_card_data()
+	if is_node_ready():
+		_apply_card_data()
 
 func set_card_data(value: CardData) -> void:
 	data = value
@@ -43,7 +44,8 @@ func set_card_data(value: CardData) -> void:
 		_apply_card_data()
 
 func _apply_card_data() -> void:
-	if data == null:
+	# Nel round cieco il server nasconde anche i dati della carta.
+	if data == null and not face_down:
 		return
 
 	if face_down:
@@ -114,7 +116,7 @@ func _ready() -> void:
 	# Convert to radians because lerp_angle is using that
 	angle_x_max = deg_to_rad(angle_x_max)
 	angle_y_max = deg_to_rad(angle_y_max)
-	if data:
+	if data or face_down:
 		_apply_card_data()
 
 func _process(delta: float) -> void:

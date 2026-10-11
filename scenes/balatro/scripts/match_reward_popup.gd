@@ -28,17 +28,20 @@ static func present(network: Node, receipt: Dictionary) -> void:
 	network.add_child(popup)
 	popup.show_reward(receipt)
 
-func show_reward(receipt: Dictionary) -> void:
+func show_reward(receipt: Dictionary, from_ad := false) -> void:
 	layer = 120
 	var account: Node = get_node("/root/AccountSession")
 	var uid: String = receipt.user_id
 	account.changed.connect(func():
 		if account.user_id != uid:
-			queue_free())
+			if from_ad: hide()
+			else: queue_free())
 	# Rilegge il saldo corrente: una ricevuta ritardata non deve annullare acquisti successivi.
-	_refresh_balance(uid)
-	await _wait_for_match_presentation()
+	if not from_ad:
+		_refresh_balance(uid)
+		await _wait_for_match_presentation()
 	if account.user_id != uid:
+		queue_free()
 		return
 	var shade := ColorRect.new()
 	shade.color = Color(0.133333, 0.121569, 0.168627, 0.0)
@@ -84,9 +87,49 @@ func show_reward(receipt: Dictionary) -> void:
 	var exit_tween := create_tween()
 	exit_tween.tween_property(shade, "color:a", 0.0, 0.25)
 	await exit_tween.finished
+	if not from_ad and int(receipt.amount) == 30 and account.user_id == uid:
+		_show_elimination_offer(receipt)
 	hide()
 	if not balance_loading:
 		queue_free()
+
+func _show_elimination_offer(receipt: Dictionary) -> void:
+	var context := str(receipt.get("match_id", ""))
+	var host := get_tree().current_scene
+	if context.is_empty() or host == null or not host.get("online"):
+		return
+	if host.online_match.state.get("singleplayer", false):
+		return
+	if get_node("/root/RewardedAds").claimed("multi", context):
+		return
+	var banner_layer := CanvasLayer.new()
+	banner_layer.layer = 119
+	get_parent().add_child(banner_layer)
+	var dialog = preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
+	dialog.title = "MONETE EXTRA?"
+	dialog.dialog_text = "Guarda un video per ricevere altre 50 monete."
+	dialog.ok_button_text = "NON ORA"
+	banner_layer.add_child(dialog)
+	var offer = preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
+	offer.placement = "multi"
+	offer.context = context
+	offer.caption = "+50 MONETE EXTRA"
+	dialog.body.add_child(offer)
+	dialog.confirmed.connect(banner_layer.queue_free)
+	var account := get_node("/root/AccountSession")
+	var account_changed := func():
+		if account.user_id != str(receipt.user_id): banner_layer.queue_free()
+	account.changed.connect(account_changed)
+	var ads := get_node("/root/RewardedAds")
+	var ads_changed := func():
+		if ads.claimed("multi", context): banner_layer.queue_free()
+	ads.changed.connect(ads_changed)
+	banner_layer.tree_exiting.connect(func():
+		account.changed.disconnect(account_changed)
+		ads.changed.disconnect(ads_changed))
+	# Il banner appartiene alla schermata corrente, non alla prossima partita.
+	host.tree_exiting.connect(banner_layer.queue_free, CONNECT_ONE_SHOT)
+	dialog.popup_centered(Vector2i(800, 400))
 
 func _wait_for_match_presentation() -> void:
 	# Le ricevute possono arrivare mentre la coda degli snapshot anima ancora

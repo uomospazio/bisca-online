@@ -341,7 +341,17 @@ func _claim() -> void:
 			profile.changed.emit()
 		if pending.p_placement == "refresh":
 			get_node("/root/ShopManager").invalidate_daily()
+		# Solo una risposta positiva del backend avvia la presentazione; vale
+		# anche per il recupero di una transazione dopo una caduta di rete.
+		if int(result.get("amount", 0)) > 0:
+			await _present_credit_reward(str(pending.owner), result)
 	_finish("Shop aggiornato!" if pending.p_placement == "refresh" else "+%d monete ricevute!" % int(result.get("amount", 0)))
+
+func _present_credit_reward(owner: String, result: Dictionary) -> void:
+	var popup = load("res://scenes/balatro/scripts/match_reward_popup.gd").new()
+	add_child(popup)
+	await popup.show_reward({"user_id": owner,
+		"amount": int(result.amount), "credits": int(result.credits)}, true)
 
 func _rpc(endpoint: String, payload: Dictionary) -> Dictionary:
 	var http := HTTPRequest.new()

@@ -6,6 +6,9 @@ class FakeAccount extends Node:
 
 class Probe extends "res://scenes/balatro/scripts/rewarded_ads.gd":
 	var calls := 0
+	var animations: Array = []
+	func _present_credit_reward(owner: String, result: Dictionary) -> void:
+		animations.append({"owner": owner, "amount": result.amount})
 	var reply := {"ok": false, "message": "Rete assente"}
 	func _ready() -> void: pass
 	func _save() -> void: pass
@@ -31,6 +34,7 @@ func run() -> void:
 	assert(ads._pending.p_claim == claim, "Duplicate callbacks must reuse the same claim")
 	await ads._claim()
 	assert(not ads.busy and ads.pending_for_account(), "Offline claim must remain recoverable")
+	assert(ads.animations.is_empty(), "No animation before server confirmation")
 	account.user_id = "another"
 	await ads._claim()
 	assert(ads.calls == 1, "Never claim against the wrong account")
@@ -38,6 +42,12 @@ func run() -> void:
 	ads.reply = {"ok": true, "credits": 130, "amount": 30}
 	await ads._claim()
 	assert(ads._pending.is_empty())
+	assert(ads.animations.size() == 1 and ads.animations[0].amount == 30)
+	for placement in ["shop", "multi", "refresh"]:
+		ads._pending = {"owner": "tester", "p_claim": "test", "p_placement": placement, "p_context": "other"}
+		ads.reply = {"ok": true, "credits": 180, "amount": 0 if placement == "refresh" else 50}
+		await ads._claim()
+	assert(ads.animations.size() == 3, "Shop and multiplayer animate; refresh without coins does not")
 	assert(ads.claimed("solo", "match"))
 	assert(not ads.claimed("solo", "next-match"))
 	assert(not ads.claimed("shop", ""))

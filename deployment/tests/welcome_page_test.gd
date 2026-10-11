@@ -1,6 +1,8 @@
 extends SceneTree
 
 class Host extends Control:
+	var tutorial_offered := false
+	func offer_tutorial() -> void: tutorial_offered = true
 	func _button(parent: Node, text: String, action: Callable) -> Button:
 		var button := Button.new()
 		button.text = text
@@ -24,7 +26,7 @@ func _test() -> void:
 	page.column = VBoxContainer.new()
 	page.add_child(page.column)
 	page._choices()
-	assert(page.controls.size() == 3)
+	assert(page.controls.size() == 4) # Apple, Google, Email, Ospite.
 	page.controls[0].pressed.emit()
 	assert(page.controls[0].text == "CONTINUA")
 	page._choices()
@@ -38,6 +40,8 @@ func _test() -> void:
 	await page._finish()
 	assert(page.notice.text.contains("valido"))
 	assert(not page.working)
+	page._offer_tutorial()
+	assert(host.tutorial_offered)
 	host.queue_free()
 	print("PASS: welcome choices, social menus, email menu and username validation")
 	quit()

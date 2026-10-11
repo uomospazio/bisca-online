@@ -28,6 +28,7 @@ func setup(host: Control) -> void:
 	# non devono scegliere un nuovo ospite né rifare l'accesso ad ogni avvio.
 	if not account.user_id.is_empty() and (account.password_ready or account.social_ready) and not bool(config.get_value("welcome", "completed", false)):
 		hide()
+		_offer_tutorial.call_deferred()
 		return
 	if bool(config.get_value("welcome", "completed", false)):
 		var saved_name := str(config.get_value("welcome", "name", ""))
@@ -37,6 +38,7 @@ func setup(host: Control) -> void:
 		if account.user_id.is_empty():
 			account.connect_account()
 		_sync_pending_name()
+		_offer_tutorial.call_deferred()
 		return
 	menu.menu_content.hide()
 	var center := CenterContainer.new()
@@ -229,6 +231,11 @@ func _finish() -> void:
 	menu.menu_content.show()
 	menu._play_home_intro()
 	_sync_pending_name()
+	_offer_tutorial.call_deferred()
+
+func _offer_tutorial() -> void:
+	if menu.has_method("offer_tutorial"):
+		menu.offer_tutorial()
 
 func _sync_pending_name() -> void:
 	if syncing or not bool(config.get_value("welcome", "pending_name", false)) or not account.is_authenticated() or not cloud._loaded:

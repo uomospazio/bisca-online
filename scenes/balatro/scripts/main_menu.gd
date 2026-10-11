@@ -145,7 +145,22 @@ var personalization_page: Control
 var shop_character: TextureRect
 var customization_character_ready := false
 var deck_selector: Control
+var tutorial_flow: CanvasLayer
 const PageTransition = preload("res://scenes/balatro/scripts/page_transition.gd")
+
+func offer_tutorial() -> void:
+	if is_instance_valid(tutorial_flow): return
+	var flow_script = preload("res://scenes/balatro/scripts/tutorial_flow.gd")
+	if flow_script.was_offered(): return
+	tutorial_flow = flow_script.new()
+	add_child(tutorial_flow)
+	tutorial_flow.offer()
+
+func start_tutorial() -> void:
+	if is_instance_valid(tutorial_flow): return
+	tutorial_flow = preload("res://scenes/balatro/scripts/tutorial_flow.gd").new()
+	add_child(tutorial_flow)
+	tutorial_flow.start()
 
 func _switch_page(next: Control, backwards := false) -> void:
 	_stop_home_intro()

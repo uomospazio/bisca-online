@@ -1,6 +1,10 @@
 extends SceneTree
 
 class Host extends Control:
+	var personalization_opened := false
+	var tutorial_opened := false
+	func start_tutorial() -> void: tutorial_opened = true
+	func _show_personalization() -> void: personalization_opened = true
 	func show_home() -> void: pass
 	func _notification_dot(button: Control) -> Panel:
 		return preload("res://scenes/balatro/scripts/main_menu.gd")._notification_dot(button)
@@ -35,6 +39,15 @@ func run() -> void:
 	assert(not page.toggles.has("tooltips"))
 	assert(settings.values.show_thrown_objects)
 	assert(page.artwork_ui != null and not page.settings_panel.visible)
+	page.artwork_ui.customize_profile.pressed.emit()
+	assert(host.personalization_opened)
+	var tutorial_requests := [0]
+	page.artwork_ui.tutorial_requested.connect(func(): tutorial_requests[0] += 1)
+	page.artwork_ui.replay_tutorial.pressed.emit()
+	assert(tutorial_requests[0] == 1)
+	assert(host.tutorial_opened)
+	assert(page.artwork_ui.customize_profile.size == Vector2(408, 100))
+	assert(page.artwork_ui.replay_tutorial.size == Vector2(276, 100))
 	var session := root.get_node("AccountSession")
 	session._read_user({"identities": [{"provider": "google", "identity_data": {"email": "test@example.com"}}]})
 	page.artwork_ui.sync()

@@ -142,8 +142,11 @@ func _wait_for_match_presentation() -> void:
 		var match_view = host.online_match
 		var eliminated: bool = not host.rules.players.is_empty() and not host.rules.players[0].active
 		var finished: bool = host.rules.phase == "finished"
-		if not match_view.processing and (eliminated or finished) and match_view.state.get("stage", "") == "turn":
-			if finished:
+		# L'eliminato riceve subito il premio dopo l'animazione delle vite,
+		# senza aspettare il prossimo turno o la conclusione della partita.
+		var winner_ready: bool = finished and match_view.state.get("stage", "") == "turn"
+		if not match_view.processing and (eliminated or winner_ready):
+			if not eliminated and winner_ready:
 				# Lascia leggere il vincitore prima di sovrapporre la ricompensa.
 				var buttons: Control = host.overlay.buttons
 				buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -1,5 +1,7 @@
 extends "res://scenes/balatro/scripts/multiplayer_entry_ui.gd"
 
+signal tutorial_requested
+
 const SETTINGS_ART := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/settingsUI/"
 const ROOM_ART := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/InLobbyUI/"
 const DESIGN_SIZE := Vector2(1842, 784)
@@ -9,6 +11,8 @@ var panel: TextureRect
 var username: Label
 var public_id: Label
 var edit: Button
+var customize_profile: Button
+var replay_tutorial: Button
 var privacy: Button
 var language_button: Button
 var language_open: TextureRect
@@ -34,11 +38,19 @@ func setup_settings(host_page: Control, host_menu: Control) -> void:
 	composition.size = DESIGN_SIZE
 	composition.mouse_filter = MOUSE_FILTER_IGNORE
 	panel = _image(composition, SETTINGS_ART + "settingsPanel.png", Rect2(Vector2.ZERO, DESIGN_SIZE))
+	customize_profile = _button(panel, SETTINGS_ART + "personalizzaProfilo.png", Rect2(184, 46, 408, 100), func(): menu._show_personalization())
+	customize_profile.name = "PersonalizzaProfilo"
+	customize_profile.tooltip_text = "Personalizza profilo"
+	replay_tutorial = _button(panel, SETTINGS_ART + "rigiocaTutorial.png", Rect2(612, 46, 276, 100), func(): tutorial_requested.emit())
+	replay_tutorial.name = "RigiocaTutorial"
+	replay_tutorial.tooltip_text = "Rigioca il tutorial"
+	tutorial_requested.connect(func():
+		if menu.has_method("start_tutorial"): menu.start_tutorial())
 	username = _label(panel, "", Rect2(235, 272, 335, 46), 32, Color("ffda7c"))
 	username.clip_text = true
 	username.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	public_id = _label(panel, "", Rect2(216, 319, 352, 40), 29)
-	edit = _button(panel, SETTINGS_ART + "modificaUsername.png", Rect2(584, 259, 308, 104), func(): _account("username"))
+	edit = _button(panel, SETTINGS_ART + "modificaUsername.png", Rect2(628, 259, 268, 104), func(): _account("username"))
 	for index in 3:
 		var provider: String = ["apple", "google", "email"][index]
 		var rect := Rect2(40 + index * 294, 388, 276, 84)

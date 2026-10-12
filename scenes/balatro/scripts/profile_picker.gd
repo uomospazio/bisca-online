@@ -4,6 +4,7 @@ signal selected(avatar: String)
 const AvatarData = preload("res://scenes/balatro/scripts/avatar_data.gd")
 const Avatars = preload("res://scenes/balatro/scripts/avatar_catalog.gd")
 var avatar_index := -1
+var available_avatars: Array[int] = [0]
 var bridge: JavaScriptObject
 var dialog: Control
 var status: Label
@@ -26,6 +27,10 @@ func _ready() -> void:
 		bridge = JavaScriptBridge.get_interface("BiscaProfile")
 
 func open(display_name: String) -> void:
+	available_avatars.clear()
+	for asset in get_node("/root/ShopManager").available_assets("avatar"):
+		if asset >= 1 and asset <= Avatars.TEXTURES.size():
+			available_avatars.append(asset - 1)
 	var current = get_parent().get("profile_avatar")
 	chosen = str(current) if current != null else ""
 	if chosen.is_empty():
@@ -37,7 +42,7 @@ func open(display_name: String) -> void:
 			break
 	if bridge:
 		var presets: Array[String] = []
-		for index in range(Avatars.TEXTURES.size()):
+		for index in available_avatars:
 			presets.append(Avatars.encoded(index))
 		bridge.open(display_name, chosen, JSON.stringify(presets))
 		return
@@ -131,7 +136,8 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 
 func _avatar_arrow(parent: Control, icon_file: String, step: int) -> void:
 	var arrow := _button(parent, "", func():
-		avatar_index = posmod(avatar_index + step, Avatars.TEXTURES.size()) if avatar_index >= 0 else (0 if step > 0 else Avatars.TEXTURES.size() - 1)
+		var position := available_avatars.find(avatar_index)
+		avatar_index = available_avatars[posmod(position + step, available_avatars.size())] if position >= 0 else available_avatars[0 if step > 0 else -1]
 		chosen = Avatars.encoded(avatar_index)
 		preview.texture = AvatarData.circular_texture(chosen)
 		confirm.disabled = chosen.is_empty()

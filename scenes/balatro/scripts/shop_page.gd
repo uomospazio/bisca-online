@@ -366,8 +366,12 @@ func _build_offer(item: Dictionary, index: int) -> void:
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if str(item.id).begins_with("deck_back_") and item.asset_id >= 1 and item.asset_id <= 12:
+	if str(item.id).begins_with("deck_back_") and item.asset_id >= 1 and item.asset_id <= preload("res://scenes/balatro/scripts/game_settings.gd").BACK_COUNT:
 		preview.texture = get_node("/root/GameSettings").back_texture(item.asset_id)
+	elif item.item_type == "avatar" and item.asset_id >= 1 and item.asset_id <= preload("res://scenes/balatro/scripts/avatar_catalog.gd").TEXTURES.size():
+		preview.texture = preload("res://scenes/balatro/scripts/avatar_catalog.gd").TEXTURES[item.asset_id - 1]
+	elif item.item_type == "throwable" and preload("res://scenes/balatro/scripts/throw_catalog.gd").enabled(item.asset_id):
+		preview.texture = load("res://scenes/balatro/resources/" + preload("res://scenes/balatro/scripts/throw_catalog.gd").FILES[item.asset_id])
 	offer.add_child(preview)
 	if preview.texture:
 		_add_item_shadow(preview)

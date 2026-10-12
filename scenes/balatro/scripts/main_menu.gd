@@ -813,7 +813,9 @@ func _save_profile_value(key: String, value: String) -> void:
 		push_warning("Impossibile salvare il profilo: " + error_string(result))
 
 func _set_home_profile(avatar: String, persist := true) -> void:
-	var is_default := avatar.is_empty()
+	if avatar.is_empty():
+		avatar = preload("res://scenes/balatro/scripts/avatar_catalog.gd").encoded(0)
+	var is_default := false
 	profile_avatar = avatar
 	profile_texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(profile_avatar)
 	profile_button.texture_normal = profile_texture

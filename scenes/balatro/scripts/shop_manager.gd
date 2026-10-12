@@ -221,6 +221,7 @@ func refresh() -> void:
 	if not _inventory.has(DEFAULT_ITEM):
 		last_error = "Dorso default assente nel database: esegui la migrazione Shop."
 	catalog_loaded.emit()
+	_reconcile_throw_slots()
 	inventory_loaded.emit()
 	changed.emit()
 	refresh_daily()
@@ -337,3 +338,31 @@ func get_owned_items_by_type(type: String) -> Array:
 
 func get_inventory() -> Dictionary:
 	return _inventory.duplicate(true) if _account != null and _owner == str(_account.user_id) and inventory_ready else {}
+
+## Defaults can be equipped offline; other assets require this account's inventory.
+## This does not fabricate inventory rows or authorize purchases.
+func available_assets(type: String) -> Array[int]:
+	var result: Array[int] = []
+	match type:
+		"deck_back", "avatar": result.append(1)
+		"throwable": result.append(preload("res://scenes/balatro/scripts/throw_catalog.gd").DEFAULT_INDEX)
+	for item in get_owned_items_by_type(type):
+		var asset := int(item.asset_id)
+		if not result.has(asset): result.append(asset)
+	result.sort()
+	return result
+
+func _reconcile_throw_slots() -> void:
+	# Only after publishing a complete inventory for the current account.
+	var settings := get_node("/root/GameSettings")
+	var slots: Array = settings.values.throw_slots.duplicate()
+	var allowed := available_assets("throwable")
+	var removed := false
+	for index in slots.size():
+		if slots[index] >= 0 and not allowed.has(slots[index]):
+			slots[index] = -1
+			removed = true
+	if removed:
+		if slots == [-1, -1, -1]:
+			slots[0] = preload("res://scenes/balatro/scripts/throw_catalog.gd").DEFAULT_INDEX
+		settings.set_value("throw_slots", slots)

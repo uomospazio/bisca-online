@@ -102,7 +102,7 @@ func _ensure_inventory() -> void:
 ## La proprietà resta quella dell'inventario;
 ## back1 viene usato soltanto come fallback visivo se non c'è nessun dorso disponibile.
 func _owned_backs() -> Array[int]:
-	var backs: Array[int] = []
+	var backs: Array[int] = [1]
 	var shop := get_node_or_null("/root/ShopManager")
 
 	if shop:
@@ -112,7 +112,7 @@ func _owned_backs() -> Array[int]:
 			if (
 				str(item.id).begins_with("deck_back_")
 				and asset >= 1
-				and asset <= 12
+				and asset <= preload("res://scenes/balatro/scripts/game_settings.gd").BACK_COUNT
 				and not backs.has(asset)
 			):
 				backs.append(asset)

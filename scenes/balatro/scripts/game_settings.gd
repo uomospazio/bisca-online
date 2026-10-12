@@ -1,8 +1,9 @@
 extends Node
 
 signal changed
-const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "text_animations": false, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0, "throw_slots": [0, 1, -1], "show_thrown_objects": true, "language": "it", "microphone_enabled": true, "push_to_talk": false, "push_notifications": false, "push_permission_asked": false}
-const FRONT_FOLDERS := ["res://scenes/balatro/trick_asset/mazzo_2/briscola/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_big/Deck/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_color/Deck/"]
+const BACK_COUNT := 14
+const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "text_animations": false, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0, "throw_slots": [8, -1, -1], "show_thrown_objects": true, "language": "it", "microphone_enabled": true, "push_to_talk": false, "push_notifications": false, "push_permission_asked": false}
+const FRONT_FOLDERS := ["res://scenes/balatro/trick_asset/mazzo_2/briscola/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_big/Deck/"]
 
 func front_texture(colour: int = 3, number: int = 5, index: int = -1) -> Texture2D:
 	var chosen := int(values.deck_front) if index < 0 else index
@@ -12,7 +13,7 @@ func front_texture(colour: int = 3, number: int = 5, index: int = -1) -> Texture
 
 func back_texture(index: int = -1) -> Texture2D:
 	var chosen := int(values.deck_back) if index < 0 else index
-	return load("res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back%d.png" % clampi(chosen, 1, 12))
+	return load("res://scenes/balatro/trick_asset/mazzo_2/briscola/back/back%d.png" % clampi(chosen, 1, BACK_COUNT))
 var values: Dictionary = DEFAULTS.duplicate()
 var save_path := "user://bisca_settings.cfg"
 var save_timer: Timer
@@ -47,7 +48,7 @@ func load_preferences() -> void:
 		elif key == "throw_slots":
 			values[key] = _valid_throw_slots(value)
 		elif key == "deck_back" and (value is int or value is float):
-			values[key] = clampi(int(value), 1, 12)
+			values[key] = clampi(int(value), 1, BACK_COUNT)
 		elif key == "deck_front" and (value is int or value is float):
 			values[key] = clampi(int(value), 0, FRONT_FOLDERS.size() - 1)
 		elif key in ["main", "effects"]:
@@ -69,7 +70,7 @@ func set_value(key: String, value: Variant) -> void:
 	else:
 		values[key] = bool(value)
 	if key == "deck_back":
-		values[key] = clampi(int(value), 1, 12)
+		values[key] = clampi(int(value), 1, BACK_COUNT)
 	if key == "deck_front":
 		values[key] = clampi(int(value), 0, FRONT_FOLDERS.size() - 1)
 	if key == "throw_slots":
@@ -80,7 +81,7 @@ func set_value(key: String, value: Variant) -> void:
 		save_timer.start()
 
 func _valid_throw_slots(value: Variant) -> Array:
-	var result: Array = [0, 1, -1]
+	var result: Array = [preload("res://scenes/balatro/scripts/throw_catalog.gd").DEFAULT_INDEX, -1, -1]
 	if value is Array and value.size() == 3:
 		for index in 3:
 			result[index] = int(value[index]) if value[index] is int and preload("res://scenes/balatro/scripts/throw_catalog.gd").enabled(value[index]) else -1

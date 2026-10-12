@@ -12,8 +12,9 @@ const FILES := [
 	"clown.png",
 	"angry.png",
 	"pollo.png",
-	"",
+	"pomodoro.png",
 ]
+const DEFAULT_INDEX := 8
 
 static func enabled(index: int) -> bool:
 	return index >= 0 and index < FILES.size() and not FILES[index].is_empty()

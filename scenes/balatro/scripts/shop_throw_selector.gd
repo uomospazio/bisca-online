@@ -31,6 +31,7 @@ func apply_personalization_skin(texture: Texture2D) -> void:
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
+	get_node("/root/ShopManager").inventory_loaded.connect(refresh)
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	var step := SLOT_SIZE + SLOT_GAP
 	size = Vector2(SLOT_SIZE + 8.0, SLOT_SIZE * 3.0 + SLOT_GAP * 2.0) if vertical_layout else Vector2(SLOT_SIZE * 3.0 + SLOT_GAP * 2.0, SLOT_SIZE + 8.0)
@@ -67,7 +68,7 @@ func _cycle(slot: int) -> void:
 	var selection: Array = settings.values.throw_slots.duplicate()
 	var choices: Array = [-1]
 	for id in Catalog.FILES.size():
-		if Catalog.enabled(id):
+		if Catalog.enabled(id) and get_node("/root/ShopManager").available_assets("throwable").has(id):
 			choices.append(id)
 	selection[slot] = choices[(choices.find(selection[slot]) + 1) % choices.size()]
 	settings.set_value("throw_slots", selection)

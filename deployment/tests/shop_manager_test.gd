@@ -45,6 +45,7 @@ func settle() -> void:
 	assert(not shop.loading)
 
 func run() -> void:
+	root.get_node("GameSettings").save_path = "/tmp/bisca-shop-manager-test.cfg"
 	var original_settings: Dictionary = root.get_node("GameSettings").values.duplicate(true)
 	account = Account.new()
 	root.add_child(account)
@@ -121,7 +122,11 @@ func run() -> void:
 	shop.replies = [response([item("deck_back_1", 1)]), response([]), response([])]
 	await shop.refresh()
 	assert(not shop.owns_item("deck_back_1") and not shop.last_error.is_empty())
-	assert(root.get_node("GameSettings").values == original_settings)
+	var after: Dictionary = root.get_node("GameSettings").values.duplicate(true)
+	# Inventory reconciliation may remove unequipped/unowned throwable slots,
+	# but must not change deck, audio or other preferences.
+	after.throw_slots = original_settings.throw_slots
+	assert(after == original_settings)
 	shop.free()
 	account.free()
 	print("PASS Shop: API, copie, default DB, paginazione, offline, errori, guest, isolamento e race A-B-A")

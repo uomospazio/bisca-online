@@ -118,70 +118,25 @@ func _ready() -> void:
 	var throw_objects = preload("res://scenes/balatro/scripts/throw_objects.gd").new()
 	game_ui.add_child(throw_objects)
 	throw_objects.setup(self)
-	var pause_button: Button = menu._button(game_ui, "||", pause_menu.open)
+	var pause_button := Button.new()
+	pause_button.set_meta("cartoon_style_children_excluded", true)
+	game_ui.add_child(pause_button)
+	pause_button.name = "MatchSettingsButton"
+	pause_button.tooltip_text = "Impostazioni"
 	pause_button.position = Vector2(40, 40)
-	pause_button.custom_minimum_size = Vector2(80, 80)
 	pause_button.size = Vector2(108, 108)
-	_set_button_radius(pause_button, 32)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var skin := StyleBoxTexture.new()
+		skin.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/buttonSettings.png")
+		pause_button.add_theme_stylebox_override(state, skin)
+	pause_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	pause_button.pressed.connect(pause_menu.open)
+	preload("res://scenes/balatro/scripts/button_audio.gd").attach(pause_button)
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(pause_button)
 	pause_button.z_index = 200
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(pause_button)
 	seat_edge_controls[1] = pause_button
-	var card_info = preload("res://scenes/balatro/scripts/card_info.gd").new()
-	add_child(card_info)
-	card_info.setup(self)
-
-	# INFO e CHAT usano lo stesso pulsante rotondo della HOME.
-	# La dimensione e la dimensione dell'icona seguono automaticamente
-	# ROUND_BUTTON_SIZE / ROUND_ICON_SIZE definiti in main_menu.gd.
-	var match_round_size: float = MainMenu.ROUND_BUTTON_SIZE
-	var match_round_spacing: float = MainMenu.ROUND_BUTTONS_SPACING
-	var match_round_right_margin := 40.0
-	var match_round_top_margin := 40.0
-
-	var info_button: Button = menu._round_icon_button(game_ui, "info.svg", "Info", card_info.open)
-	info_button.size = Vector2.ONE * match_round_size
-	info_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	info_button.offset_left = -match_round_right_margin - match_round_size
-	info_button.offset_right = -match_round_right_margin
-	info_button.offset_top = match_round_top_margin
-	info_button.offset_bottom = match_round_top_margin + match_round_size
-	info_button.z_index = 200
-	menu._add_gloss_button_style(info_button)
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(info_button, true)
-	seat_edge_controls[7] = info_button
-
 	var voice = get_node("/root/VoiceChat")
-	var voice_button: Button = menu._round_icon_button(game_ui, "mic-off.svg", "Chat vocale", func():
-		if not get_node("/root/GameSettings").values.push_to_talk or not voice.enabled:
-			voice.open_panel()
-	)
-	voice_button.button_down.connect(func(): voice.set_talk_held(true))
-	voice_button.button_up.connect(func(): voice.set_talk_held(false))
-	voice_button.size = Vector2.ONE * match_round_size
-	voice_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	voice_button.offset_left = -match_round_right_margin - match_round_size
-	voice_button.offset_right = -match_round_right_margin
-	voice_button.offset_top = match_round_top_margin + match_round_size + match_round_spacing
-	voice_button.offset_bottom = voice_button.offset_top + match_round_size
-	voice_button.z_index = 200
-	menu._add_gloss_button_style(voice_button)
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(voice_button, true)
-	voice_button.tooltip_text = "Attiva la chat vocale e regola i volumi dei giocatori"
-
-	# _round_icon_button crea l'icona come TextureRect figlio.
-	# Manteniamo mic-off / mic-on come prima, cambiando solo la texture interna.
-	var voice_icon: TextureRect
-	for child in voice_button.get_children():
-		if child is TextureRect:
-			voice_icon = child as TextureRect
-			break
-
-	var update_voice_icon := func():
-		var mic_active: bool = voice.enabled and not voice.muted and not voice.pending
-		if is_instance_valid(voice_icon):
-			voice_icon.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/mic-on.svg") if mic_active else preload("res://scenes/balatro/trick_asset/ui_bisca/mic-off.svg")
-	voice.changed.connect(update_voice_icon)
-	update_voice_icon.call()
 	var menu_background := ShaderMaterial.new()
 	menu_background.shader = preload("res://scenes/balatro/shaders/menu_suits.gdshader")
 	menu_background.set_shader_parameter("use_purple_background", preload("res://scenes/balatro/scripts/home_art_ui.gd").SHOW_PURPLE_BACKGROUND)
@@ -198,7 +153,6 @@ func _ready() -> void:
 		table_image.visible = game_ui.visible
 		$GameBackground.material = null if game_ui.visible else menu_background
 		$GameBackground.color = Color.BLACK if game_ui.visible else Color.WHITE
-		voice_button.visible = online and not get_node("/root/NetworkSession").latest.get("singleplayer", false)
 		if not game_ui.visible:
 			voice._call("closePanel")
 	)

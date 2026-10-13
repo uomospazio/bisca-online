@@ -273,6 +273,46 @@ func _accept_session(data: Dictionary, allow_switch: bool, password_login := tru
 	changed.emit()
 	return true
 
+## Only the authenticated caller can delete themselves; admin credentials stay on the server.
+func delete_account() -> Dictionary:
+	if _busy or _request == null or not is_authenticated():
+		return {"ok": false, "message": "Attendi la connessione account e riprova."}
+	_busy = true
+	var deleted_uid := user_id
+	var err := _request.request(PROJECT_URL + "/functions/v1/delete-account", database_headers(), HTTPClient.METHOD_POST, JSON.stringify({"confirmation": "DELETE_MY_ACCOUNT"}))
+	if err != OK:
+		_busy = false
+		return {"ok": false, "message": "Connessione non riuscita. Riprova."}
+	var response: Array = await _request.request_completed
+	var data = JSON.parse_string(response[3].get_string_from_utf8())
+	if response[0] != HTTPRequest.RESULT_SUCCESS or response[1] != 200 or not data is Dictionary or data.get("deleted") != true:
+		_busy = false
+		return {"ok": false, "message": "Cancellazione non confermata dal server. Riprova quando sei connesso."}
+	_renew.stop()
+	_cache = ConfigFile.new()
+	if _cache.save(SESSION_FILE) != OK:
+		DirAccess.remove_absolute(SESSION_FILE)
+	user_id = ""
+	_refresh_token = ""
+	_access_token = ""
+	_expires_at = 0
+	email = ""
+	pending_email = ""
+	anonymous = true
+	email_verified = false
+	password_ready = false
+	social_ready = false
+	provider_accounts.clear()
+	status = "offline"
+	last_error = ""
+	# Listeners flush their previous owner's queue before it is removed below.
+	changed.emit()
+	for path in ["user://bisca_profile_%s.cfg" % deleted_uid, "user://profile_photo.cfg", "user://welcome.cfg"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+	_busy = false
+	return {"ok": true}
+
 func sign_out() -> Dictionary:
 	if anonymous or not (password_ready or social_ready):
 		return {"ok": false, "message": "Collega prima email e password per non perdere l'ospite."}
@@ -283,6 +323,7 @@ func sign_out() -> Dictionary:
 	if empty.save(SESSION_FILE) != OK:
 		return {"ok": false, "message": "Impossibile cancellare la sessione locale."}
 	_cache = empty
+	provider_accounts.clear()
 	_renew.stop()
 	user_id = ""
 	_refresh_token = ""

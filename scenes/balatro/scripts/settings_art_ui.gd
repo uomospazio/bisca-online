@@ -50,7 +50,7 @@ func setup_settings(host_page: Control, host_menu: Control) -> void:
 	username.clip_text = true
 	username.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	public_id = _label(panel, "", Rect2(216, 319, 352, 40), 29)
-	edit = _button(panel, SETTINGS_ART + "modificaUsername.png", Rect2(628, 259, 268, 104), func(): _account("username"))
+	edit = _button(panel, SETTINGS_ART + "modificaUsername.png", Rect2(628, 259, 268, 104), func(): _account("manage"))
 	for index in 3:
 		var provider: String = ["apple", "google", "email"][index]
 		var rect := Rect2(40 + index * 294, 388, 276, 84)

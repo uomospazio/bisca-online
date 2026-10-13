@@ -53,7 +53,10 @@ func save_username(value: String) -> Dictionary:
 		sync.call_deferred()
 		return {"ok": false, "message": "Profilo cambiato durante il salvataggio. Ricontrolla il nome."}
 	if not result.ok:
-		return {"ok": false, "message": "Username non salvato. Verifica connessione e migrazione 005_account_username.sql."}
+		var error_data = result.get("data", {})
+		if error_data is Dictionary and str(error_data.get("code", "")) == "23505":
+			return {"ok": false, "message": "Username già in uso. Scegline un altro."}
+		return {"ok": false, "message": "Username non salvato. Verifica la connessione e riprova."}
 	profile.username = value if not value.is_empty() else null
 	changed.emit()
 	if _pending:

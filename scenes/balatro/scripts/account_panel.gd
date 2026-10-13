@@ -19,10 +19,13 @@ var mode := ""
 var username_field: LineEdit
 var direct_action := false
 var provider_intent := ""
+var managing_account := false
+var deletion_user := ""
 var panel: PanelContainer
 var scalable_font: FontFile
 
 func setup(host: Control, initial_mode: String = "home") -> void:
+	managing_account = initial_mode == "manage"
 	direct_action = initial_mode != "home"
 	menu = host
 	account = get_node("/root/AccountSession")
@@ -192,7 +195,22 @@ func _show(next: String) -> void:
 
 	_text("CREA NUOVO ACCOUNT" if mode == "new_guest" else "ACCOUNT", 44)
 
-	if mode == "home":
+	if mode == "manage":
+		_button("MODIFICA USERNAME", func(): _show("username"))
+		_button("ESCI DALL'ACCOUNT", func(): _show("logout"))
+		_button("CANCELLA ACCOUNT", func(): _show("delete"))
+	elif mode == "delete":
+		deletion_user = account.user_id
+		_text("Cancellazione definitiva dell'account Bisca e dei dati personali: profilo, foto, amici, progressi, monete e acquisti. Non potrai recuperarli. Gli account Apple e Google non vengono cancellati.")
+		confirmation = CheckBox.new()
+		confirmation.text = "Confermo la cancellazione definitiva"
+		confirmation.add_theme_font_override("font", FONT)
+		confirmation.add_theme_font_size_override("font_size", 20)
+		rows.add_child(confirmation)
+		_button("CANCELLA DEFINITIVAMENTE", func(): _run("delete"))
+		buttons.back().disabled = true
+		confirmation.toggled.connect(func(value): buttons[0].disabled = not value or working)
+	elif mode == "home":
 		provider_intent = ""
 		_button("SALVA I TUOI PROGRESSI", func(): _show("save_providers"))
 		_button("ACCEDI", func(): _show("login_providers"))
@@ -319,7 +337,7 @@ func _show(next: String) -> void:
 
 	elif mode == "logout":
 		_text(
-			"Uscire da questo account? I dati cloud restano salvati. Verra' creato un nuovo ospite; per recuperare questo profilo serviranno email e password."
+			"Uscire da questo account? I dati cloud restano salvati. Verra' creato un nuovo ospite; potrai rientrare con il metodo di accesso collegato (Apple, Google o email). Se sei ospite, collega prima un metodo di accesso."
 		)
 
 		_button(
@@ -346,6 +364,13 @@ func _show(next: String) -> void:
 	)
 	if mode == "home":
 		_layout_home()
+	elif mode in ["manage", "delete"]:
+		var destructive: Button = buttons[2] if mode == "manage" else buttons[0]
+		var material: ShaderMaterial = destructive.get_meta("generic_ui_material")
+		material.set_shader_parameter("fill_top", Color("88302c"))
+		material.set_shader_parameter("fill_bottom", Color("5d1f25"))
+		material.set_shader_parameter("border_top", Color("e96872"))
+		material.set_shader_parameter("border_bottom", Color("953143"))
 	elif mode == "new_guest":
 		var material: ShaderMaterial = buttons.back().get_meta("generic_ui_material")
 		material.set_shader_parameter("fill_top", Color("88302c"))
@@ -405,6 +430,9 @@ func _run_social(link_current: bool) -> void:
 func _run(action: String) -> void:
 	if working:
 		return
+	if action == "delete" and (not confirmation.button_pressed or deletion_user != account.user_id):
+		notice.text = "Conferma la cancellazione dell'account attuale."
+		return
 
 	if (
 		action in ["link", "login"]
@@ -447,6 +475,8 @@ func _run(action: String) -> void:
 			result = await account.sign_in(address.text, password.text)
 		"logout":
 			result = await account.sign_out()
+		"delete":
+			result = await account.delete_account()
 
 	if is_instance_valid(password):
 		password.clear()
@@ -456,6 +486,8 @@ func _run(action: String) -> void:
 	if not result.ok:
 		for button in buttons:
 			button.disabled = false
+		if action == "delete":
+			buttons[0].disabled = not confirmation.button_pressed
 
 		notice.text = result.get(
 			"message",
@@ -464,6 +496,13 @@ func _run(action: String) -> void:
 		return
 
 	action_completed.emit(action)
+	if action == "delete":
+		get_tree().reload_current_scene()
+		return
+	if managing_account and action == "username":
+		_show("manage")
+		notice.text = "Username aggiornato."
+		return
 	_show(
 		"verify"
 		if action == "link"
@@ -493,7 +532,10 @@ func _choose_email() -> void:
 		_show("link")
 
 func _go_back() -> void:
-	if mode in ["save_providers", "login_providers"]:
+	if managing_account:
+		if mode == "manage": queue_free()
+		else: _show("manage")
+	elif mode in ["save_providers", "login_providers"]:
 		_show("home")
 	elif not provider_intent.is_empty():
 		_show("save_providers" if provider_intent == "save" else "login_providers")

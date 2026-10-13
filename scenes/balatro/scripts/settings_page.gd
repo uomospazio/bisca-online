@@ -100,7 +100,7 @@ func setup(menu: Control, back_action: Callable = Callable(), _multiplayer_setti
 	account.add_child(account_name)
 	account_id = _label("")
 	account.add_child(account_id)
-	var username_button := _account_action(menu, account, "MODIFICA USERNAME", "EDIT USERNAME", "username", back_action.is_valid())
+	var username_button := _account_action(menu, account, "MODIFICA USERNAME", "EDIT USERNAME", "manage", back_action.is_valid())
 	account_dot = menu._notification_dot(username_button)
 	save_progress = _account_action(menu, account, "SALVA I TUOI PROGRESSI", "SAVE YOUR PROGRESS", "save", back_action.is_valid())
 	_account_action(menu, account, "ACCEDI A UN ACCOUNT", "SIGN IN TO AN ACCOUNT", "login", back_action.is_valid())

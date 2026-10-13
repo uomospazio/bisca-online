@@ -40,6 +40,22 @@
     p, li { color: var(--text); }
     .muted { color: var(--muted); }
     a { color: var(--link); }
+    section { scroll-margin-top: 24px; }
+    .request-button {
+      display: inline-block;
+      padding: 12px 20px;
+      border: 2px solid var(--link);
+      border-radius: 14px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .request-button:hover { background: rgba(116,171,142,.15); }
+    a:focus-visible { outline: 3px solid var(--link); outline-offset: 4px; }
+    @media (max-width: 480px) {
+      main { padding: 24px 12px; }
+      .card { padding: 22px 18px; }
+      h1 { font-size: 1.8rem; }
+    }
     ul { padding-left: 1.25rem; }
     .contact {
       margin-top: 1rem;
@@ -54,7 +70,8 @@
 <main>
   <div class="card">
     <h1>Privacy Policy — BISCA</h1>
-    <p class="muted"><strong>Ultimo aggiornamento:</strong> 6 ottobre 2026</p>
+    <p class="muted"><strong>Ultimo aggiornamento:</strong> 13 ottobre 2026</p>
+    <p><a href="#eliminazione-account">Richiedi l'eliminazione dell'account e dei dati BISCA</a></p>
 
     <p>
       La presente Privacy Policy descrive come <strong>BISCA</strong>, pubblicata da
@@ -143,12 +160,51 @@
       <li>presentare reclamo all'autorità competente.</li>
     </ul>
 
-    <h2>8. Eliminazione dell'account</h2>
+    <section id="eliminazione-account" aria-labelledby="deletion-title">
+    <h2 id="deletion-title">8. Elimina il tuo account BISCA e i dati associati</h2>
     <p>
-      Gli utenti possono richiedere l'eliminazione del proprio account e dei dati
-      associati tramite le funzionalità disponibili nell'app oppure contattando il
-      titolare all'indirizzo email indicato di seguito.
+      Puoi richiedere l'eliminazione anche senza avere l'app installata.
+      Il pulsante seguente apre la tua app di posta con una richiesta precompilata
+      indirizzata a Matteo Storoni, titolare di BISCA: completa i dati e invia l'email.
+      Aprire il messaggio non invia la richiesta e non cancella l'account.
     </p>
+    <p><a class="request-button" href="mailto:matteostoroni02@gmail.com?subject=Richiesta%20eliminazione%20account%20BISCA&amp;body=Desidero%20eliminare%20definitivamente%20il%20mio%20account%20BISCA%20e%20i%20dati%20associati.%0A%0AID%20BISCA%20%28se%20disponibile%29%3A%20%0AUsername%20%28se%20disponibile%29%3A%20%0AEmail%20collegata%20%28se%20presente%29%3A%20%0AMetodo%20di%20accesso%20%28Apple%2C%20Google%2C%20email%20o%20ospite%29%3A%20%0A%0AComprendo%20che%20la%20cancellazione%20e%20definitiva%20e%20comporta%20la%20perdita%20dei%20progressi%20e%20degli%20oggetti%20di%20gioco.">Richiedi eliminazione account e dati</a></p>
+    <p>
+      Se il pulsante non apre la posta, scrivi a
+      <a href="mailto:matteostoroni02@gmail.com">matteostoroni02@gmail.com</a>
+      con oggetto <strong>Richiesta eliminazione account BISCA</strong>.
+      Indica, se disponibili, ID BISCA, username, email collegata e metodo di accesso.
+      Non inviare password, codici di verifica o token di accesso.
+    </p>
+    <p>
+      Le richieste via email vengono gestite manualmente. Prima della cancellazione
+      verifichiamo che l'account ti appartenga; un ID o uno username da soli non
+      autorizzano l'eliminazione. Se non conosci l'ID o usi un account ospite,
+      segnalalo nella richiesta. Riceverai risposta all'indirizzo da cui hai scritto.
+    </p>
+    <h3>Cancellazione direttamente dall'app</h3>
+    <p>
+      Apri <strong>Impostazioni → Modifica username → Account → Cancella account</strong>,
+      seleziona la conferma di cancellazione definitiva e premi
+      <strong>Cancella definitivamente</strong>. La cancellazione richiede una
+      connessione attiva e avviene dopo la conferma del server.
+    </p>
+    <h3>Quali dati vengono eliminati?</h3>
+    <p>
+      Vengono rimossi l'account BISCA su Supabase e i dati di gioco collegati:
+      profilo, username, foto o avatar salvato, inventario, monete, progressi,
+      risultati, ricompense, amicizie, inviti e registrazioni delle notifiche push.
+      La cancellazione è definitiva: progressi e oggetti di gioco non sono recuperabili.
+      Non elimina il tuo account Apple o Google.
+    </p>
+    <p>
+      Per la conservazione dei dati si veda la sezione 5. La cancellazione dei dati
+      attivi di BISCA non equivale alla rimozione immediata da eventuali backup o
+      log tecnici dei fornitori, né elimina autonomamente dati trattati da terze parti
+      secondo le rispettive informative. Per chiarimenti su eventuali dati conservati
+      e relativi tempi, contatta il titolare all'indirizzo sopra indicato.
+    </p>
+    </section>
 
     <h2>9. Minori</h2>
     <p>

@@ -81,6 +81,24 @@ func run() -> void:
 	var account := root.get_node("AccountSession")
 	assert(not account._accept_session({"user": {"id": "wrong"}}, false))
 	assert(not (await account.sign_out()).ok) # Non si puo' abbandonare l'ospite.
+	assert(not (await account.delete_account()).ok)
+	panel.managing_account = true
+	panel._show("manage")
+	assert(panel.buttons[0].text == "MODIFICA USERNAME")
+	assert(panel.buttons[1].text == "ESCI DALL'ACCOUNT")
+	assert(panel.buttons[2].text == "CANCELLA ACCOUNT")
+	panel.buttons[2].pressed.emit()
+	assert(panel.mode == "delete" and panel.buttons[0].disabled)
+	await panel._run("delete")
+	assert(panel.notice.text.contains("Conferma"))
+	panel.confirmation.button_pressed = true
+	assert(not panel.buttons[0].disabled)
+	panel.deletion_user = "not-the-current-user"
+	await panel._run("delete")
+	assert(panel.notice.text.contains("Conferma"))
+	panel._go_back()
+	assert(panel.mode == "manage")
+	panel.managing_account = false
 	var probe := UnconfirmedSession.new()
 	probe.user_id = "test-guest"
 	probe.reply = {"ok": true, "data": {"id": "test-guest", "is_anonymous": true}}

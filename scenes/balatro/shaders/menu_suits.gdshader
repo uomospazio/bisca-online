@@ -39,5 +39,7 @@ void fragment() {
 		mask *= smoothstep(0.0, 65.0, max(distance_from_logo.x, distance_from_logo.y));
 	}
 	vec3 base = use_purple_background ? texture(purple_background, UV).rgb : paper.rgb;
-	COLOR = vec4(mix(base, vec3(1.0), symbol.a * mask * ink_opacity), 1.0);
+	// COLOR = vec4(mix(base, vec3(1.0), symbol.a * mask * ink_opacity), 1.0);
+	// Mostra soltanto lo sfondo viola originale.
+	COLOR = vec4(base, 1.0);
 }

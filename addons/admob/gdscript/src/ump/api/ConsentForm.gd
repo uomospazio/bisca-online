@@ -40,10 +40,19 @@ func show(on_consent_form_dismissed := func(form_error: FormError): pass) -> voi
 
 func _on_consent_form_dismissed(uid: int, form_error_dictionary: Dictionary) -> void:
 	if uid == _uid:
-		UserMessagingPlatform.active_consent_form = null
+		# Keep self alive until the native callback has finished using its members.
+		var keep_alive := self
+		var callback: Callable = _on_consent_form_dismissed_callback if _on_consent_form_dismissed_callback is Callable else Callable()
+		clear_callback()
 		var formError: FormError = (
 			FormError.create(form_error_dictionary)
 			if not form_error_dictionary.is_empty()
 			else null
 		)
-		_on_consent_form_dismissed_callback.call_deferred(formError)
+		if callback.is_valid(): callback.call_deferred(formError)
+		if UserMessagingPlatform.active_consent_form == keep_alive:
+			UserMessagingPlatform.active_consent_form = null
+
+func clear_callback() -> void:
+	safe_disconnect(_plugin, "on_consent_form_dismissed", _on_consent_form_dismissed)
+	_on_consent_form_dismissed_callback = null

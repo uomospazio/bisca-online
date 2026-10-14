@@ -70,15 +70,34 @@ static func show_privacy_options_form(
 		_plugin.show_privacy_options_form()
 
 static func _on_consent_form_load_success_listener(UID: int) -> void:
-	_on_consent_form_load_success_listener_callback.call_deferred(ConsentForm.new(UID))
+	var callback: Callable = _on_consent_form_load_success_listener_callback if _on_consent_form_load_success_listener_callback is Callable else Callable()
+	_clear_load_callbacks()
+	if callback.is_valid(): callback.call_deferred(ConsentForm.new(UID))
 
 static func _on_consent_form_load_failure_listener(form_error_dictionary: Dictionary) -> void:
-	_on_consent_form_load_failure_listener_callback.call_deferred(
-		FormError.create(form_error_dictionary)
-	)
+	var callback: Callable = _on_consent_form_load_failure_listener_callback if _on_consent_form_load_failure_listener_callback is Callable else Callable()
+	_clear_load_callbacks()
+	if callback.is_valid(): callback.call_deferred(FormError.create(form_error_dictionary))
 
 static func _on_privacy_options_form_dismissed_listener(form_error_dictionary: Dictionary) -> void:
 	var form_error := (
 		FormError.create(form_error_dictionary) if not form_error_dictionary.is_empty() else null
 	)
-	_on_privacy_options_form_dismissed_callback.call_deferred(form_error)
+	var callback: Callable = _on_privacy_options_form_dismissed_callback if _on_privacy_options_form_dismissed_callback is Callable else Callable()
+	_on_privacy_options_form_dismissed_callback = null
+	if callback.is_valid(): callback.call_deferred(form_error)
+
+static func _clear_load_callbacks() -> void:
+	safe_disconnect(_plugin, "on_consent_form_load_success_listener", _on_consent_form_load_success_listener)
+	safe_disconnect(_plugin, "on_consent_form_load_failure_listener", _on_consent_form_load_failure_listener)
+	_on_consent_form_load_success_listener_callback = null
+	_on_consent_form_load_failure_listener_callback = null
+
+static func clear_callbacks() -> void:
+	_clear_load_callbacks()
+	safe_disconnect(_plugin, "on_privacy_options_form_dismissed_listener", _on_privacy_options_form_dismissed_listener)
+	_on_privacy_options_form_dismissed_callback = null
+	consent_information.clear_callbacks()
+	if active_consent_form != null:
+		active_consent_form.clear_callback()
+	active_consent_form = null

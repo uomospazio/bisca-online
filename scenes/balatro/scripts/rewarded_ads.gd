@@ -86,6 +86,13 @@ func _ready() -> void:
 func supported() -> bool:
 	return OS.get_name() in ["Android", "iOS"] and Engine.has_singleton("PoingGodotAdMobRewardedAd")
 
+func _exit_tree() -> void:
+	# UMP owns static references to callbacks into this script. Dispose them
+	# before GDScriptLanguage::finish(), including when a request is pending.
+	if _consent_info != null:
+		UserMessagingPlatform.clear_callbacks()
+		_consent_info = null
+
 
 func privacy_supported() -> bool:
 	return (

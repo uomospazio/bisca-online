@@ -3,6 +3,12 @@ extends Control
 # Dimensioni logiche degli slot nella nuova lista illustrata.
 const PLAYER_SLOT_HEIGHT := 80.0
 const PLAYER_SLOT_WIDTH := 564.0
+const VOICE_ICONS := {
+	"mic-on": preload("res://scenes/balatro/trick_asset/ui_bisca/mic-on.svg"),
+	"mic-off": preload("res://scenes/balatro/trick_asset/ui_bisca/mic-off.svg"),
+	"volume-high": preload("res://scenes/balatro/trick_asset/ui_bisca/volume-high.svg"),
+	"volume-cross": preload("res://scenes/balatro/trick_asset/ui_bisca/volume-cross.svg"),
+}
 
 var entry_ui: Control
 var lobby_ui: Control
@@ -291,11 +297,20 @@ func _update(state: Dictionary) -> void:
 	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
 	# Le opzioni stanza cambiano spesso senza modificare gli slot. In quel caso
 	# conserviamo nodi, focus e tween invece di ricreare otto card.
-	if rendered_self == int(state.you) and rendered_people == state.people:
+	# Voice status changes do not change the row layout. Preserve the button
+	# handling the tap and the icon's tween when its server acknowledgement arrives.
+	var row_people: Array = state.people.duplicate(true)
+	for person in row_people:
+		person.erase("voice_active")
+	if rendered_self == int(state.you) and rendered_people == row_people:
+		for row in players_box.get_children():
+			if row.has_meta("slot"):
+				var slot: int = row.get_meta("slot")
+				row.set_meta("voice_active", bool(state.people[slot].get("voice_active", false)))
 		refresh_own_card()
 		_update_voice_buttons()
 		return
-	rendered_people = state.people.duplicate(true)
+	rendered_people = row_people
 	rendered_self = int(state.you)
 	for child in players_box.get_children():
 		players_box.remove_child(child)
@@ -392,7 +407,8 @@ func _update(state: Dictionary) -> void:
 		row.set_meta("voice_bot", bool(p.bot))
 		row.set_meta("voice_active", bool(p.get("voice_active", false)))
 		if index == int(state.you):
-			speaker.pressed.connect(voice.toggle_audio)
+			# Finish dispatching the touch before voice emits synchronous UI updates.
+			speaker.pressed.connect(voice.toggle_audio, CONNECT_DEFERRED)
 		else:
 			speaker.disabled = true
 			speaker.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -501,50 +517,46 @@ func _update_voice_buttons() -> void:
 
 func _set_voice_icon_tween(icon: TextureRect, icon_name: String) -> void:
 	var current_icon := str(icon.get_meta("current_icon", ""))
-
-	# Prima assegnazione: niente animazione.
-	if current_icon.is_empty():
-		icon.texture = load(
-			"res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name
-		)
-		icon.set_meta("current_icon", icon_name)
+	if current_icon.is_empty() or not icon.is_visible_in_tree():
+		_set_voice_icon(icon, icon_name)
 		return
-
-	# Se l'icona non è cambiata, non fare nulla.
+	# Native transports can emit several status events before the pop finishes.
+	# Compare the destination, not just the texture still shown during shrink.
+	if str(icon.get_meta("target_icon", current_icon)) == icon_name:
+		return
+	_cancel_voice_icon_tween(icon)
 	if current_icon == icon_name:
+		_set_voice_icon(icon, icon_name)
 		return
-
-	# Interrompe un eventuale tween precedente.
-	if icon.has_meta("voice_tween"):
-		var old_tween: Tween = icon.get_meta("voice_tween")
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
-
+	icon.set_meta("target_icon", icon_name)
 	icon.pivot_offset = icon.size / 2.0
-
-	var tween := create_tween()
+	# Bind to the icon, not the lobby: a roster rebuild frees this node.
+	var tween := icon.create_tween()
 	icon.set_meta("voice_tween", tween)
-
 	tween.set_trans(Tween.TRANS_BACK)
 	tween.set_ease(Tween.EASE_IN)
 	tween.tween_property(icon, "scale", Vector2(0.25, 0.25), 0.10)
-
 	tween.tween_callback(func():
-		icon.texture = load(
-			"res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name
-		)
+		icon.texture = VOICE_ICONS[icon_name]
 		icon.set_meta("current_icon", icon_name)
 	)
-
 	tween.set_ease(Tween.EASE_OUT)
 	tween.tween_property(icon, "scale", Vector2.ONE, 0.18)
 
+func _cancel_voice_icon_tween(icon: TextureRect) -> void:
+	if not icon.has_meta("voice_tween"):
+		return
+	var old_tween: Tween = icon.get_meta("voice_tween")
+	if old_tween != null and old_tween.is_valid():
+		old_tween.kill()
+	icon.remove_meta("voice_tween")
 
 func _set_voice_icon(icon: TextureRect, icon_name: String) -> void:
-	if str(icon.get_meta("current_icon", "")) == icon_name:
-		return
+	_cancel_voice_icon_tween(icon)
+	icon.scale = Vector2.ONE
+	icon.set_meta("target_icon", icon_name)
 	icon.set_meta("current_icon", icon_name)
-	icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % icon_name)
+	icon.texture = VOICE_ICONS[icon_name]
 
 
 func _send_options() -> void:

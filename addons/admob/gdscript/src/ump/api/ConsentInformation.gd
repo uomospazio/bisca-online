@@ -67,7 +67,19 @@ func reset():
 		_plugin.reset()
 
 func _on_consent_info_updated_success() -> void:
-	_on_consent_info_updated_success_callback.call_deferred()
+	var callback: Callable = _on_consent_info_updated_success_callback if _on_consent_info_updated_success_callback is Callable else Callable()
+	clear_callbacks()
+	if callback.is_valid(): callback.call_deferred()
 
 func _on_consent_info_updated_failure(form_error_dictionary: Dictionary) -> void:
-	_on_consent_info_updated_failure_callback.call_deferred(FormError.create(form_error_dictionary))
+	var callback: Callable = _on_consent_info_updated_failure_callback if _on_consent_info_updated_failure_callback is Callable else Callable()
+	clear_callbacks()
+	if callback.is_valid(): callback.call_deferred(FormError.create(form_error_dictionary))
+
+# Release script closures while GDScript is still alive, not during static teardown.
+# This does NOT reset the user's saved privacy consent.
+func clear_callbacks() -> void:
+	safe_disconnect(_plugin, "on_consent_info_updated_success", _on_consent_info_updated_success)
+	safe_disconnect(_plugin, "on_consent_info_updated_failure", _on_consent_info_updated_failure)
+	_on_consent_info_updated_success_callback = null
+	_on_consent_info_updated_failure_callback = null

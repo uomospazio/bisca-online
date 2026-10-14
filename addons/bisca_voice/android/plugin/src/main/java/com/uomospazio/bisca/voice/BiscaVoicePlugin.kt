@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.AudioManager
 import android.provider.MediaStore
 import android.util.Base64
 import java.io.ByteArrayOutputStream
@@ -12,7 +13,10 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import io.livekit.android.ConnectOptions
+import io.livekit.android.AudioOptions
+import io.livekit.android.AudioType
 import io.livekit.android.LiveKit
+import io.livekit.android.LiveKitOverrides
 import io.livekit.android.events.RoomEvent
 import io.livekit.android.events.collect
 import io.livekit.android.room.Room
@@ -290,7 +294,15 @@ class BiscaVoicePlugin(godot: Godot) : GodotPlugin(godot) {
                 fail("Impossibile avviare la chat vocale su questo dispositivo.")
                 return@launch
             }
-            val newRoom = LiveKit.create(host.applicationContext)
+            // Keep voice and Godot on the media stream, not the phone-call volume.
+            // Routing (including Bluetooth) is owned by Android in this mode.
+            host.volumeControlStream = AudioManager.STREAM_MUSIC
+            val newRoom = LiveKit.create(
+                host.applicationContext,
+                overrides = LiveKitOverrides(
+                    audioOptions = AudioOptions(audioOutputType = AudioType.MediaAudioType())
+                )
+            )
             room = newRoom
             eventJob = launch {
                 newRoom.events.collect { event ->

@@ -35,6 +35,17 @@ voice in a multiplayer lobby. Voice is stopped when the app is backgrounded,
 the lobby is changed, or the game is closed; it does not record in the
 background.
 
+## Media audio policy
+
+The room uses `AudioType.MediaAudioType()` instead of the default call profile.
+Hardware volume keys are assigned to `STREAM_MUSIC`, so game and voice playback
+use multimedia volume. Android owns device routing in this mode; no forced
+speakerphone or communication-device override is applied. Microphone capture
+is still enabled normally, with the SDK's default processing.
+Some devices do not support a Bluetooth microphone in media mode: verify the
+active microphone and output route on real hardware, not just successful join.
+After changing the Kotlin source, rebuild and copy the AAR before exporting.
+
 ## Device verification
 
 Export/install a new APK after building the AAR. Join the same lobby from an

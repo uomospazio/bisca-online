@@ -256,7 +256,19 @@ import LiveKit
         // active when voice stops, and restore the game's category after teardown.
         AudioManager.shared.audioSession.isAutomaticDeactivationEnabled = false
         AudioManager.shared.audioSession.isSpeakerOutputPreferred = true
-        let room = Room(delegate: self)
+        // LiveKit 2.17 selects playAndRecord + .default (media gain) for software
+        // processing, instead of Apple's call-tuned Voice Processing I/O path.
+        // Keep AEC/NS/AGC enabled for microphone audio; don't bypass all processing.
+        // Room defaults also apply when unmuting or recreating the microphone.
+        let capture = AudioCaptureOptions(
+            echoCancellation: true,
+            autoGainControl: true,
+            noiseSuppression: true,
+            echoCancellationMode: .software,
+            autoGainControlMode: .software,
+            noiseSuppressionMode: .software
+        )
+        let room = Room(delegate: self, roomOptions: RoomOptions(defaultAudioCaptureOptions: capture))
         session = room
         operation = Task {
             do {

@@ -95,6 +95,15 @@ stop voice; no background voice mode is added and foregrounding never auto-start
 
 LiveKit manages duplex audio with speaker preference (`defaultToSpeaker`) and
 Bluetooth/A2DP support. The bridge does not force a physical speaker override.
+Microphone capture explicitly uses **software** echo cancellation, noise
+suppression and gain control. In the pinned LiveKit 2.17 SDK this selects
+`playAndRecord` with `.default` mode rather than the call-tuned Apple Voice
+Processing I/O path; playback-only uses `playback`. Room defaults survive mute,
+unmute and reconnection. Do not replace these with `noProcessing` or a global
+voice-processing bypass: the microphone still needs echo/noise processing.
+iOS has one shared app audio session, not Android's separate media/call streams.
+Bluetooth headset microphone use can still select a lower-quality hands-free
+route; software AEC must also be checked with Godot effects playing on speaker.
 Automatic session deactivation is disabled so Godot audio can continue; the
 previous category, mode, options and buffer duration are restored after teardown.
 
@@ -129,6 +138,9 @@ Install a signed build with the latest pack and test an iPhone with a web peer:
 5. Stop during permission/token/connect, switch lobbies, background, and interrupt
    with a call; stale credentials must not restart voice or leave capture running.
 6. Disconnect/reconnect the network and leave the lobby; verify status and cleanup.
+7. Compare game music/effects before, during and after voice (also muted and
+   unmuted). Verify normal playback loudness and ask the peer whether game sounds
+   leak through the microphone. Test speaker and Bluetooth separately.
 
 The temporary exported Xcode project is a build artifact. Keep this directory
 in source control and rerun the setup for future exports.

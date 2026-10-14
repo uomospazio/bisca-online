@@ -63,6 +63,10 @@ func _set_wide_prediction_banner(enabled: bool) -> void:
 
 func _set_animated_title(value: String) -> void:
 	var target: MixedLabel = prediction_title if wide_prediction_banner else title
+	if target == prediction_title:
+		var question := value == "QUANTE PRESE FAI?"
+		target.add_theme_font_size_override("normal_font_size", 104 if question else 92)
+		target.custom_minimum_size.y = 160 if question else 144
 	# Keep BBCode lowercase: MixedLabel uppercases the entire input, including tags.
 	target.text = "[center][wave amp=8.0 freq=4.0 connected=1]%s[/wave][/center]" % value.to_upper()
 
@@ -190,6 +194,8 @@ func announce_turn(prediction: bool, single_card: bool = false) -> void:
 		prediction_out.tween_property(self, "modulate:a", 0.0, 0.18)
 		await prediction_out.finished
 		_set_animated_title("QUANTE PRESE FAI?")
+		banner_center.offset_top = -80
+		banner_center.offset_bottom = -80
 		prediction_question_started.emit()
 		modulate.a = 0.0
 		prediction_title.pivot_offset = prediction_title.size / 2.0

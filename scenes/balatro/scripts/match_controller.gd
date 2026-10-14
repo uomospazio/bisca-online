@@ -24,6 +24,9 @@ const MixedLabel = preload("res://scenes/balatro/scripts/mixed_label.gd")
 const ButtonShadow = preload("res://scenes/balatro/scripts/button_shadow.gd")
 const RoundedSquareButton = preload("res://scenes/balatro/scripts/rounded_square_button.gd")
 const LexispellStyle = preload("res://scenes/balatro/scripts/lexispell_style.gd")
+const GenericSkin = preload("res://scenes/balatro/scripts/generic_ui_skin.gd")
+const PREDICTION_BUTTON_SIZE := Vector2(160, 108)
+const JOKER_CHOICE_SIZE := Vector2(350, 116)
 const BUTTON_PURPLE := LexispellStyle.NORMAL
 const BUTTON_PURPLE_PRESSED := LexispellStyle.NORMAL
 const BUTTON_CYAN := LexispellStyle.HOVER
@@ -74,14 +77,14 @@ const LOCAL_PROFILE_SCALE := 1.65
 var seat_edge_controls: Dictionary = {}
 # Player 0 is local; the other seats run from left to right around the table.
 const SEAT_POSITIONS := [
-	Vector2(40, 705),
+	Vector2(-40, 705),
 	Vector2(20, 345),
 	Vector2(145, 55),
 	Vector2(480, 10),
 	Vector2(850, 10),
 	Vector2(1220, 10),
 	Vector2(1550, 55),
-	Vector2(1680, 345),
+	Vector2(1710, 345),
 ]
 
 @onready var hand = $Parallax/Hand/HBoxContainer
@@ -471,17 +474,42 @@ func _hold_button(text: String, callback: Callable) -> void:
 func _hold_button_in(text: String, callback: Callable, parent: Node) -> HoldButton:
 	var button := HoldButton.new()
 	button.caption = text.to_upper()
-	button.custom_minimum_size = Vector2(250, 90)
+	button.custom_minimum_size = JOKER_CHOICE_SIZE
 	button.hold_duration = 0.75
 	button.base_color = BUTTON_PURPLE
-	button.fill_color = Color("6f5fa8")
-	button.confirm_progress_color = BUTTON_CYAN
+	button.fill_color = Color("8968e9")
+	button.confirm_progress_color = Color("b99aff")
 	button.font = KIDS_FONT
-	button.font_size = 24
+	button.font_size = 36
 	button.corner_radius = int(button.custom_minimum_size.y / 2.0)
 	parent.add_child(button)
+	_style_match_choice(button, 36)
+	# Keep the hold-progress overlay inside the new gradient border.
+	var fit_progress := func():
+		var inset := 3.0 * button.size.y / 46.0 + 2.0
+		button.progress.offset_left = inset
+		button.progress.offset_top = inset
+		button.progress.offset_right = -inset
+		button.progress.offset_bottom = -inset
+		var silhouette := button.progress.get_theme_stylebox("panel") as StyleBoxFlat
+		silhouette.set_corner_radius_all(int(maxf(1.0, button.size.y / 2.0 - inset)))
+	button.resized.connect(fit_progress)
+	fit_progress.call()
+	button.hint_label.add_theme_font_size_override("font_size", 24)
 	button.hold_completed.connect(callback)
 	return button
+
+func _style_match_choice(button: Button, text_size: int) -> void:
+	# Avoid the legacy global bevel/gloss decorator overwriting this skin.
+	button.set_meta("cartoon_style_children_excluded", true)
+	GenericSkin.apply(button, true)
+	button.add_theme_font_size_override("font_size", text_size)
+	button.add_theme_color_override("font_outline_color", Color("17102f"))
+	button.add_theme_constant_override("outline_size", 3)
+	if button is HoldButton:
+		var caption := button.get_node("Caption") as Label
+		caption.add_theme_color_override("font_outline_color", Color("17102f"))
+		caption.add_theme_constant_override("outline_size", 3)
 
 func _action_button_style(
 	color: Color,
@@ -725,7 +753,7 @@ func _visual_seat_for_player(player_id: int) -> int:
 
 func _refresh() -> void:
 	_clear(actions)
-	actions.position.y = 550.0 if rules.phase == "prediction" else 630.0
+	actions.position.y = 525.0 if rules.phase == "prediction" else 630.0
 	joker_buttons.clear()
 	joker_cancel_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var view: Dictionary = rules.view_for(0)
@@ -782,8 +810,8 @@ func _refresh() -> void:
 				if rules.hand_size == 1:
 					caption = "Perdo" if bid == 0 else "Vinco"
 				var prediction_button := _button(caption, _predict.bind(bid), rules.legal_bids(0).has(bid))
-				prediction_button.custom_minimum_size.y = 80
-				_set_button_radius(prediction_button, 40)
+				prediction_button.custom_minimum_size = Vector2(240, 108) if rules.hand_size == 1 else PREDICTION_BUTTON_SIZE
+				_style_match_choice(prediction_button, 42 if rules.hand_size == 1 else 52)
 				prediction_button.pivot_offset = prediction_button.size / 2.0
 				prediction_button.scale = Vector2.ONE * 0.9
 				prediction_button.rotation_degrees = 5.0 * [-1.0, 1.0].pick_random()
@@ -799,9 +827,9 @@ func _refresh() -> void:
 				var joker_row := HBoxContainer.new()
 				actions.add_child(joker_row)
 				joker_row.alignment = BoxContainer.ALIGNMENT_CENTER
-				joker_row.add_theme_constant_override("separation", 48)
-				var low_button := _hold_button_in("PIU' BASSA", _on_joker_hold_completed.bind(false), joker_row)
-				var high_button := _hold_button_in("PIU' ALTA", _on_joker_hold_completed.bind(true), joker_row)
+				joker_row.add_theme_constant_override("separation", 96)
+				var low_button := _hold_button_in("LA PIU' BASSA", _on_joker_hold_completed.bind(false), joker_row)
+				var high_button := _hold_button_in("LA PIU' ALTA", _on_joker_hold_completed.bind(true), joker_row)
 				joker_buttons = [low_button, high_button]
 			else:
 				_label(actions, "Trascina una carta al centro per giocarla", 22)

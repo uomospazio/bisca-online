@@ -14,7 +14,8 @@ var selected := 0
 var equipped: Array = [Catalog.DEFAULT_INDEX, -1, -1]
 const SLOT_RADIUS := 110.0
 const SLOT_ANGLES := [-60.0, -10.0, 40.0]
-const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
+const MESSAGE_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/buttonAmici.png")
+const SLOT_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/pngUI/personalizzazioneUI/buttonOggetto.png")
 var host: Control
 var menu_button: Button
 var item: TextureRect
@@ -36,26 +37,27 @@ func setup(controller: Control) -> void:
 	for filename in Catalog.FILES:
 		var path: String = "res://scenes/balatro/resources/" + filename
 		textures.append(load(path) as Texture2D if not filename.is_empty() and ResourceLoader.exists(path) else null)
-	menu_button = RoundedSquareButton.new()
+	menu_button = Button.new()
+	menu_button.set_meta("cartoon_style_children_excluded", true)
 	add_child(menu_button)
 	menu_button.size = Vector2(60, 60)
-	menu_button.expand_icon = true
-	menu_button.icon = _svg("res://scenes/balatro/trick_asset/ui_bisca/message.svg")
-	menu_button.add_theme_constant_override("icon_max_width", 36)
 	menu_button.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var style := Style.button_style(Style.HOVER if state in ["hover", "focus"] else Style.NORMAL)
-		style.set_corner_radius_all(30)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var style := StyleBoxTexture.new()
+		style.texture = MESSAGE_TEXTURE
+		if state == "disabled": style.modulate_color = Color(0.6, 0.6, 0.6)
 		menu_button.add_theme_stylebox_override(state, style)
+	menu_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	preload("res://scenes/balatro/scripts/button_audio.gd").attach(menu_button)
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(menu_button)
 	menu_button.pressed.connect(func(): _open(not opened))
 	for index in range(3):
 		var slot := Panel.new()
 		slot.size = Vector2(76, 76)
 		slot.pivot_offset = slot.size / 2
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var style := Style.button_style(Style.NORMAL if Catalog.enabled(equipped[index]) else Style.DISABLED)
-		style.set_corner_radius_all(38)
-		slot.add_theme_stylebox_override("panel", style)
+		slot.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		slot.add_theme_stylebox_override("panel", _slot_style(Catalog.enabled(equipped[index])))
 		add_child(slot)
 		slot.hide()
 		slots.append(slot)
@@ -101,9 +103,13 @@ func _refresh_equipped() -> void:
 		items[index].texture = textures[id] if Catalog.enabled(id) else null
 		items[index].mouse_filter = Control.MOUSE_FILTER_STOP if Catalog.enabled(id) else Control.MOUSE_FILTER_IGNORE
 		items[index].visible = opened and Catalog.enabled(id)
-		var style := Style.button_style(Style.NORMAL if Catalog.enabled(id) else Style.DISABLED)
-		style.set_corner_radius_all(38)
-		slots[index].add_theme_stylebox_override("panel", style)
+		slots[index].add_theme_stylebox_override("panel", _slot_style(Catalog.enabled(id)))
+
+func _slot_style(enabled: bool) -> StyleBoxTexture:
+	var style := StyleBoxTexture.new()
+	style.texture = SLOT_TEXTURE
+	if not enabled: style.modulate_color = Color(0.6, 0.6, 0.6)
+	return style
 
 func _svg(path: String) -> Texture2D:
 	return load(path) as Texture2D

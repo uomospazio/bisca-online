@@ -4,6 +4,9 @@ func _initialize() -> void:
 	call_deferred("run")
 
 func run() -> void:
+	var settings := root.get_node("GameSettings")
+	var original: Array = settings.values.throw_slots.duplicate()
+	settings.values.throw_slots = [0, 1, -1]
 	var host = load("res://scenes/balatro/balatro.tscn").instantiate()
 	root.add_child(host)
 	var throws: Control
@@ -11,7 +14,12 @@ func run() -> void:
 		if child.get_script() == load("res://scenes/balatro/scripts/throw_objects.gd"):
 			throws = child
 	assert(throws != null)
-	assert(throws.poop != null and throws.menu_button.icon != null)
+	assert(throws.poop != null and throws.menu_button.icon == null)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var skin := throws.menu_button.get_theme_stylebox(state) as StyleBoxTexture
+		assert(skin != null and skin.texture == throws.MESSAGE_TEXTURE)
+	assert(throws.menu_button.has_meta("cartoon_style_children_excluded"))
+	assert(throws.menu_button.has_meta("menu_button_hover"))
 	for i in range(2):
 		var badge = load("res://scenes/balatro/scripts/player_badge.gd").new()
 		host.scores.add_child(badge)
@@ -24,13 +32,15 @@ func run() -> void:
 	assert(throws.items.size() == 3)
 	assert(throws.items[1].visible and not throws.items[2].visible)
 	assert(throws.items[1].mouse_filter == Control.MOUSE_FILTER_STOP)
-	var settings := root.get_node("GameSettings")
-	var original: Array = settings.values.throw_slots.duplicate()
 	settings.values.throw_slots = [1, -1, 0]
 	throws._refresh_equipped()
 	assert(throws.items[0].texture == throws.textures[1])
 	assert(not throws.items[1].visible)
 	assert(throws.items[2].texture == throws.textures[0])
+	for index in throws.slots.size():
+		var skin := throws.slots[index].get_theme_stylebox("panel") as StyleBoxTexture
+		assert(skin != null and skin.texture == throws.SLOT_TEXTURE)
+		assert((skin.modulate_color.r < 1.0) == (index == 1))
 	settings.values.throw_slots = original
 	throws._refresh_equipped()
 	for slot in throws.slots:

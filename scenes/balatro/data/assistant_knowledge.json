@@ -1,0 +1,1030 @@
+{
+  "version": 1,
+  "topics": [
+    {
+      "id": "goal",
+      "category": "rules",
+      "related": [
+        "lives",
+        "bids"
+      ],
+      "context": "goal",
+      "it": {
+        "examples": [
+          "Come si vince a Bisca?",
+          "Qual è lo scopo del gioco?",
+          "Come vincere una partita?"
+        ],
+        "keywords": [
+          "vincere",
+          "vittoria",
+          "obiettivo",
+          "scopo",
+          "battle",
+          "royale"
+        ],
+        "answer": "Bisca è un battle royale di carte: l'obiettivo è rimanere l'ultimo giocatore in vita.\n\nOgni round inizia con una previsione: dichiari quante prese pensi di conquistare. Poi giochi le carte cercando di rispettare esattamente quel numero.\n\nFare più prese degli altri non significa vincere. Se ne fai troppe o troppo poche rispetto alla tua previsione, perdi vite.\n\nPer esempio, se dichiari 1 presa e ne fai 1, conservi tutte le tue vite per quel round. Se ne fai 3, perdi 2 vite."
+      },
+      "en": {
+        "examples": [
+          "How do I win Bisca?",
+          "What is the goal of the game?"
+        ],
+        "keywords": [
+          "win",
+          "winning",
+          "goal",
+          "objective",
+          "battle",
+          "royale"
+        ],
+        "answer": "Bisca is a card battle royale: your goal is to be the last player alive.\n\nEach round starts with a prediction: declare how many tricks you expect to win. Then play your cards to match that number exactly.\n\nTaking more tricks than everyone else does not mean winning. Taking too many or too few compared with your prediction costs lives.\n\nFor example, bid 1 and take 1 to lose no lives that round. Bid 1 and take 3 to lose 2 lives."
+      }
+    },
+    {
+      "id": "tricks",
+      "category": "rules",
+      "related": [
+        "values",
+        "bids"
+      ],
+      "context": "tricks",
+      "it": {
+        "examples": [
+          "Cos'è una presa?",
+          "Come si conquista una presa?"
+        ],
+        "keywords": [
+          "presa",
+          "prendere",
+          "conquista",
+          "giro",
+          "mano"
+        ],
+        "answer": "Una presa è un giro in cui ogni giocatore ancora in partita gioca una carta sul tavolo, rispettando il proprio turno.\n\nQuando tutti hanno giocato, si confrontano le carte. Il giocatore con la carta più forte conquista una presa, indipendentemente dal numero di carte presenti sul tavolo.\n\nChi conquista la presa gioca per primo nel giro successivo. Si continua fino a esaurire le carte del round.\n\nRicorda: una presa è utile solo se ti aiuta a rispettare la previsione. Se hai già raggiunto il numero dichiarato, prenderne un'altra ti allontana dall'obiettivo."
+      },
+      "en": {
+        "examples": [
+          "What is a trick?",
+          "How do I take a trick?"
+        ],
+        "keywords": [
+          "trick",
+          "take",
+          "taking",
+          "capture",
+          "hand"
+        ],
+        "answer": "A trick is a sequence in which every active player plays one card on the table in turn.\n\nAfter everyone has played, the cards are compared. The strongest card wins one trick, regardless of how many cards are on the table.\n\nThe winner leads the next trick. Play continues until the round's cards are used up.\n\nA trick is useful only when it helps you match your prediction. Once you have reached your bid, another trick moves you away from your target."
+      }
+    },
+    {
+      "id": "values",
+      "category": "rules",
+      "related": [
+        "joker",
+        "tricks"
+      ],
+      "context": "values",
+      "it": {
+        "examples": [
+          "Quali carte sono più forti?",
+          "Qual è l'ordine dei semi?"
+        ],
+        "keywords": [
+          "valore",
+          "forza",
+          "carte",
+          "semi",
+          "denari",
+          "coppe",
+          "spade",
+          "bastoni",
+          "re",
+          "asso",
+          "ordine"
+        ],
+        "answer": "Per confrontare due carte guarda prima il seme, poi il valore all'interno dello stesso seme.\n\nDal più forte al più debole, l'ordine è: denari, coppe, spade, bastoni. Un seme più forte batte un seme più debole anche se il numero è inferiore.\n\nTra carte dello stesso seme vince quella di valore maggiore. L'asso è il più basso e il re il più alto, con l'eccezione dell'asso di denari, che è il Jolly.\n\nEsempi: il 4 di coppe batte l'asso di coppe; il 2 di denari batte il 6 di bastoni.\n\nSe dimentichi l'ordine dei semi, guarda i simboli ricamati al centro del tavolo: sono disposti dal più forte al più debole."
+      },
+      "en": {
+        "examples": [
+          "Which cards are stronger?",
+          "What is the suit order?"
+        ],
+        "keywords": [
+          "strength",
+          "value",
+          "cards",
+          "suits",
+          "coins",
+          "cups",
+          "swords",
+          "clubs",
+          "king",
+          "ace",
+          "order"
+        ],
+        "answer": "Compare the suit first, then the rank within the same suit.\n\nFrom strongest to weakest: coins, cups, swords, clubs. A stronger suit beats a weaker suit even with a lower number.\n\nWithin one suit, the higher rank wins. The ace is lowest and the king highest, except for the ace of coins, which is the Joker.\n\nExamples: the 4 of cups beats the ace of cups; the 2 of coins beats the 6 of clubs.\n\nForgot suit order? The embroidered symbols in the middle of the table run from strongest to weakest."
+      }
+    },
+    {
+      "id": "joker",
+      "category": "rules",
+      "related": [
+        "blind",
+        "values"
+      ],
+      "context": "joker",
+      "it": {
+        "examples": [
+          "Come funziona il jolly?",
+          "Cosa significa la più alta o la più bassa?"
+        ],
+        "keywords": [
+          "jolly",
+          "joker",
+          "alta",
+          "bassa",
+          "asso",
+          "denari"
+        ],
+        "answer": "Il Jolly è l'asso di denari: non si comporta come un normale asso.\n\nQuando lo giochi nei round con più carte, scegli se usarlo come la carta più alta o come la più bassa. Alta batte tutte le altre carte; bassa perde contro tutte.\n\nUsalo in base alla previsione: può aiutarti a conquistare una presa che ti manca oppure a evitare una presa in più.\n\nNel round a una carta il valore viene deciso dalla tua previsione: se dichiari 1, il Jolly è alto; se dichiari 0, è basso."
+      },
+      "en": {
+        "examples": [
+          "How does the joker work?",
+          "What does highest or lowest mean?"
+        ],
+        "keywords": [
+          "joker",
+          "highest",
+          "lowest",
+          "ace",
+          "coins"
+        ],
+        "answer": "The Joker is the ace of coins: it does not behave like an ordinary ace.\n\nIn rounds with more than one card, choose highest or lowest when playing it. Highest beats every other card; lowest loses to every other card.\n\nUse it to match your bid: it can secure a trick you still need or help avoid an extra trick.\n\nIn the one-card round, your bid determines its value: bid 1 for a high Joker, or 0 for a low Joker."
+      }
+    },
+    {
+      "id": "bids",
+      "category": "rules",
+      "related": [
+        "bid_limit",
+        "lives"
+      ],
+      "context": "bids",
+      "it": {
+        "examples": [
+          "Come dichiaro le prese?",
+          "Devo sempre prendere?",
+          "Come faccio una previsione?"
+        ],
+        "keywords": [
+          "previsione",
+          "dichiarazione",
+          "dichiaro",
+          "prevedere",
+          "scommessa",
+          "prendere",
+          "sempre"
+        ],
+        "answer": "All'inizio del round, prima di giocare le carte, ogni giocatore dichiara quante prese pensa di conquistare.\n\nScegli un numero da 0 al numero di carte distribuite. Con 5 carte, per esempio, puoi prevedere da 0 a 5 prese, salvo il limite previsto per l'ultimo a dichiarare.\n\nOsserva la forza delle tue carte e prova a stimare quali possono vincere e quali possono perdere. Poi gioca per raggiungere esattamente la previsione.\n\nSe dichiari 2, fare 2 prese non ti costa vite. Farne 1 oppure 3 ti costa una vita; farne 0 oppure 4 te ne costa due.\n\nNon devi quindi cercare di prendere sempre: a volte perdere una presa è la mossa giusta."
+      },
+      "en": {
+        "examples": [
+          "How do I predict tricks?",
+          "Should I always take a trick?"
+        ],
+        "keywords": [
+          "prediction",
+          "predict",
+          "bid",
+          "bidding",
+          "always",
+          "take"
+        ],
+        "answer": "At the start of a round, before playing cards, each player predicts how many tricks they will win.\n\nChoose between 0 and the number of cards dealt. With 5 cards, for example, bids range from 0 to 5, subject to the last-bid restriction.\n\nLook at your cards' strength and estimate which can win or lose. Then play to hit your prediction exactly.\n\nBid 2 and take 2 to lose no lives. Take 1 or 3 to lose one life; take 0 or 4 to lose two.\n\nYou should not always try to win a trick: sometimes losing it is the right move."
+      }
+    },
+    {
+      "id": "bid_limit",
+      "category": "rules",
+      "related": [
+        "bids",
+        "lives"
+      ],
+      "context": "bid_limit",
+      "it": {
+        "examples": [
+          "Perché una previsione è vietata?",
+          "Perché non posso scegliere quel numero?"
+        ],
+        "keywords": [
+          "vietata",
+          "vietato",
+          "bloccata",
+          "impossibile",
+          "numero",
+          "somma",
+          "ultima",
+          "previsione"
+        ],
+        "answer": "Il numero bloccato non è un errore: è una regola che riguarda l'ultimo giocatore a dichiarare le prese.\n\nLa somma di tutte le previsioni non può essere uguale al numero di prese disponibili nel round, cioè al numero di carte distribuite a ciascun giocatore.\n\nEsempio: nel round da 5 carte gli altri hanno dichiarato complessivamente 3 prese. Se sei l'ultimo, non puoi dichiarare 2, perché 3 + 2 = 5.\n\nPuoi scegliere gli altri numeri consentiti. In questo modo non tutti possono indovinare la previsione: almeno un giocatore perderà vite alla fine del round.\n\nLa regola vale anche nel round a una carta."
+      },
+      "en": {
+        "examples": [
+          "Why is a bid forbidden?",
+          "Why can't I select that number?"
+        ],
+        "keywords": [
+          "forbidden",
+          "blocked",
+          "unavailable",
+          "number",
+          "sum",
+          "last",
+          "bid"
+        ],
+        "answer": "A blocked number is not a bug: this rule applies to the last player making a prediction.\n\nThe sum of all bids cannot equal the number of available tricks, which is the number of cards dealt to each player that round.\n\nExample: in a five-card round, earlier players have bid a total of 3. If you are last, you cannot bid 2, because 3 + 2 = 5.\n\nYou can choose the other allowed numbers. This prevents everyone from predicting correctly: at least one player will lose lives at round end.\n\nThe rule also applies in the one-card round."
+      }
+    },
+    {
+      "id": "lives",
+      "category": "rules",
+      "related": [
+        "bids",
+        "rounds"
+      ],
+      "context": "lives",
+      "it": {
+        "examples": [
+          "Come perdo le vite?",
+          "Cosa succede se vengo eliminato?"
+        ],
+        "keywords": [
+          "vite",
+          "vita",
+          "cuori",
+          "eliminato",
+          "eliminazione",
+          "perdere",
+          "errore"
+        ],
+        "answer": "Le vite si calcolano alla fine del round, confrontando le prese dichiarate con quelle conquistate.\n\nPerdi una vita per ogni presa di differenza, sia in più sia in meno. Se dichiari 2 e fai 4, perdi 2 vite; lo stesso accade se dichiari 2 e fai 0.\n\nSe rispetti esattamente la previsione, non perdi vite per quel round. Quando arrivi a zero, vieni eliminato.\n\nC'è un caso speciale: se tutti arrivano a zero nello stesso round, conta chi ha perso meno vite in quel round. Se è un solo giocatore, vince; se sono più giocatori a pari merito, tornano a 1 vita e continuano."
+      },
+      "en": {
+        "examples": [
+          "How do I lose lives?",
+          "What happens when I am eliminated?"
+        ],
+        "keywords": [
+          "lives",
+          "life",
+          "hearts",
+          "eliminated",
+          "elimination",
+          "lose",
+          "penalty"
+        ],
+        "answer": "Life loss is calculated at the end of the round by comparing your bid with your actual tricks.\n\nLose one life for each trick above or below your bid. Bid 2 and take 4 to lose 2 lives; bidding 2 and taking 0 has the same penalty.\n\nAn exact prediction costs no lives that round. Reaching zero eliminates you.\n\nThere is a special case if everyone reaches zero in the same round: the players with the smallest life loss that round are compared. A sole best player wins; tied best players return to 1 life and continue."
+      }
+    },
+    {
+      "id": "rounds",
+      "category": "rules",
+      "related": [
+        "blind",
+        "turns"
+      ],
+      "context": "rounds",
+      "it": {
+        "examples": [
+          "Come cambiano i round?",
+          "Perché diminuiscono le carte?"
+        ],
+        "keywords": [
+          "round",
+          "turno",
+          "diminuiscono",
+          "ciclo",
+          "distribuite",
+          "cinque",
+          "cinque",
+          "carte"
+        ],
+        "answer": "La partita è divisa in round. In ogni round si distribuiscono le carte, si dichiarano le prese e si giocano tutti i giri necessari a esaurire la mano.\n\nAlla fine si confrontano previsioni e prese ottenute e si sottraggono le vite perse. I giocatori eliminati non partecipano ai round successivi.\n\nIl numero di carte diminuisce di una a ogni round, fino a una sola carta. Poi il ciclo ricomincia dal numero iniziale scelto nelle impostazioni della partita.\n\nCon 5 carte iniziali, il ciclo è 5, 4, 3, 2, 1, poi di nuovo 5. Si continua fino a ottenere un vincitore."
+      },
+      "en": {
+        "examples": [
+          "How do rounds work?",
+          "Why are fewer cards dealt?"
+        ],
+        "keywords": [
+          "round",
+          "rounds",
+          "decrease",
+          "cycle",
+          "dealt",
+          "five",
+          "cards"
+        ],
+        "answer": "A match consists of rounds. Each round deals cards, collects bids and plays enough tricks to use up every hand.\n\nAt round end, bids are compared with actual tricks and lost lives are deducted. Eliminated players do not join subsequent rounds.\n\nHand size decreases by one each round until one card remains. The cycle then restarts from the starting hand size chosen in match settings.\n\nWith a starting size of 5, the cycle is 5, 4, 3, 2, 1, then 5 again. Play continues until there is a winner."
+      }
+    },
+    {
+      "id": "blind",
+      "category": "rules",
+      "related": [
+        "joker",
+        "bid_limit"
+      ],
+      "context": "blind",
+      "it": {
+        "examples": [
+          "Perché non vedo la mia carta?",
+          "Come funziona il round a una carta?"
+        ],
+        "keywords": [
+          "una",
+          "carta",
+          "coperta",
+          "nascosta",
+          "vedo",
+          "cieca",
+          "fronte",
+          "dorso"
+        ],
+        "answer": "Il round a una carta è speciale: puoi vedere le carte degli avversari, ma non la tua. Vedere solo il dorso della tua carta è quindi normale.\n\nDevi prevedere se conquisterai la sola presa disponibile: scegli 0 oppure 1, rispettando anche il limite imposto all'ultimo a dichiarare.\n\nValuta le carte visibili degli altri per stimare la tua possibilità di vincere. La tua carta resta sconosciuta durante la previsione.\n\nSe la tua carta è il Jolly, viene considerata alta quando hai dichiarato 1 e bassa quando hai dichiarato 0."
+      },
+      "en": {
+        "examples": [
+          "Why can't I see my card?",
+          "How does the one card round work?"
+        ],
+        "keywords": [
+          "one",
+          "card",
+          "hidden",
+          "blind",
+          "see",
+          "face",
+          "back"
+        ],
+        "answer": "The one-card round is special: you can see opponents' cards, but not your own. Seeing only your card back is normal.\n\nPredict whether you will win the single available trick: choose 0 or 1, while respecting the restriction on the last bidder.\n\nUse opponents' visible cards to estimate your chance of winning. Your own card remains unknown during bidding.\n\nIf your card is the Joker, it counts as high when you bid 1 and low when you bid 0."
+      }
+    },
+    {
+      "id": "turns",
+      "category": "rules",
+      "related": [
+        "tricks",
+        "rounds"
+      ],
+      "context": "turns",
+      "it": {
+        "examples": [
+          "Chi gioca per primo?",
+          "Qual è l'ordine dei turni?"
+        ],
+        "keywords": [
+          "primo",
+          "inizia",
+          "turno",
+          "turni",
+          "ordine",
+          "giocare"
+        ],
+        "answer": "All'inizio della partita il giocatore di partenza viene scelto casualmente.\n\nLa dichiarazione delle prese segue l'ordine dei posti tra i giocatori ancora attivi. Il giocatore di partenza apre anche la prima presa del round.\n\nDalla presa successiva, inizia chi ha conquistato quella precedente. Gli altri giocano a turno seguendo l'ordine dei posti.\n\nAll'inizio di un nuovo round il ruolo di primo a dichiarare passa al giocatore attivo successivo: non rimane sempre alla stessa persona."
+      },
+      "en": {
+        "examples": [
+          "Who plays first?",
+          "What is the turn order?"
+        ],
+        "keywords": [
+          "first",
+          "starts",
+          "turn",
+          "turns",
+          "order",
+          "lead"
+        ],
+        "answer": "The match's initial starting player is chosen randomly.\n\nBidding follows seating order among active players. The starting player also leads the first trick of that round.\n\nFor subsequent tricks, the previous trick's winner leads. Everyone else plays in seating order.\n\nAt the next round, the starting-bidder role moves to the next active player rather than always staying with the same person."
+      }
+    },
+    {
+      "id": "single",
+      "category": "modes",
+      "related": [
+        "lobby",
+        "multi"
+      ],
+      "context": "single",
+      "it": {
+        "examples": [
+          "Come gioco da solo?",
+          "Posso giocare contro i bot?"
+        ],
+        "keywords": [
+          "singleplayer",
+          "solo",
+          "solitaria",
+          "computer",
+          "bot",
+          "offline"
+        ],
+        "answer": "Dalla home premi Singleplayer per iniziare una partita locale contro i bot, cioè avversari controllati dal gioco.\n\nPrima di iniziare puoi scegliere vite iniziali, numero di carte di partenza e impostazioni dei bot. Premi Gioca quando hai terminato.\n\nLe regole di prese, previsioni, Jolly e perdita delle vite restano quelle di Bisca: è un buon modo per esercitarti prima di una partita con amici.\n\nLa partita è locale; servizi come account, negozio e pubblicità possono invece richiedere una connessione."
+      },
+      "en": {
+        "examples": [
+          "How do I play alone?",
+          "Can I play against bots?"
+        ],
+        "keywords": [
+          "singleplayer",
+          "solo",
+          "alone",
+          "computer",
+          "bots",
+          "offline"
+        ],
+        "answer": "Choose Singleplayer from home to start a local match against bots, opponents controlled by the game.\n\nBefore starting, choose starting lives, initial hand size and bot settings. Press Play when ready.\n\nTricks, predictions, Joker and life-loss rules remain the same: this is a useful way to practise before playing with friends.\n\nThe match is local; services such as accounts, the shop and ads may still need an internet connection."
+      }
+    },
+    {
+      "id": "multi",
+      "category": "modes",
+      "related": [
+        "lobby",
+        "reconnect"
+      ],
+      "context": "multi",
+      "it": {
+        "examples": [
+          "Come gioco con gli amici?",
+          "Come funziona il multiplayer?"
+        ],
+        "keywords": [
+          "multiplayer",
+          "giocare",
+          "amici",
+          "insieme",
+          "online",
+          "invitare",
+          "invito"
+        ],
+        "answer": "Apri Multiplayer dalla home per giocare online. Puoi creare una lobby oppure entrare in una di quelle disponibili.\n\nPer raggiungere una lobby privata usa il suo codice. Chi crea la lobby può condividere il codice e usare il pulsante per invitare gli amici.\n\nNella lobby controlla i partecipanti e le impostazioni della partita prima di indicare che sei pronto.\n\nPer tutta la partita serve una connessione. Aprire un menu durante il multiplayer non ferma il gioco degli altri."
+      },
+      "en": {
+        "examples": [
+          "How do I play with friends?",
+          "How does multiplayer work?"
+        ],
+        "keywords": [
+          "multiplayer",
+          "friends",
+          "together",
+          "online",
+          "invite",
+          "invitation"
+        ],
+        "answer": "Open Multiplayer from home to play online. Create a lobby or join an available one.\n\nUse a private lobby's code to join it. The creator can share the code and use the button for inviting friends.\n\nIn the lobby, check the participants and match settings before marking yourself ready.\n\nYou need a connection throughout the match. Opening a menu in multiplayer does not stop other players' game."
+      }
+    },
+    {
+      "id": "lobby",
+      "category": "modes",
+      "related": [
+        "multi",
+        "timer"
+      ],
+      "context": "lobby",
+      "it": {
+        "examples": [
+          "Come configuro una lobby?",
+          "Quanti giocatori possono partecipare?"
+        ],
+        "keywords": [
+          "lobby",
+          "stanza",
+          "giocatori",
+          "partecipanti",
+          "privato",
+          "codice",
+          "impostare"
+        ],
+        "answer": "La lobby è lo spazio in cui ci si prepara prima della partita. Bisca supporta da 2 a 8 giocatori.\n\nL'host, cioè chi gestisce la lobby, sceglie le opzioni disponibili: vite, carte iniziali, bot e tempo per turno.\n\nLe impostazioni valgono per quella partita e per tutti i partecipanti. Controllale prima di premere Pronto.\n\nSe la lobby è privata, gli altri possono raggiungerla con il codice. Per invitare un amico usa il pulsante dedicato nella lobby."
+      },
+      "en": {
+        "examples": [
+          "How do I configure a lobby?",
+          "How many players can join?"
+        ],
+        "keywords": [
+          "lobby",
+          "room",
+          "players",
+          "participants",
+          "private",
+          "code",
+          "configure"
+        ],
+        "answer": "The lobby is where players prepare for a match. Bisca supports 2 to 8 players.\n\nThe host configures available options, including lives, starting cards, bots and turn time.\n\nThese settings apply to that match and all its participants. Check them before pressing Ready.\n\nOther players can join a private lobby using its code. Use the dedicated lobby button to invite a friend."
+      }
+    },
+    {
+      "id": "timer",
+      "category": "modes",
+      "related": [
+        "lobby",
+        "reconnect"
+      ],
+      "context": "timer",
+      "it": {
+        "examples": [
+          "Quanto dura il turno?",
+          "Posso disattivare il timer?",
+          "Quanto tempo ho per giocare il turno?"
+        ],
+        "keywords": [
+          "timer",
+          "tempo",
+          "secondi",
+          "scadenza",
+          "limite"
+        ],
+        "answer": "Il timer stabilisce quanto tempo hai per completare il tuo turno. Le opzioni disponibili sono 15, 30 o 60 secondi, oppure nessun limite.\n\nLa durata si sceglie nelle impostazioni della lobby. Una partita con timer breve richiede decisioni più rapide; senza limite non c'è quella scadenza.\n\nIn multiplayer il timer continua anche se apri le impostazioni: il menu non mette in pausa la partita.\n\nControlla quindi il tempo rimasto prima di fermarti a cambiare volume o altre preferenze."
+      },
+      "en": {
+        "examples": [
+          "How long is a turn?",
+          "Can I disable the timer?"
+        ],
+        "keywords": [
+          "timer",
+          "time",
+          "seconds",
+          "timeout",
+          "limit"
+        ],
+        "answer": "The turn timer limits the time available to complete your turn. Options are 15, 30 or 60 seconds, or no limit.\n\nThe duration is selected in lobby settings. Short timers require faster decisions; no limit removes that deadline.\n\nIn multiplayer the timer continues while settings are open: the menu does not pause the match.\n\nCheck the remaining time before stopping to adjust volume or other preferences."
+      }
+    },
+    {
+      "id": "reconnect",
+      "category": "modes",
+      "related": [
+        "multi",
+        "timer"
+      ],
+      "context": "reconnect",
+      "it": {
+        "examples": [
+          "Ho perso la connessione come rientro?",
+          "Come mi riconnetto alla partita?"
+        ],
+        "keywords": [
+          "connessione",
+          "disconnessione",
+          "riconnettere",
+          "riconnessione",
+          "rientra",
+          "rete"
+        ],
+        "answer": "Se perdi la connessione, verifica prima che il dispositivo sia tornato online.\n\nNel menu Multiplayer cerca la tua partita: se è ancora disponibile per il recupero, usa Rientra per tornare nella sessione esistente invece di creare una nuova lobby.\n\nDurante la disconnessione la partita può continuare. Rientrare non riporta il gioco al momento in cui eri uscito.\n\nIl recupero dipende dallo stato della sessione e del server: non è garantito se la partita non è più disponibile."
+      },
+      "en": {
+        "examples": [
+          "I lost connection how do I rejoin?",
+          "How do I reconnect?"
+        ],
+        "keywords": [
+          "connection",
+          "disconnected",
+          "reconnect",
+          "rejoin",
+          "network"
+        ],
+        "answer": "If you lose connection, first check that your device is online again.\n\nLook for your match in Multiplayer. If it is still recoverable, use Rejoin to return to the existing session instead of creating a new lobby.\n\nThe match may continue while you are disconnected. Rejoining does not rewind it to the moment you left.\n\nRecovery depends on the session and server state; it is not guaranteed if the match is no longer available."
+      }
+    },
+    {
+      "id": "account",
+      "category": "account",
+      "related": [
+        "profile",
+        "delete"
+      ],
+      "context": "account",
+      "it": {
+        "examples": [
+          "Come collego il mio account?",
+          "Come accedo con Google?"
+        ],
+        "keywords": [
+          "account",
+          "accesso",
+          "accedi",
+          "collega",
+          "google",
+          "apple",
+          "email",
+          "ospite",
+          "login",
+          "salva",
+          "progressi"
+        ],
+        "answer": "Nelle impostazioni trovi Apple, Google ed Email per accedere o collegare un account. Segui il percorso del metodo che vuoi utilizzare.\n\nCollegare il profilo attuale serve a conservarne i progressi e a renderlo recuperabile con quel metodo di accesso.\n\nAccedere a un altro account è un'operazione diversa: entri in quel profilo, senza unire automaticamente monete e oggetti dei due account.\n\nPrima di abbandonare un ospite, collegalo se vuoi conservarlo. Un ospite non collegato potrebbe non essere più recuperabile."
+      },
+      "en": {
+        "examples": [
+          "How do I link my account?",
+          "How do I sign in with Google?"
+        ],
+        "keywords": [
+          "account",
+          "login",
+          "sign",
+          "link",
+          "google",
+          "apple",
+          "email",
+          "guest",
+          "save",
+          "progress"
+        ],
+        "answer": "Settings offers Apple, Google and Email for signing in or linking an account. Follow the flow for your chosen method.\n\nLinking your current profile preserves its progress and makes it recoverable with that sign-in method.\n\nSigning into another account is different: you enter that profile without automatically merging the two accounts' coins and items.\n\nLink a guest profile before leaving it if you want to keep it. An unlinked guest may become impossible to recover."
+      }
+    },
+    {
+      "id": "profile",
+      "category": "account",
+      "related": [
+        "custom",
+        "account"
+      ],
+      "context": "profile",
+      "it": {
+        "examples": [
+          "Come cambio nome?",
+          "Come cambio foto profilo?"
+        ],
+        "keywords": [
+          "nome",
+          "username",
+          "foto",
+          "profilo",
+          "nome",
+          "utente",
+          "modifica"
+        ],
+        "answer": "Il nome mostrato in partita e lo username dell'account non sono la stessa impostazione.\n\nPer cambiare il nome in partita o l'immagine del profilo, apri Personalizzazione dalla home o usa Personalizza profilo nelle impostazioni.\n\nPer cambiare lo username dell'account, apri Impostazioni e poi Modifica username: nella sezione Account trovi l'azione dedicata.\n\nLo username deve essere unico. Se quello scelto è già occupato, scegline un altro e controlla che il salvataggio sia confermato."
+      },
+      "en": {
+        "examples": [
+          "How do I change my name?",
+          "How do I change my profile picture?"
+        ],
+        "keywords": [
+          "name",
+          "username",
+          "photo",
+          "profile",
+          "picture",
+          "change"
+        ],
+        "answer": "Your in-game name and account username are separate settings.\n\nTo change your in-game name or profile picture, open Customization from home or use Customize profile in settings.\n\nTo edit your account username, open Settings and then Edit username: the Account section contains the relevant action.\n\nUsernames must be unique. If your chosen name is already taken, choose another and check that saving is confirmed."
+      }
+    },
+    {
+      "id": "delete",
+      "category": "account",
+      "related": [
+        "account",
+        "profile"
+      ],
+      "context": "delete",
+      "it": {
+        "examples": [
+          "Come cancello il mio account?",
+          "Come elimino i miei dati?"
+        ],
+        "keywords": [
+          "cancella",
+          "cancellare",
+          "elimina",
+          "eliminare",
+          "account",
+          "dati",
+          "personali"
+        ],
+        "answer": "Apri Impostazioni, premi Modifica username e nella sezione Account scegli Cancella account.\n\nLeggi attentamente la schermata di conferma: cancellare l'account non equivale a uscire dal profilo. L'eliminazione riguarda l'account e i dati personali associati.\n\nSe vuoi soltanto cambiare profilo, usa l'azione di uscita o accesso a un altro account, non la cancellazione.\n\nQuesta pagina spiega la procedura ma non esegue operazioni: la cancellazione va confermata nella schermata dedicata."
+      },
+      "en": {
+        "examples": [
+          "How do I delete my account?",
+          "How do I erase my data?"
+        ],
+        "keywords": [
+          "delete",
+          "erase",
+          "remove",
+          "account",
+          "personal",
+          "data"
+        ],
+        "answer": "Open Settings, press Edit username and choose Delete account in the Account section.\n\nRead the confirmation carefully: deleting an account is not the same as signing out. Deletion affects the account and its associated personal data.\n\nIf you only want to switch profiles, use sign-out or sign into another account rather than deleting it.\n\nThis page explains the procedure but performs no actions: deletion must be confirmed on the dedicated screen."
+      }
+    },
+    {
+      "id": "custom",
+      "category": "shop",
+      "related": [
+        "shop",
+        "throw"
+      ],
+      "context": "custom",
+      "it": {
+        "examples": [
+          "Come cambio il dorso delle carte?",
+          "Dove scelgo avatar e oggetti?"
+        ],
+        "keywords": [
+          "personalizzazione",
+          "dorso",
+          "dorsi",
+          "back",
+          "avatar",
+          "oggetti",
+          "equipaggiare"
+        ],
+        "answer": "Apri Personalizzazione dalla home oppure premi Personalizza profilo nelle impostazioni.\n\nTocca l'anteprima del fronte o del dorso delle carte per scegliere tra gli elementi disponibili. Gli slot degli oggetti servono invece a selezionare cosa usare durante la partita.\n\nNella stessa pagina trovi anche il profilo, con nome in partita e immagine. Gli elementi iniziali includono back1, avatar1 e il pomodoro.\n\nPer ampliare la scelta puoi ottenere altri elementi nello Shop. Dopo l'acquisto, selezionali nella personalizzazione per usarli."
+      },
+      "en": {
+        "examples": [
+          "How do I change my card back?",
+          "Where do I select avatars and items?"
+        ],
+        "keywords": [
+          "customization",
+          "customise",
+          "customize",
+          "back",
+          "backs",
+          "avatar",
+          "items",
+          "equip"
+        ],
+        "answer": "Open Customization from home or press Customize profile in settings.\n\nTap the card face or back preview to choose from available designs. Item slots select what you can use during a match.\n\nThe page also includes your profile, with in-game name and picture. Starting items include back1, avatar1 and the tomato.\n\nGet more items in the Shop to expand your choices. After purchasing, select them in Customization to use them."
+      }
+    },
+    {
+      "id": "shop",
+      "category": "shop",
+      "related": [
+        "coins",
+        "custom"
+      ],
+      "context": "shop",
+      "it": {
+        "examples": [
+          "Quanto costano gli avatar?",
+          "Cosa posso comprare nel negozio?"
+        ],
+        "keywords": [
+          "shop",
+          "negozio",
+          "mercato",
+          "comprare",
+          "acquistare",
+          "prezzo",
+          "costo",
+          "costano",
+          "avatar",
+          "dorsi"
+        ],
+        "answer": "Lo Shop propone elementi estetici: dorsi delle carte, avatar e oggetti lanciabili.\n\nI prezzi del catalogo attuale sono 500 monete per un dorso, 100 per un avatar e 200 per un oggetto lanciabile. Gli elementi iniziali gratuiti sono esclusi da questi prezzi.\n\nPrima dell'acquisto controlla sempre il prezzo e la disponibilità mostrati sulla scheda dell'elemento: sono il riferimento per l'offerta che stai vedendo.\n\nGli elementi ottenuti si scelgono poi nella pagina Personalizzazione. Un aspetto diverso delle carte non cambia il loro valore nelle prese."
+      },
+      "en": {
+        "examples": [
+          "How much do avatars cost?",
+          "What can I buy in the shop?"
+        ],
+        "keywords": [
+          "shop",
+          "store",
+          "market",
+          "buy",
+          "purchase",
+          "price",
+          "cost",
+          "avatars",
+          "backs"
+        ],
+        "answer": "The Shop offers cosmetic items: card backs, avatars and throwable objects.\n\nCurrent catalog prices are 500 coins per card back, 100 per avatar and 200 per throwable item. Free starting items are not included in these prices.\n\nAlways check the price and availability on the item card before purchasing; those describe the offer you are viewing.\n\nSelect acquired items in Customization. Changing a card's appearance does not change its strength in tricks."
+      }
+    },
+    {
+      "id": "coins",
+      "category": "shop",
+      "related": [
+        "ads",
+        "shop"
+      ],
+      "context": "coins",
+      "it": {
+        "examples": [
+          "Come guadagno monete?",
+          "Quando ricevo le monete?"
+        ],
+        "keywords": [
+          "monete",
+          "guadagno",
+          "guadagnare",
+          "premio",
+          "ricompensa",
+          "saldo"
+        ],
+        "answer": "Le monete sono la valuta usata per acquistare elementi nello Shop, come dorsi, avatar e oggetti lanciabili.\n\nPuoi riceverle attraverso le ricompense previste dal gioco e, quando disponibili, le offerte pubblicitarie facoltative.\n\nL'accredito avviene dopo la conferma della transazione. L'animazione delle monete accompagna la ricompensa confermata, non sostituisce il salvataggio del saldo.\n\nSe un premio non compare, controlla la connessione e l'esito mostrato dal gioco. Questa pagina contiene informazioni generali e non verifica il saldo del tuo account."
+      },
+      "en": {
+        "examples": [
+          "How do I earn coins?",
+          "When do I receive coins?"
+        ],
+        "keywords": [
+          "coins",
+          "earn",
+          "earning",
+          "reward",
+          "balance",
+          "money"
+        ],
+        "answer": "Coins are the currency used to buy Shop items such as card backs, avatars and throwable objects.\n\nEarn them through the game's rewards and, when available, optional rewarded-ad offers.\n\nCredit is applied after transaction confirmation. The coin animation accompanies a confirmed reward; it does not replace saving the balance.\n\nIf a reward does not appear, check your connection and the result shown by the game. This page provides general information and does not check your account balance."
+      }
+    },
+    {
+      "id": "ads",
+      "category": "shop",
+      "related": [
+        "coins",
+        "shop"
+      ],
+      "context": "ads",
+      "it": {
+        "examples": [
+          "Devo guardare la pubblicità?",
+          "Non ho ricevuto il premio del video",
+          "Devo vedere pubblicità per giocare?"
+        ],
+        "keywords": [
+          "pubblicita",
+          "pubblicità",
+          "video",
+          "annuncio",
+          "spot",
+          "premio"
+        ],
+        "answer": "Le pubblicità premio sono facoltative: scegli tu se guardarle quando il gioco propone una ricompensa.\n\nPer ricevere il premio non basta aprire o chiudere il video. Il servizio pubblicitario deve confermare la ricompensa e la transazione deve essere accreditata.\n\nQuando l'accredito viene confermato, il gioco mostra l'animazione del guadagno monete. Interrompere il video prima della conferma potrebbe non assegnare il premio.\n\nSe non ci sono video disponibili, riprova più tardi. La disponibilità degli annunci dipende anche dal servizio pubblicitario e dalla connessione."
+      },
+      "en": {
+        "examples": [
+          "Do I have to watch ads?",
+          "I did not receive the video reward"
+        ],
+        "keywords": [
+          "advertisement",
+          "advertising",
+          "ads",
+          "ad",
+          "video",
+          "reward"
+        ],
+        "answer": "Rewarded ads are optional: you decide whether to watch when the game offers a reward.\n\nSimply opening or closing a video is not enough. The ad service must confirm the reward and the transaction must be credited.\n\nOnce credit is confirmed, the game displays the coin-reward animation. Leaving a video before confirmation may result in no reward.\n\nIf no videos are available, try again later. Ad availability also depends on the ad service and your connection."
+      }
+    },
+    {
+      "id": "voice",
+      "category": "settings",
+      "related": [
+        "settings",
+        "multi"
+      ],
+      "context": "voice",
+      "it": {
+        "examples": [
+          "Come accendo il microfono?",
+          "Come disattivo la chat vocale?"
+        ],
+        "keywords": [
+          "microfono",
+          "microfoni",
+          "chat",
+          "vocale",
+          "voce",
+          "parlare",
+          "sentire",
+          "mute"
+        ],
+        "answer": "Microfono e Chat vocale hanno due funzioni diverse nelle impostazioni multiplayer.\n\nMicrofono controlla la tua voce: spegnilo se non vuoi trasmettere quello che dici. Per utilizzarlo devi concedere al gioco il permesso di accedere al microfono del dispositivo.\n\nChat vocale abilita o disabilita il sistema vocale nel suo insieme. Spegnere solo il microfono non è la stessa cosa che disattivare tutta la chat.\n\nNell'elenco dei partecipanti puoi regolare il volume delle singole persone. Il volume generale del gioco e quello degli effetti si regolano separatamente nelle impostazioni audio."
+      },
+      "en": {
+        "examples": [
+          "How do I enable my microphone?",
+          "How do I disable voice chat?"
+        ],
+        "keywords": [
+          "microphone",
+          "mic",
+          "voice",
+          "chat",
+          "speak",
+          "hear",
+          "mute"
+        ],
+        "answer": "Microphone and Voice chat have different functions in multiplayer settings.\n\nMicrophone controls your outgoing voice: turn it off when you do not want to transmit speech. Using it requires granting the game microphone permission on your device.\n\nVoice chat enables or disables the voice system overall. Muting only your microphone is not the same as disabling the entire chat.\n\nAdjust individual participants' volume in the player list. Master game volume and sound effects are controlled separately in audio settings."
+      }
+    },
+    {
+      "id": "settings",
+      "category": "settings",
+      "related": [
+        "voice",
+        "throw"
+      ],
+      "context": "settings",
+      "it": {
+        "examples": [
+          "Come abbasso il volume del gioco?",
+          "Dove sono le impostazioni?"
+        ],
+        "keywords": [
+          "impostazioni",
+          "settings",
+          "volume",
+          "audio",
+          "effetti",
+          "lingua",
+          "suono"
+        ],
+        "answer": "Premi il pulsante a forma di ingranaggio per aprire le impostazioni.\n\nVolume generale regola l'audio del gioco; Effetti permette di regolare gli effetti sonori. Puoi anche scegliere se mostrare gli oggetti lanciati dagli altri giocatori.\n\nNelle impostazioni del menu trovi inoltre lingua, account e accesso alla personalizzazione. Durante una partita multiplayer sono presenti anche i controlli della chat vocale.\n\nAprire le impostazioni in multiplayer non interrompe la partita né il timer: gli altri giocatori continuano a giocare."
+      },
+      "en": {
+        "examples": [
+          "How do I lower game volume?",
+          "Where are settings?"
+        ],
+        "keywords": [
+          "settings",
+          "volume",
+          "audio",
+          "effects",
+          "language",
+          "sound"
+        ],
+        "answer": "Press the gear button to open settings.\n\nMaster volume adjusts game audio; Effects adjusts sound effects. You can also choose whether to display thrown objects.\n\nMenu settings additionally include language, account and access to customization. Multiplayer match settings also provide voice-chat controls.\n\nOpening settings in multiplayer does not stop the match or timer: other players continue playing."
+      }
+    },
+    {
+      "id": "throw",
+      "category": "custom",
+      "related": [
+        "custom",
+        "settings"
+      ],
+      "context": "throw",
+      "it": {
+        "examples": [
+          "Come lancio un oggetto?",
+          "Come nascondo gli oggetti lanciati?"
+        ],
+        "keywords": [
+          "lanciare",
+          "lancio",
+          "lanciabili",
+          "pomodoro",
+          "oggetto",
+          "oggetti",
+          "nascondo"
+        ],
+        "answer": "Prima della partita apri Personalizzazione e scegli gli oggetti da inserire negli slot disponibili. Il pomodoro è l'oggetto iniziale.\n\nDurante la partita premi il pulsante vicino al tuo profilo per aprire gli oggetti equipaggiati. Trascina l'oggetto scelto verso il giocatore bersaglio e rilascialo per lanciarlo.\n\nTra un lancio e il successivo c'è un tempo di ricarica: se il comando è temporaneamente disabilitato, aspetta che sia di nuovo disponibile.\n\nSe non vuoi vedere gli oggetti lanciati, disattiva Mostra oggetti lanciati nelle impostazioni. Sono interazioni visive e non cambiano il valore delle carte."
+      },
+      "en": {
+        "examples": [
+          "How do I throw an item?",
+          "How do I hide thrown objects?"
+        ],
+        "keywords": [
+          "throw",
+          "throwing",
+          "throwable",
+          "tomato",
+          "item",
+          "objects",
+          "hide"
+        ],
+        "answer": "Before playing, open Customization and select items for the available slots. The tomato is your starting item.\n\nDuring a match, press the button near your own profile to open equipped items. Drag your chosen item towards the target player and release it to throw.\n\nThere is a cooldown between throws. If the control is temporarily disabled, wait until it becomes available again.\n\nTurn off Show thrown objects in settings if you do not want to see them. These are visual interactions and do not change card strength."
+      }
+    }
+  ]
+}

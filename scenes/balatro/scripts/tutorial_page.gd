@@ -17,6 +17,7 @@ var portrait: TextureRect
 var slide: TextureRect
 var next_button: Button
 var table_background: TextureRect
+var questions_button: Button
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -46,6 +47,8 @@ func _ready() -> void:
 	next_button.pressed.connect(advance)
 	RoundedSquareButton.ButtonAudio.attach(next_button)
 	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(next_button)
+	questions_button = _button(composition, "res://scenes/balatro/trick_asset/ui_bisca/pngUI/assistenteUI/buttonAssistente.png", Rect2(890, 26, 48, 48), func(): preload("res://scenes/balatro/scripts/assistant_chat.gd").open(self))
+	questions_button.tooltip_text = "Domande e risposte"
 	get_viewport().size_changed.connect(_fit)
 	_render()
 	_fit.call_deferred()

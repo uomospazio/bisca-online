@@ -105,35 +105,21 @@ func _continue_guest() -> void:
 	_name_page()
 
 func _social_choices(provider: String) -> void:
-	_clear()
-	_text("ACCEDI CON " + provider.to_upper())
-	if not account.user_id.is_empty():
-		_text("Collega per mantenere questo profilo e i progressi. Accedi a un altro account per recuperarne uno esistente: i profili non vengono uniti.")
-		_button(column, "COLLEGA QUESTO ACCOUNT", func(): _social_start(provider, true))
-		_button(column, "ACCEDI A UN ALTRO ACCOUNT", func(): _social_start(provider, false))
-	else:
-		_button(column, "CONTINUA", func(): _social_start(provider, false))
-	_button(column, "INDIETRO", _choices)
-	notice = _text("")
-
-func _social_start(provider: String, link_current: bool) -> void:
-	var social := account.get_node("SocialAuth")
-	for button in controls:
-		button.disabled = true
-	notice.text = "Completa l'accesso nel browser."
-	var cancel_button := _button(column, "ANNULLA ACCESSO", social.cancel)
-	var callback := func(result: Dictionary):
-		cancel_button.queue_free()
-		controls.erase(cancel_button)
-		for button in controls:
-			button.disabled = false
-		if result.get("ok", false):
+	if working or provider not in ["apple", "google"]:
+		return
+	working = true
+	# Reuse the settings login flow instead of maintaining a second OAuth UI.
+	var panel := preload("res://scenes/balatro/scripts/account_panel.gd").new()
+	add_child(panel)
+	panel.setup(menu, "signin_" + provider if account.user_id.is_empty() else provider)
+	panel.tree_exited.connect(func(): working = false, CONNECT_ONE_SHOT)
+	panel.action_completed.connect(func(action: String):
+		if action == "social":
+			working = false
 			guest = false
+			panel.queue_free()
 			_name_page()
-		else:
-			notice.text = str(result.get("message", "Accesso non riuscito."))
-	social.completed.connect(callback, CONNECT_ONE_SHOT)
-	social.start(provider, link_current)
+	)
 
 func _email_choices() -> void:
 	_clear()

@@ -54,6 +54,8 @@ func open() -> void:
 	continue_button.grab_focus()
 
 func close() -> void:
+	var questions := screen.get_node_or_null("BiscaAssistant")
+	if questions: questions.hide()
 	_cancel_confirmation()
 	if screen.has_meta("page_transition_cleanup"):
 		screen.get_meta("page_transition_cleanup").call()
@@ -102,6 +104,10 @@ func _leave(restart: bool) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		var questions := screen.get_node_or_null("BiscaAssistant")
+		if visible and questions and questions.is_visible_in_tree():
+			questions._unhandled_key_input(event)
+			return
 		if visible:
 			if is_instance_valid(confirmation):
 				_cancel_confirmation()

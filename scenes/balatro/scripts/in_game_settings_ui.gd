@@ -18,6 +18,7 @@ var participant_sliders: Dictionary = {}
 var participant_numbers: Dictionary = {}
 var roster_key := ""
 var entrance: Tween
+var questions_button: Button
 
 func setup_pause(owner_pause: CanvasLayer) -> void:
 	pause_owner = owner_pause
@@ -49,6 +50,8 @@ func build(multi: bool) -> void:
 	design = Vector2(1838, 772) if multi else Vector2(1200, 678)
 	composition.size = design
 	_image(composition, ART_SETTINGS + ("inGameMultiPanel.png" if multi else "inGameSoloPanel.png"), Rect2(Vector2.ZERO, design))
+	questions_button = _button(composition, "res://scenes/balatro/trick_asset/ui_bisca/pngUI/assistenteUI/buttonAssistente.png", Rect2(1720 if multi else 1080, 32, 68, 68), func(): preload("res://scenes/balatro/scripts/assistant_chat.gd").open(pause_owner.screen))
+	questions_button.tooltip_text = "Domande e risposte"
 	_toggle("show_thrown_objects", Vector2(1695, 156) if multi else Vector2(1030, 134), func(): settings.set_value("show_thrown_objects", not settings.values.show_thrown_objects))
 	for key in ["main", "effects"]:
 		var y: float = (356 if multi else 322) + (68 if key == "effects" else 0)

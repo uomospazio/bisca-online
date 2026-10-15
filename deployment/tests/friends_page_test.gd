@@ -47,11 +47,25 @@ func run() -> void:
 	profile.profile = {"id": "layout-test", "username": "Uomospazio", "public_id": "7P33XD", "games_played": 128, "wins": 76}
 	page._refresh_account_panel()
 	assert(page.account_name.text == "Uomospazio")
-	assert(page.stat_values[2].get_parsed_text().strip_edges() == "52")
-	assert(page.stat_values[3].get_parsed_text().strip_edges() == "59%")
+	assert(page.stat_values[2].get_parsed_text().strip_edges() == "59%")
+	assert(page.stat_values[3].get_parsed_text().strip_edges() == "—")
+	page.season_panel.apply_snapshot({"season": {"name": "STAGIONE 0", "remaining": 3600}, "own": {"rank": 2, "points": 150}, "stats": {"games_played": 128, "wins": 76}, "entries": [{"rank": 1, "username": "Primo", "points": 200}, {"rank": 2, "username": "Uomospazio", "points": 150}]})
+	assert(page.stat_values[3].get_parsed_text().strip_edges() == "2")
+	# Avoid HTTP refresh during deterministic layout checks.
+	page.season_panel.busy = true
+	page._select_account_tab(true)
+	assert(not page.account_name.visible and page.season_panel.visible)
+	assert(page.account_box.texture.resource_path.ends_with("slotStagione.png"))
+	assert(page.season_panel.rows.get_child_count() == 2)
+	page._select_account_tab(false)
+	assert(page.account_name.visible and not page.season_panel.visible)
 	if "--snapshot" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("/tmp/bisca-friends-preview.png")
+		page._select_account_tab(true)
+		await process_frame
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("/tmp/bisca-season-preview.png")
 	account.user_id = previous_id
 	profile.profile = previous_profile
 	page.query.text = "Space"

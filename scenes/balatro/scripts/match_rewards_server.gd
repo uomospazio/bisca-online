@@ -60,6 +60,7 @@ func start_match(room: Dictionary) -> void:
 	var solo: bool = bool(room.get("singleplayer", false))
 	room.reward_eligible = enabled() and (solo or (int(room.options.get("starting_cards", 5)) == 5 and accounts_valid))
 	room.reward_sent = {}
+	room.season_places = {}
 
 func suspend_participant(room: Dictionary, slot: int) -> void:
 	if not room.get("reward_users", {}).has(slot):
@@ -82,6 +83,14 @@ func resume_participant(room: Dictionary, slot: int) -> void:
 func observe(room: Dictionary) -> void:
 	if not enabled() or not room.has("reward_users") or room.rules == null:
 		return
+	# Capture all seats now, including disconnected players, before later rounds
+	# change the survivor count. Same-round eliminations share a place.
+	if not room.has("season_places"): room.season_places = {}
+	for player in room.rules.players:
+		if room.rules.phase == "finished" and room.rules.winner == player.id:
+			room.season_places[player.id] = 1
+		elif not player.active and not room.season_places.has(player.id):
+			room.season_places[player.id] = maxi(2, room.rules.active_ids().size() + 1)
 	for slot in room.reward_users:
 		var uid: String = room.reward_users[slot]
 		if room.reward_sent.has(uid):
@@ -94,7 +103,9 @@ func observe(room: Dictionary) -> void:
 		var key: String = room.reward_match + ":" + uid
 		pending[key] = {"p_match_id": room.reward_match, "p_user_id": uid,
 			"p_outcome": "victory" if victory else "elimination",
-			"p_reward": bool(room.get("reward_eligible", false))}
+			"p_reward": bool(room.get("reward_eligible", false)),
+			"p_place": int(room.season_places.get(slot, 1 if victory else 8)),
+			"p_mode": "solo" if room.get("singleplayer", false) else "multi"}
 	_flush()
 
 func _flush() -> void:
@@ -103,11 +114,14 @@ func _flush() -> void:
 	sending = true
 	for key in pending.keys():
 		var secret := OS.get_environment("SUPABASE_SECRET_KEY")
-		var data := await _http("/rest/v1/rpc/bisca_record_match", PackedStringArray([
+		var data := await _http("/rest/v1/rpc/bisca_record_ranked_match", PackedStringArray([
 			"apikey: " + secret,
 			"Content-Type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(pending[key]))
 		if not data.is_empty():
 			pending.erase(key)
 			if int(data.get("amount", 0)) > 0:
 				credited.emit(data)
+	# Idempotent server-side settlement; retries after downtime pay only once.
+	await _http("/rest/v1/rpc/bisca_settle_seasons", PackedStringArray([
+		"apikey: " + OS.get_environment("SUPABASE_SECRET_KEY"), "Content-Type: application/json"]), HTTPClient.METHOD_POST, "{}")
 	sending = false

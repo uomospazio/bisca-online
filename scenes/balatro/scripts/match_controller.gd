@@ -847,7 +847,8 @@ func _show_victory() -> void:
 	var winner_id: int = rules.winner
 	var avatar: Texture2D = scores.get_child(winner_id).profile_texture
 	overlay.show_victory(_name_of(winner_id), avatar, rules.players[winner_id], online and not online_match.state.get("singleplayer", false), not online or online_match.local_id == 0)
-	overlay.setup_rewarded_offer("multi" if online else "solo", str(online_match.state.get("reward_match", "")) if online else solo_ad_match)
+	var solo_reward: bool = not online or bool(online_match.state.get("singleplayer", false))
+	overlay.setup_rewarded_offer("solo" if solo_reward else "multi", str(online_match.state.get("reward_match", "")) if online else solo_ad_match)
 
 func _play_turn_sound() -> void:
 	if rules.current != 0 or not rules.phase in ["prediction", "play"]:

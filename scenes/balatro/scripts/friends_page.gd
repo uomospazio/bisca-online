@@ -60,6 +60,9 @@ var account_name: Label
 var account_code: Label
 var account_photo: TextureRect
 var stat_values: Array[RichTextLabel] = []
+var season_panel: Control
+var account_contents: Array[Node] = []
+var season_snapshot: Dictionary = {}
 
 func _pop_page_blocks() -> void:
 	if blocks_pop and blocks_pop.is_valid():
@@ -125,7 +128,7 @@ func setup(host: Control) -> void:
 	var back := action_button(self, "←", menu.show_home, "Indietro")
 	back_button = back
 	back.position = Vector2(40, 40)
-	back.size = Vector2(412, 120)
+	back.size = Vector2(104, 104)
 	get_viewport().size_changed.connect(_apply_friends_transform, CONNECT_DEFERRED)
 	_apply_friends_transform.call_deferred()
 	friends_box = Panel.new()
@@ -241,6 +244,29 @@ func _build_account_panel() -> void:
 		value.add_theme_font_size_override("normal_font_size", 56)
 		stat_values.append(value)
 		# Captions are baked into slotAccount.png; only values are dynamic.
+	account_contents = panel.get_children()
+	season_panel = preload("res://scenes/balatro/scripts/season_panel.gd").new()
+	panel.add_child(season_panel)
+	season_panel.hide()
+	season_panel.setup(self)
+	season_panel.refreshed.connect(func(data: Dictionary):
+		season_snapshot = data
+		_refresh_account_panel())
+	for tab in range(2):
+		var button := Button.new()
+		panel.add_child(button)
+		button.position = Vector2(145 + tab * 265, 10)
+		button.size = Vector2(235, 135)
+		button.tooltip_text = "Profilo" if tab == 0 else "Classifica stagionale"
+		for state in ["normal", "hover", "pressed", "focus"]:
+			button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		button.pressed.connect(_select_account_tab.bind(tab == 1))
+
+func _select_account_tab(season: bool) -> void:
+	account_box.texture = load(UI + ("slotStagione.png" if season else "slotAccount.png"))
+	for child in account_contents:
+		child.visible = not season
+	season_panel.visible = season
 
 func _refresh_account_panel() -> void:
 	var profile: Dictionary = get_node("/root/AccountProfile").profile
@@ -255,14 +281,18 @@ func _refresh_account_panel() -> void:
 		encoded = str(config.get_value("profile", "avatar", ""))
 	account_photo.texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(encoded)
 	account_photo.queue_redraw()
-	var played := maxi(0, int(profile.get("games_played", 0)))
-	var wins := clampi(int(profile.get("wins", 0)), 0, played)
-	var values := [str(played), str(wins), str(played - wins), str(roundi(100.0 * wins / played)) + "%" if played > 0 else "0%"]
+	var stats = season_snapshot.get("stats")
+	if not stats is Dictionary: stats = profile
+	var played := maxi(0, int(stats.get("games_played", 0)))
+	var wins := clampi(int(stats.get("wins", 0)), 0, played)
+	var own = season_snapshot.get("own")
+	var rank_text := str(own.get("rank", "—")) if own is Dictionary else "—"
+	var values := [str(played), str(wins), str(roundi(100.0 * wins / played)) + "%" if played > 0 else "0%", rank_text]
 	for i in range(4):
 		var value := stat_values[i]
 		value.clear()
 		value.push_paragraph(HORIZONTAL_ALIGNMENT_CENTER)
-		if i == 3 and not profile.is_empty():
+		if i == 2 and not profile.is_empty():
 			value.add_text(values[i].trim_suffix("%"))
 			value.push_font_size(32)
 			value.add_text("%")
@@ -283,7 +313,7 @@ func action_button(parent: Node, text: String, callback: Callable, hint := "", p
 	elif text == "+": asset = "pulsanteAggiungi.png"
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var skin := StyleBoxTexture.new()
-		skin.texture = load(UI + asset)
+		skin.texture = load("res://scenes/balatro/trick_asset/ui_bisca/pngUI/InLobbyUI/tastoIndietro.png" if text == "←" else UI + asset)
 		skin.modulate_color = Color(1.15, 1.15, 1.15) if state == "hover" else (Color(0.8, 0.8, 0.8) if state == "pressed" else Color.WHITE)
 		button.add_theme_stylebox_override(state, skin)
 	var focus := StyleBoxFlat.new()
@@ -415,6 +445,8 @@ func _identity_changed() -> void:
 	var next_identity := str(get_node("/root/AccountSession").user_id)
 	if identity == next_identity: return
 	identity = next_identity
+	season_panel.reset()
+	_select_account_tab(false)
 	search_rows.clear()
 	rendered_query = ""
 	search_generation += 1
@@ -425,6 +457,7 @@ func _identity_changed() -> void:
 	_show_search_results()
 
 func open() -> void:
+	season_panel.refresh()
 	_pop_back_button()
 	_pop_page_blocks()
 	_refresh_account_panel()

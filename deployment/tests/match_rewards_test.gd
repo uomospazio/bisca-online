@@ -37,6 +37,8 @@ func run() -> void:
 	rewards.observe(room)
 	assert(rewards.pending.size() == 1)
 	assert(rewards.pending.values()[0].p_outcome == "elimination")
+	assert(rewards.pending.values()[0].p_place == 3)
+	assert(rewards.pending.values()[0].p_mode == "multi")
 	rewards.resume_participant(room, 0)
 	rewards.observe(room)
 	assert(rewards.pending.size() == 1)
@@ -48,6 +50,9 @@ func run() -> void:
 	rewards.observe(room)
 	assert(rewards.pending.size() == 3)
 	assert(rewards.pending[room.reward_match + ":c"].p_outcome == "victory")
+	assert(rewards.pending[room.reward_match + ":a"].p_place == 3)
+	assert(rewards.pending[room.reward_match + ":b"].p_place == 2)
+	assert(rewards.pending[room.reward_match + ":c"].p_place == 1)
 	room.options.starting_cards = 4
 	rewards.start_match(room)
 	assert(not room.reward_eligible)

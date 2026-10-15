@@ -93,17 +93,21 @@ func apply_snapshot(value: Dictionary) -> void:
 		return
 	heading.text = "CLASSIFICA " + str(season.get("name", ""))
 	deadline = Time.get_ticks_msec() + int(float(season.get("remaining",0)) * 1000)
+	# The server returns our unique rank in this same snapshot, even without a username.
+	var own = snapshot.get("own")
+	var own_rank := int(own.get("rank",0)) if own is Dictionary else 0
 	for entry in snapshot.get("entries",[]):
+		var rank := int(entry.get("rank",0))
+		var is_self := own_rank > 0 and rank == own_rank
 		var row := Panel.new()
 		row.custom_minimum_size = Vector2(0,76)
 		rows.add_child(row)
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color("1D1A48")
-		style.border_color = Color("8968E9")
-		style.set_border_width_all(2)
+		style.bg_color = Color("30265D") if is_self else Color("1D1A48")
+		style.border_color = Color("FFE66A") if is_self else Color("8968E9")
+		style.set_border_width_all(4 if is_self else 2)
 		style.set_corner_radius_all(15)
 		row.add_theme_stylebox_override("panel",style)
-		var rank := int(entry.get("rank",0))
 		if rank == 1: _image(row,UI+"Crown.png",Rect2(12,16,50,44))
 		else: _label(str(rank),Rect2(12,16,50,44),28,row)
 		var avatar := TextureRect.new()
@@ -118,9 +122,10 @@ func apply_snapshot(value: Dictionary) -> void:
 		var name_text := str(username) if username != null and not str(username).is_empty() else "#"+str(entry.get("public_id",""))
 		var name_label := _label(name_text,Rect2(125,17,230,42),23,row)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if is_self:
+			name_label.add_theme_color_override("font_color",Color("FFE66A"))
 		_image(row,UI+"contatorePunti.png",Rect2(365,16,165,46))
 		_label(str(entry.get("points",0)),Rect2(417,18,106,42),24,row)
-	var own = snapshot.get("own")
 	mine.text = "TU: #%s · %s PUNTI" % [own.get("rank",0),own.get("points",0)] if own is Dictionary else "Non ancora in classifica"
 	if rows.get_child_count() == 0:
 		var empty := Label.new()
@@ -151,12 +156,13 @@ func _info() -> void:
 	dialog.title = "PREMI CLASSIFICA"
 	var season = snapshot.get("season",{})
 	var prizes: Array = season.get("rewards",[5000,2000,1000,900,800,700,600,500,400,300]) if season is Dictionary else [5000,2000,1000,900,800,700,600,500,400,300]
-	var text := "Multiplayer: 200 punti al primo, 100 al secondo, 50 agli altri.\n\nSolitaria offline: 50 punti fissi insieme alle 30 monete della pubblicita', una sola volta per partita, durante una stagione attiva.\n\nPremi in monete a fine stagione:\n"
-	for i in prizes.size(): text += "%d: %d monete%s" % [i+1,prizes[i],"\n" if i%2==1 else "     "]
-	text += "\nParita' punti: precede chi raggiunge il totale prima.\nI premi vengono accreditati una sola volta dal server."
+	var text := ""
+	for i in prizes.size(): text += "%d: %d monete%s" % [i+1,prizes[i],"\n\n" if i%2==1 else "     "]
 	dialog.dialog_text = text
 	dialog.ok_button_text = "OK"
 	page.add_child(dialog)
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)
-	dialog.popup_centered(Vector2i(1200,680))
+	dialog.popup_centered(Vector2i(1000,560))
+	# This is an informational notice, not a confirmation with two choices.
+	dialog.get_cancel_button().hide()

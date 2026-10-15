@@ -2,6 +2,10 @@
 
 ## Installazione
 
+Dopo la 023 applicare `supabase/024_season_username_tiebreak.sql`: a parita' di punti e tempo, precede chi ha un username non vuoto. Il criterio vale anche per l'assegnazione dei premi; l'ID resta l'ultimo spareggio.
+
+Dopo la 022 applicare anche `supabase/023_season_zero_points.sql`: include i profili a zero punti, anche senza partite stagionali. Restano visibili i primi 100 e il proprio piazzamento; i premi restano riservati a chi ha ottenuto punti.
+
 1. Nel SQL Editor di Supabase eseguire `supabase/022_seasons.sql` una sola volta, dopo le migrazioni fino alla 021. La migrazione e' transazionale.
 2. Aggiornare il server dedicato con il nuovo `match_rewards_server.gd`, poi distribuire il client aggiornato. Il nuovo server usa `bisca_record_ranked_match`; non distribuirlo prima della migrazione.
 3. La stagione iniziale e' STAGIONE 0, dal 15 ottobre 2026 alle 00:00 al 1 gennaio 2027 alle 00:00, fuso Europe/Rome. Modificare `bisca_seasons.starts_at` e `ends_at` da Supabase prima della chiusura. Non creare stagioni sovrapposte e non riaprire una stagione gia' liquidata.

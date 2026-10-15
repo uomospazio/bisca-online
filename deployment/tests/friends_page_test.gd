@@ -50,15 +50,31 @@ func run() -> void:
 	assert(page.stat_values[2].get_parsed_text().strip_edges() == "59%")
 	assert(page.stat_values[3].get_parsed_text().strip_edges() == "—")
 	page.season_panel.apply_snapshot({"season": {"name": "STAGIONE 0", "remaining": 3600}, "own": {"rank": 2, "points": 150}, "stats": {"games_played": 128, "wins": 76}, "entries": [{"rank": 1, "username": "Primo", "points": 200}, {"rank": 2, "username": "Uomospazio", "points": 150}]})
-	assert(page.stat_values[3].get_parsed_text().strip_edges() == "2")
+	assert(page.stat_values[3].get_parsed_text().strip_edges() == "2°")
 	# Avoid HTTP refresh during deterministic layout checks.
 	page.season_panel.busy = true
 	page._select_account_tab(true)
 	assert(not page.account_name.visible and page.season_panel.visible)
 	assert(page.account_box.texture.resource_path.ends_with("slotStagione.png"))
 	assert(page.season_panel.rows.get_child_count() == 2)
+	assert(page.season_panel.rows.get_child(0).get_theme_stylebox("panel").border_color == Color("8968E9"))
+	assert(page.season_panel.rows.get_child(1).get_theme_stylebox("panel").border_color == Color("FFE66A"))
+	assert(page.season_panel.rows.get_child(1).get_theme_stylebox("panel").border_width_left == 4)
 	page._select_account_tab(false)
 	assert(page.account_name.visible and not page.season_panel.visible)
+	page.season_panel._info()
+	var prize_dialog = page.get_child(-1)
+	await process_frame
+	await process_frame
+	assert(not prize_dialog.cancel.visible)
+	assert(prize_dialog.ok.text == "OK")
+	assert(prize_dialog.ok.get_parent().alignment == BoxContainer.ALIGNMENT_CENTER)
+	assert(prize_dialog.dialog_text.begins_with("1: 5000 monete"))
+	assert(prize_dialog.dialog_text.contains("10: 300 monete"))
+	assert(not prize_dialog.dialog_text.contains("punti"))
+	assert(not prize_dialog.dialog_text.contains("Multiplayer"))
+	prize_dialog.ok.pressed.emit()
+	await process_frame
 	if "--snapshot" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("/tmp/bisca-friends-preview.png")

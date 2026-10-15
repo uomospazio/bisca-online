@@ -16,7 +16,7 @@ create table public.bisca_daily_offers(day date primary key,items text[]);
 insert into auth.users values('${id(1)}'),('${id(2)}'),('${id(3)}');
 insert into public.bisca_profiles(id,username,public_id) select id,'Player','ABC123' from auth.users;
 `);
-for (const file of ['010_match_rewards.sql','011_match_statistics.sql','016_rewarded_ads_test.sql','022_seasons.sql'])
+for (const file of ['010_match_rewards.sql','011_match_statistics.sql','016_rewarded_ads_test.sql','022_seasons.sql','023_season_zero_points.sql','024_season_username_tiebreak.sql'])
   await db.exec(await readFile(new URL('../supabase/'+file,import.meta.url),'utf8'));
 await db.exec(`update public.bisca_seasons set starts_at=now()-interval '1 day',ends_at=now()+interval '1 day'`);
 async function rpc(name,args=[]) {
@@ -26,6 +26,18 @@ async function points(user=1) {
   return Number((await db.query('select points from bisca_season_scores where user_id=$1',[id(user)])).rows[0]?.points ?? 0);
 }
 await assert.rejects(rpc('bisca_claim_test_ad',[id(10),'solo',id(20)]),/TESTER_REQUIRED/);
+const emptyBoard = await rpc('bisca_season_board');
+assert.equal(emptyBoard.entries.length,3,'profiles without seasonal results must appear');
+assert.ok(emptyBoard.entries.every(entry=>entry.points===0));
+assert.equal(emptyBoard.own.points,0);
+assert.equal(emptyBoard.own.rank,1,'zero-point ranks use stable ID ordering');
+await db.exec(`update bisca_profiles set username=null where id='${id(1)}'; update bisca_profiles set username='   ' where id='${id(2)}'`);
+const usernameBoard = await rpc('bisca_season_board');
+assert.equal(usernameBoard.own.rank,2,'named user precedes unnamed users at equal zero points');
+assert.equal(usernameBoard.entries[0].username,'Player');
+assert.equal(usernameBoard.entries[1].username,null);
+await db.exec(`update bisca_profiles set username='Player'`);
+await db.exec(`insert into auth.users values('${id(4)}'); insert into bisca_profiles(id,username,public_id) values('${id(4)}','Zero','ZERO04'); insert into bisca_season_scores(season_id,user_id,points) values(0,'${id(4)}',0)`);
 await db.exec(`insert into bisca_ad_testers values('${id(1)}')`);
 let r = await rpc('bisca_claim_test_ad',[id(10),'solo',id(20)]);
 assert.equal(r.credits,30); assert.equal(await points(),50,'offline solo needs no recorded result');
@@ -47,7 +59,8 @@ assert.equal(await points(),250,'extra multi ad must not double match points');
 await rpc('bisca_record_ranked_match',[id(22),id(1),'victory',false,1,'multi']);
 assert.equal(await points(),250,'ineligible match still records stats, not points');
 const board = await rpc('bisca_season_board');
-assert.equal(board.entries.length,3); assert.equal(board.own.rank,1);
+assert.equal(board.entries.length,4); assert.equal(board.own.rank,1);
+assert.equal(board.entries[3].points,0); assert.equal(board.entries[3].username,'Zero');
 assert.equal(board.stats.games_played,2); assert.equal(board.stats.wins,2);
 await db.exec('set role authenticated');
 await assert.rejects(rpc('bisca_record_ranked_match',[id(23),id(1),'victory',true,1,'multi']),/permission denied/);

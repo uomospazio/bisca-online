@@ -286,7 +286,8 @@ func _refresh_account_panel() -> void:
 	var played := maxi(0, int(stats.get("games_played", 0)))
 	var wins := clampi(int(stats.get("wins", 0)), 0, played)
 	var own = season_snapshot.get("own")
-	var rank_text := str(own.get("rank", "—")) if own is Dictionary else "—"
+	var rank := int(own.get("rank", 0)) if own is Dictionary else 0
+	var rank_text := "%d°" % rank if rank > 0 else "—"
 	var values := [str(played), str(wins), str(roundi(100.0 * wins / played)) + "%" if played > 0 else "0%", rank_text]
 	for i in range(4):
 		var value := stat_values[i]

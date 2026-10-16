@@ -11,6 +11,10 @@ var reroll: Button
 var wheel: Button
 var reward_caption: Label
 var last_daily_attempt := -30000
+var entrance := preload("res://scenes/balatro/scripts/page_pop.gd").new()
+
+func pop_in() -> void:
+	entrance.play(self,_fit)
 
 func setup_shop(owner_page: Control) -> void:
 	host = owner_page
@@ -107,5 +111,6 @@ func _layout(bounds: Rect2) -> void:
 	back_anchor.position = bounds.position
 	back_anchor.scale = Vector2.ONE*maxf(0.01,minf(bounds.size.x/preload("res://scenes/balatro/scripts/solitaria_ui.gd").SOLO_SIZE.x,bounds.size.y/preload("res://scenes/balatro/scripts/solitaria_ui.gd").SOLO_SIZE.y))
 	var factor := minf(bounds.size.x/DESIGN.x,bounds.size.y/DESIGN.y)
+	factor *= entrance.amount
 	composition.scale = Vector2.ONE * factor
 	composition.position = bounds.get_center()-DESIGN*factor/2

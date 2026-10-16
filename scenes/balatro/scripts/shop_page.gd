@@ -125,6 +125,7 @@ func open() -> void:
 	coins_amount.text = menu_owner.coins_label.text
 	art_ui._fit()
 	art_ui._tick()
+	art_ui.pop_in()
 	_update()
 	manager.refresh_daily()
 	if not manager.inventory_ready or manager.stale or not manager.last_error.is_empty():
@@ -138,9 +139,17 @@ func open_wheel() -> void:
 		fortune_wheel.setup_wheel(self)
 	fortune_wheel.open()
 
+func _modal_open() -> bool:
+	if is_instance_valid(purchase_dialog) and purchase_dialog.is_visible_in_tree(): return true
+	for dialog in get_tree().get_nodes_in_group("menu_modal_dialogs"):
+		if dialog.is_visible_in_tree(): return true
+	return false
+
 func _input(event: InputEvent) -> void:
-	if not is_visible_in_tree():
+	# Raw _input runs before the popup's GUI buttons consume the event.
+	if not is_visible_in_tree() or _modal_open():
 		touch_item_id = ""
+		touch_dragged = false
 		return
 	if event is InputEventScreenTouch or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
 		if event is InputEventMouseButton and DisplayServer.is_touchscreen_available():
@@ -158,7 +167,7 @@ func _input(event: InputEvent) -> void:
 			touch_dragged = true
 
 func _item_at_position(viewport_position: Vector2) -> String:
-	if not is_visible_in_tree() or purchase_dialog.visible or result_dialog.visible:
+	if not is_visible_in_tree() or _modal_open():
 		return ""
 	for control in fixed_controls:
 		if control.is_visible_in_tree() and Rect2(Vector2.ZERO, control.size).has_point(control.get_global_transform_with_canvas().affine_inverse() * viewport_position):
@@ -170,6 +179,7 @@ func _item_at_position(viewport_position: Vector2) -> String:
 	return ""
 
 func _ask_purchase(item_id: String) -> void:
+	if _modal_open(): return
 	if manager.purchasing or get_node("/root/RewardedAds").busy:
 		return
 

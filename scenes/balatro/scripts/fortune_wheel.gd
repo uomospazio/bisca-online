@@ -14,6 +14,7 @@ var spin_sound: AudioStreamPlayer
 var last_tick := -1000
 var spinning := false
 var spin_duration := 5.5
+var entrance := preload("res://scenes/balatro/scripts/page_pop.gd").new()
 
 func setup_wheel(owner_page: Control) -> void:
 	host = owner_page
@@ -71,12 +72,14 @@ func open() -> void:
 	show()
 	_fit()
 	_update()
+	entrance.play(self,_fit)
 
 func _back_to_shop() -> void:
 	if spinning or get_node("/root/RewardedAds").busy: return
 	hide()
 	host.art_ui.show()
 	host.art_ui._fit()
+	host.art_ui.pop_in()
 
 func _request_spin() -> void:
 	if not spinning:
@@ -136,5 +139,6 @@ func _layout(bounds: Rect2) -> void:
 	back_anchor.position = bounds.position
 	back_anchor.scale = Vector2.ONE*maxf(0.01,minf(bounds.size.x/preload("res://scenes/balatro/scripts/solitaria_ui.gd").SOLO_SIZE.x,bounds.size.y/preload("res://scenes/balatro/scripts/solitaria_ui.gd").SOLO_SIZE.y))
 	var factor := minf(bounds.size.x/DESIGN.x,bounds.size.y/DESIGN.y)
+	factor *= entrance.amount
 	composition.scale = Vector2.ONE*factor
 	composition.position = bounds.get_center()-DESIGN*factor/2

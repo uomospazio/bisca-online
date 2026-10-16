@@ -31,6 +31,7 @@ var requested_size := Vector2(850, 500)
 var pop_tween: Tween
 
 func _ready() -> void:
+	add_to_group("menu_modal_dialogs")
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	z_index = 110
 	set_meta("cartoon_style_children_excluded", true)

@@ -247,7 +247,7 @@ func pending_for_account() -> bool:
 	return not _pending.is_empty() and str(_pending.get("owner", "")) == str(_account.user_id)
 
 func request_reward(placement: String, context := "") -> void:
-	if busy or not placement in ["shop", "refresh", "solo", "multi"]:
+	if busy or not placement in ["shop", "refresh", "solo", "multi", "wheel"]:
 		return
 	if not _account.is_authenticated():
 		_set_message("Connettiti a Internet per ricevere il premio.")
@@ -342,17 +342,36 @@ func _claim() -> void:
 	_pending.clear()
 	_save()
 	if str(_account.user_id) == str(pending.owner):
+		if pending.p_placement == "wheel":
+			await _present_wheel_reward(result)
+		# Account switches during the animation must never receive another user's balance.
+		if str(_account.user_id) != str(pending.owner):
+			_finish("Premio salvato sull'account che ha visto il video.")
+			return
 		var profile := get_node("/root/AccountProfile")
 		if str(profile.profile.get("id", "")) == str(pending.owner):
 			profile.profile.credits = int(result.credits)
 			profile.changed.emit()
 		if pending.p_placement == "refresh":
 			get_node("/root/ShopManager").invalidate_daily()
+		if pending.p_placement == "wheel" and result.get("outcome","") == "crown":
+			get_node("/root/ShopManager").refresh()
 		# Solo una risposta positiva del backend avvia la presentazione; vale
 		# anche per il recupero di una transazione dopo una caduta di rete.
 		if int(result.get("amount", 0)) > 0:
 			await _present_credit_reward(str(pending.owner), result)
-	_finish("Shop aggiornato!" if pending.p_placement == "refresh" else "+%d monete ricevute!" % int(result.get("amount", 0)))
+	if pending.p_placement == "wheel":
+		_finish(preload("res://scenes/balatro/scripts/fortune_wheel.gd").result_text(result))
+	else:
+		_finish("Shop aggiornato!" if pending.p_placement == "refresh" else "+%d monete ricevute!" % int(result.get("amount", 0)))
+
+func _present_wheel_reward(result: Dictionary) -> void:
+	for wheel in get_tree().get_nodes_in_group("bisca_wheel_page"):
+		if wheel.is_visible_in_tree():
+			await wheel.present_result(result)
+			return
+	# A pending receipt can also be recovered from a different ad button.
+	preload("res://scenes/balatro/scripts/fortune_wheel.gd").play_result(self,result)
 
 func _present_credit_reward(owner: String, result: Dictionary) -> void:
 	var popup = load("res://scenes/balatro/scripts/match_reward_popup.gd").new()

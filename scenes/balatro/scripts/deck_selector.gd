@@ -140,12 +140,13 @@ func _refresh_owned_backs() -> void:
 
 func _cycle_front() -> void:
 	var settings := get_node("/root/GameSettings")
-	var count: int = int(settings.FRONT_FOLDERS.size())
+	var fronts: Array = settings.available_fronts()
+	var count: int = fronts.size()
 
 	if count <= 0:
 		return
 
-	selected_front = wrapi(selected_front + 1, 0, count)
+	selected_front = fronts[wrapi(fronts.find(selected_front) + 1, 0, count)]
 
 	settings.set_value("deck_front", selected_front)
 	settings.save_preferences()

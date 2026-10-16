@@ -67,6 +67,7 @@ func run() -> void:
 	await create_timer(0.1).timeout
 	assert(progress.done, "Dopo le vite mostrare il premio dell'eliminato")
 	host.rules.phase = "finished"
+	host.rules.players[0].active = true # Winner fixture, not the previously eliminated player.
 	progress.done = false
 	wait_gate(gate, progress)
 	await create_timer(0.2).timeout

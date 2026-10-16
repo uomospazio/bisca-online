@@ -447,7 +447,7 @@ func _identity_changed() -> void:
 	if identity == next_identity: return
 	identity = next_identity
 	season_panel.reset()
-	_select_account_tab(false)
+	_select_account_tab(true)
 	search_rows.clear()
 	rendered_query = ""
 	search_generation += 1
@@ -458,6 +458,7 @@ func _identity_changed() -> void:
 	_show_search_results()
 
 func open() -> void:
+	_select_account_tab(true)
 	season_panel.refresh()
 	_pop_back_button()
 	_pop_page_blocks()

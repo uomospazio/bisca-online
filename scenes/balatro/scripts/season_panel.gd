@@ -5,7 +5,9 @@ var page: Control
 var rows: VBoxContainer
 var heading: Label
 var countdown: Label
-var mine: Label
+var scroll: ScrollContainer
+var pinned_row: Panel
+var own_row: Panel
 var snapshot: Dictionary = {}
 var busy := false
 var deadline := 0
@@ -28,7 +30,7 @@ func setup(friends: Control) -> void:
 		info.add_theme_stylebox_override(state,skin)
 	info.pressed.connect(_info)
 	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(info)
-	var scroll := preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
+	scroll = preload("res://scenes/balatro/scripts/touch_scroll.gd").new()
 	add_child(scroll)
 	scroll.position = Vector2(50,284)
 	scroll.size = Vector2(550,430)
@@ -37,7 +39,8 @@ func setup(friends: Control) -> void:
 	rows.size_flags_horizontal = SIZE_EXPAND_FILL
 	rows.add_theme_constant_override("separation",12)
 	scroll.add_child(rows)
-	mine = _label("",Rect2(50,731,550,40),23)
+	scroll.get_v_scroll_bar().value_changed.connect(func(_value): _update_pinned_row())
+	rows.sort_children.connect(_update_pinned_row)
 	timer = Timer.new()
 	add_child(timer)
 	timer.wait_time = 1
@@ -80,10 +83,15 @@ func reset() -> void:
 	for child in rows.get_children():
 		rows.remove_child(child)
 		child.queue_free()
-	mine.text = ""
+	own_row = null
+	if is_instance_valid(pinned_row):
+		remove_child(pinned_row)
+		pinned_row.queue_free()
+	pinned_row = null
 	refreshed.emit(snapshot)
 
 func apply_snapshot(value: Dictionary) -> void:
+	var previous_scroll := scroll.scroll_vertical
 	reset()
 	snapshot = value
 	var season = snapshot.get("season")
@@ -99,34 +107,23 @@ func apply_snapshot(value: Dictionary) -> void:
 	for entry in snapshot.get("entries",[]):
 		var rank := int(entry.get("rank",0))
 		var is_self := own_rank > 0 and rank == own_rank
-		var row := Panel.new()
-		row.custom_minimum_size = Vector2(0,76)
-		rows.add_child(row)
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color("30265D") if is_self else Color("1D1A48")
-		style.border_color = Color("FFE66A") if is_self else Color("8968E9")
-		style.set_border_width_all(4 if is_self else 2)
-		style.set_corner_radius_all(15)
-		row.add_theme_stylebox_override("panel",style)
-		if rank == 1: _image(row,UI+"Crown.png",Rect2(12,16,50,44))
-		else: _label(str(rank),Rect2(12,16,50,44),28,row)
-		var avatar := TextureRect.new()
-		row.add_child(avatar)
-		avatar.position = Vector2(76,17)
-		avatar.size = Vector2(42,42)
-		avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		avatar.texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(str(entry.get("avatar","")))
-		if avatar.texture == null:
-			avatar.texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(preload("res://scenes/balatro/scripts/avatar_catalog.gd").encoded(0))
-		var username = entry.get("username")
-		var name_text := str(username) if username != null and not str(username).is_empty() else "#"+str(entry.get("public_id",""))
-		var name_label := _label(name_text,Rect2(125,17,230,42),23,row)
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		if is_self:
-			name_label.add_theme_color_override("font_color",Color("FFE66A"))
-		_image(row,UI+"contatorePunti.png",Rect2(365,16,165,46))
-		_label(str(entry.get("points",0)),Rect2(417,18,106,42),24,row)
-	mine.text = "TU: #%s · %s PUNTI" % [own.get("rank",0),own.get("points",0)] if own is Dictionary else "Non ancora in classifica"
+		var row := _make_row(entry,is_self,rows)
+		if is_self: own_row = row
+		if is_self and own_rank > 5:
+			pinned_row = _make_row(entry,true,self)
+	if own_rank > 5 and not is_instance_valid(pinned_row):
+		# The API exposes only the top 100; retain our card even outside that range.
+		var profile: Dictionary = get_node("/root/AccountProfile").profile
+		var entry: Dictionary = own.duplicate()
+		entry["username"] = profile.get("username","")
+		entry["public_id"] = profile.get("public_id","")
+		pinned_row = _make_row(entry,true,self)
+	if is_instance_valid(pinned_row):
+		pinned_row.position = scroll.position + Vector2(0,352)
+		pinned_row.size = Vector2(rows.size.x,76)
+		pinned_row.hide()
+	scroll.set_deferred("scroll_vertical",previous_scroll)
+	_update_pinned_row.call_deferred()
 	if rows.get_child_count() == 0:
 		var empty := Label.new()
 		empty.text = "Nessun punteggio registrato"
@@ -134,6 +131,46 @@ func apply_snapshot(value: Dictionary) -> void:
 		rows.add_child(empty)
 	_tick()
 	refreshed.emit(snapshot)
+
+func _make_row(entry: Dictionary,is_self: bool,parent: Node) -> Panel:
+	var row := Panel.new()
+	row.custom_minimum_size = Vector2(0,76)
+	parent.add_child(row)
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	var rank := int(entry.get("rank",0))
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("30265D") if is_self else Color("1D1A48")
+	style.border_color = Color("FFE66A") if is_self else Color("8968E9")
+	style.set_border_width_all(4 if is_self else 2)
+	style.set_corner_radius_all(15)
+	row.add_theme_stylebox_override("panel",style)
+	if rank == 1: _image(row,UI+"Crown.png",Rect2(12,16,50,44))
+	else: _label(str(rank),Rect2(12,16,50,44),28,row)
+	var avatar := TextureRect.new()
+	row.add_child(avatar)
+	avatar.position = Vector2(76,17)
+	avatar.size = Vector2(42,42)
+	avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	avatar.texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(str(entry.get("avatar","")))
+	if avatar.texture == null:
+		avatar.texture = preload("res://scenes/balatro/scripts/avatar_data.gd").circular_texture(preload("res://scenes/balatro/scripts/avatar_catalog.gd").encoded(0))
+	var username = entry.get("username")
+	var name_text := str(username) if username != null and not str(username).is_empty() else "#"+str(entry.get("public_id",""))
+	var name_label := _label(name_text,Rect2(125,17,230,42),23,row)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if is_self:
+		name_label.add_theme_color_override("font_color",Color("FFE66A"))
+	_image(row,UI+"contatorePunti.png",Rect2(365,16,165,46))
+	_label(str(int(entry.get("points",0))),Rect2(417,18,106,42),24,row)
+	for child in row.get_children():
+		if child is Control: child.mouse_filter = MOUSE_FILTER_IGNORE
+	return row
+
+func _update_pinned_row() -> void:
+	if not is_instance_valid(pinned_row): return
+	pinned_row.size = Vector2(rows.size.x,76)
+	# Once our real card reaches the fifth slot, the list takes over.
+	pinned_row.visible = not is_instance_valid(own_row) or own_row.position.y - scroll.scroll_vertical > 352
 
 func _image(parent: Node,path: String,rect: Rect2) -> void:
 	var image := TextureRect.new()

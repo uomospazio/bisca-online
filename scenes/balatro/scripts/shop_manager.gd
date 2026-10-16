@@ -37,7 +37,16 @@ func get_daily_items() -> Array:
 		var item := get_item(str(id))
 		if not item.is_empty() and item.is_available:
 			result.append(item)
-	return result
+	var ordered: Array = []
+	for index in range(2):
+		for type in ["deck_back", "avatar", "throwable"]:
+			var group: Array = result.filter(func(item: Dictionary): return item.item_type == type)
+			if group.size() != 2: return [] # Do not display a misleading legacy/partial rotation.
+			ordered.append(group[index])
+	return ordered
+
+func daily_seconds_remaining() -> int:
+	return maxi(0, ceili(float(_daily_until-Time.get_ticks_msec())/1000.0))
 
 func refresh_daily() -> void:
 	if DisplayServer.get_name() == "headless" or _daily_loading:
@@ -66,11 +75,11 @@ func refresh_daily() -> void:
 	if generation != _generation:
 		refresh_daily()
 		return
-	daily_error = "MARKET NON DISPONIBILE. Verifica la migrazione 012_daily_shop.sql."
+	daily_error = "MARKET NON DISPONIBILE. Verifica la migrazione 025_shop_six_offers.sql."
 	if response.size() == 4 and response[0] == HTTPRequest.RESULT_SUCCESS and response[1] == 200:
 		var data = JSON.parse_string(response[3].get_string_from_utf8())
 		if data is Dictionary and data.get("items") is Array and _integer(data.get("refresh_after")) and int(data.refresh_after) > 0:
-			var valid: bool = data.items.size() <= 6
+			var valid: bool = data.items.size() == 6
 			var unique: Array = []
 			for id in data.items:
 				if not id is String or unique.has(id): valid = false

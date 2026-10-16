@@ -3,7 +3,7 @@ const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const KIDS_FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
 var placement := "shop"
 var context := ""
-var caption := "+20 MONETE"
+var caption := "+50 MONETE"
 var button: Button
 var button_caption: Label
 var button_content: HBoxContainer

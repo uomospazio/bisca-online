@@ -4,9 +4,28 @@ signal changed
 const BACK_COUNT := 14
 const DEFAULTS := {"main": 100.0, "effects": 100.0, "camera": true, "text_animations": false, "tooltips": true, "fullscreen": false, "deck_back": 1, "deck_front": 0, "throw_slots": [8, -1, -1], "show_thrown_objects": true, "language": "it", "microphone_enabled": true, "push_to_talk": false, "push_notifications": false, "push_permission_asked": false}
 const FRONT_FOLDERS := ["res://scenes/balatro/trick_asset/mazzo_2/briscola/", "res://scenes/balatro/trick_asset/mazzo_2/briscola_big/Deck/"]
+const GOLD_FRONT := 3 # 2 remains the retired front, never reuse its saved ID.
+const GOLD_FRAMES := [
+	[156,155,147,148,149,150,151,152,153,154],
+	[146,145,137,138,139,140,141,142,143,144],
+	[136,135,127,128,129,130,131,132,133,134],
+	[119,118,117,120,121,122,123,124,125,126],
+]
+
+func available_fronts() -> Array[int]:
+	var result: Array[int] = [0,1]
+	var shop := get_node_or_null("/root/ShopManager")
+	if shop and shop.owns_item("deck_back_13"):
+		result.append(GOLD_FRONT)
+	return result
+
+func _valid_front(value: int) -> int:
+	return GOLD_FRONT if value == GOLD_FRONT else clampi(value,0,1)
 
 func front_texture(colour: int = 3, number: int = 5, index: int = -1) -> Texture2D:
 	var chosen := int(values.deck_front) if index < 0 else index
+	if chosen == GOLD_FRONT and GOLD_FRONT in available_fronts():
+		return load("res://scenes/balatro/trick_asset/mazzo_2/briscola/mazzoOro/Frame %d.png" % GOLD_FRAMES[colour][number-1])
 	var suits := ["Bastoni", "Spade", "Coppe", "Denari"]
 	var ranks := ["Ace", "2", "3", "4", "5", "6", "7", "Jack", "Queen", "King"]
 	return load(FRONT_FOLDERS[clampi(chosen, 0, FRONT_FOLDERS.size() - 1)] + "Suit=%s, Rank=%s, Front _=Yes.png" % [suits[colour], ranks[number - 1]])
@@ -50,7 +69,7 @@ func load_preferences() -> void:
 		elif key == "deck_back" and (value is int or value is float):
 			values[key] = clampi(int(value), 1, BACK_COUNT)
 		elif key == "deck_front" and (value is int or value is float):
-			values[key] = clampi(int(value), 0, FRONT_FOLDERS.size() - 1)
+			values[key] = _valid_front(int(value))
 		elif key in ["main", "effects"]:
 			if value is float or value is int:
 				values[key] = clampf(float(value), 0.0, 100.0)
@@ -72,7 +91,7 @@ func set_value(key: String, value: Variant) -> void:
 	if key == "deck_back":
 		values[key] = clampi(int(value), 1, BACK_COUNT)
 	if key == "deck_front":
-		values[key] = clampi(int(value), 0, FRONT_FOLDERS.size() - 1)
+		values[key] = _valid_front(int(value))
 	if key == "throw_slots":
 		values[key] = _valid_throw_slots(value)
 	apply()

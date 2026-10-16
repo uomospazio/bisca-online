@@ -82,6 +82,27 @@ func run() -> void:
 		await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("/tmp/bisca-season-preview.png")
+	var season_entries: Array = []
+	page._select_account_tab(true)
+	for place in range(1,21):
+		season_entries.append({"rank": place, "username": "Player %d" % place, "points": 0.0})
+	page.season_panel.apply_snapshot({"season": {"name": "STAGIONE 0", "remaining": 3600}, "own": {"rank": 17, "points": 0}, "entries": season_entries})
+	for frame in range(5): await process_frame
+	assert(page.season_panel.pinned_row.visible)
+	assert(page.season_panel.pinned_row.position.y == page.season_panel.scroll.position.y + 352)
+	assert(page.season_panel.rows.get_child_count() == 20, "Pinned card must not replace/remove fifth player")
+	if "--snapshot" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("/tmp/bisca-season-pinned.png")
+	page.season_panel.scroll.scroll_vertical = 1056
+	await process_frame
+	assert(not page.season_panel.pinned_row.visible, "Hide duplicate when real rank 17 reaches fifth slot")
+	page.season_panel.scroll.scroll_vertical = 0
+	await process_frame
+	assert(page.season_panel.pinned_row.visible, "Pin again when scrolling back up")
+	page.season_panel.apply_snapshot({"season": {"name": "STAGIONE 0", "remaining": 3600}, "own": {"rank": 5, "points": 0}, "entries": season_entries})
+	for frame in range(3): await process_frame
+	assert(not is_instance_valid(page.season_panel.pinned_row), "Top five needs no pinned card")
 	account.user_id = previous_id
 	profile.profile = previous_profile
 	page.query.text = "Space"

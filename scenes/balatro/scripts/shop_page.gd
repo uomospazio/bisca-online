@@ -1,31 +1,16 @@
 extends Control
 
-## Vetrina fissa: tre articoli grandi, senza scorrimento.
+## Six offers: two backs, two avatars, two throwables.
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
-const MARKET_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/fullMarket.png")
 const COIN_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/coin.png")
-const PRICE_COLOR := Color("#0c0918")
-
-# Banco, insegna e articoli si spostano insieme.
-const MARKET_OFFSET := Vector2.ZERO
-const MARKET_POSITION := Vector2(400, 50)
-const MARKET_SIZE := Vector2(1700, 1050)
-# Coordinate relative alla grafica del banco.
 const ITEM_RECTS := [
-	Rect2(85, 450, 240, 280),
-	Rect2(435, 450, 240, 280),
-	Rect2(785, 450, 240, 280),
+	Rect2(356,0,336,300), Rect2(712,0,336,300), Rect2(1068,0,336,300),
+	Rect2(356,324,336,300), Rect2(712,324,336,300), Rect2(1068,324,336,300),
 ]
-const TAG_RECTS := [
-	Rect2(120, 755, 205, 102.5),
-	Rect2(480, 755, 205, 102.5),
-	Rect2(840, 755, 205, 102.5),
-]
+var art_ui: Control
+var fortune_wheel: Control
 const TAP_MOVE_THRESHOLD := 18.0
-const ITEM_SHADOW_COLOR := Color(0.10, 0.055, 0.025, 0.48)
-const ITEM_SHADOW_OFFSET := Vector2(5, 10)
-const ITEM_SHADOW_SOFTNESS := 14
 
 var manager: Node
 var status: Label
@@ -51,94 +36,12 @@ func setup(menu: Control) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu_owner = menu
 	manager = get_node("/root/ShopManager")
-	content = Control.new()
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(content)
-
-	var background := ColorRect.new()
-	background.color = Color.BLACK
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(background)
-	var art := TextureRect.new()
-	art.texture = MARKET_TEXTURE
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	background.add_child(art)
-	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var fit := func():
-		var screen := get_viewport_rect().size
-		background.position = -(screen - Vector2(1920, 1080)) * 0.5
-		background.size = screen
-	get_viewport().size_changed.connect(fit)
-	fit.call()
-	var market := Control.new()
-	market.name = "Market"
-	market.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	market.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	market.position = MARKET_POSITION + MARKET_OFFSET
-	market.size = MARKET_SIZE
-	content.add_child(market)
-
-	grid = Control.new()
-	grid.name = "Offers"
-	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	grid.size = MARKET_SIZE
-	market.add_child(grid)
-
-	status = _label("", 20)
-	status.position = Vector2(70, 910)
-	status.size = Vector2(410, 145)
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(status)
-
-	# Conserva geometria, scala e safe area del precedente HUD.
-	var counter: Control = menu.home_persistent_ui.get_node("CoinsCounter").duplicate()
-	add_child(counter)
-	if counter.has_meta("safe_edge"):
-		counter.position -= Vector2(counter.get_meta("safe_edge"))
-		counter.remove_meta("safe_edge")
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
-	coins_amount = counter.get_node("CoinBar/CoinsAmount")
-	counter.pivot_offset = Vector2(counter.size.x, 0)
-	counter.scale = Vector2.ONE
-	var back: Button = menu._button(self, "INDIETRO", menu._leave_shop)
-	menu.match_singleplayer_back(back)
-	back.set_meta("safe_bottom", false)
-	back.position = Vector2(40, 40)
-	fixed_controls = [back, counter]
-	counter.show()
-	var support := TextureButton.new()
-	add_child(support)
-	support.texture_normal = preload("res://scenes/balatro/trick_asset/ui_bisca/coffee.png")
-	support.ignore_texture_size = true
-	support.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-	support.position = Vector2(55, 230)
-	support.size = Vector2(250, 240)
-	support.tooltip_text = "Supporta il creatore"
-	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(support)
-	support.pressed.connect(menu._show_support_creator)
-	preload("res://scenes/balatro/scripts/button_audio.gd").attach(support)
-	fixed_controls.append(support)
-	get_node("/root/RewardedAds").changed.connect(func():
-		back.disabled = get_node("/root/RewardedAds").busy
-	)
-	var video := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
-	video.position = Vector2(40, 710)
-	video.size.x = 350
-	add_child(video)
-	var refresh_video := preload("res://scenes/balatro/scripts/rewarded_offer.gd").new()
-	refresh_video.placement = "refresh"
-	refresh_video.caption = "CAMBIA OFFERTE"
-	refresh_video.position = Vector2(40, 870)
-	refresh_video.size.x = 350
-	add_child(refresh_video)
-	fixed_controls.append_array([video, refresh_video])
-	status.position = Vector2(400, 950)
+	set_meta("cartoon_style_children_excluded",true)
+	art_ui = preload("res://scenes/balatro/scripts/shop_art_ui.gd").new()
+	add_child(art_ui)
+	art_ui.setup_shop(self)
 
 	_build_purchase_dialog()
-	get_viewport().size_changed.connect(_fit_offer_scale, CONNECT_DEFERRED)
 	result_dialog = preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	add_child(result_dialog)
 	manager.changed.connect(_update)
@@ -212,22 +115,24 @@ func _build_purchase_dialog() -> void:
 	fit.call()
 	purchase_dialog.hide()
 
-func _fit_offer_scale() -> void:
-	# Keep design sizes as the maximum, even on larger physical displays.
-	var display_scale := get_viewport().get_stretch_transform().get_scale().abs()
-	var factor := 1.0 / maxf(1.0, maxf(display_scale.x, display_scale.y))
-	for offer in grid.get_children():
-		for child in offer.get_children():
-			if child is Control:
-				child.pivot_offset = child.size * 0.5
-				child.scale = Vector2.ONE * factor
-
 func open() -> void:
+	if is_instance_valid(fortune_wheel): fortune_wheel.hide()
+	art_ui.show()
 	coins_amount.text = menu_owner.coins_label.text
+	art_ui._fit()
+	art_ui._tick()
 	_update()
 	manager.refresh_daily()
 	if not manager.inventory_ready or manager.stale or not manager.last_error.is_empty():
 		manager.refresh()
+
+func open_wheel() -> void:
+	if manager.purchasing or get_node("/root/RewardedAds").busy: return
+	if not is_instance_valid(fortune_wheel):
+		fortune_wheel = preload("res://scenes/balatro/scripts/fortune_wheel.gd").new()
+		add_child(fortune_wheel)
+		fortune_wheel.setup_wheel(self)
+	fortune_wheel.open()
 
 func _input(event: InputEvent) -> void:
 	if not is_visible_in_tree():
@@ -336,6 +241,8 @@ func _update() -> void:
 		status.text = "IN ATTESA DELL'ACCOUNT."
 	if not manager.daily_error.is_empty():
 		status.text += "\n" + manager.daily_error
+	var ad_message: String = get_node("/root/RewardedAds").message
+	if not ad_message.is_empty(): status.text += "\n" + ad_message
 	status.visible = not status.text.is_empty()
 	var items: Array = manager.get_daily_items()
 	var snapshot: Array = []
@@ -350,19 +257,20 @@ func _update() -> void:
 		child.queue_free()
 	for index in mini(items.size(), ITEM_RECTS.size()):
 		_build_offer(items[index], index)
-	_fit_offer_scale()
 
 func _build_offer(item: Dictionary, index: int) -> void:
 	var offer := Control.new()
 	offer.name = "Offer%d" % index
 	offer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grid.add_child(offer)
-	var bounds: Rect2 = ITEM_RECTS[index]
+	offer.position = ITEM_RECTS[index].position
+	offer.size = ITEM_RECTS[index].size
+	var bounds := Rect2(68,28,200,195)
 	var preview := TextureRect.new()
 	preview.name = "Preview"
 	preview.position = bounds.position
-	preview.size = bounds.size
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.size = bounds.size
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -373,9 +281,7 @@ func _build_offer(item: Dictionary, index: int) -> void:
 	elif item.item_type == "throwable" and preload("res://scenes/balatro/scripts/throw_catalog.gd").enabled(item.asset_id):
 		preview.texture = load("res://scenes/balatro/resources/" + preload("res://scenes/balatro/scripts/throw_catalog.gd").FILES[item.asset_id])
 	offer.add_child(preview)
-	if preview.texture:
-		_add_item_shadow(preview)
-	else:
+	if preview.texture == null:
 		var caption := _label(str(item.name), 22)
 		caption.position = bounds.position
 		caption.size = bounds.size
@@ -387,51 +293,34 @@ func _build_offer(item: Dictionary, index: int) -> void:
 	tag.name = "PriceTag"
 	tag.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.position = TAG_RECTS[index].position + Vector2([-15, -25, -35][index], -12)
-	tag.size = TAG_RECTS[index].size
+	tag.position = Vector2(88,236)
+	tag.size = Vector2(176,52)
 	offer.add_child(tag)
 	var owned: bool = manager.owns_item(item.id)
 	var price := _label("POSSEDUTO" if owned else str(item.price), 34)
 	price.name = "Price"
-	price.add_theme_color_override("font_color", PRICE_COLOR)
-	price.position = Vector2.ZERO
-	price.size = tag.size
+
+	price.position = Vector2.ZERO if owned else Vector2(42,0)
+	price.size = tag.size if owned else Vector2(134,52)
+	if not owned:
+		var coin := TextureRect.new()
+		coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		coin.texture = COIN_TEXTURE
+		coin.position = Vector2(0,8)
+		coin.size = Vector2(36,36)
+		coin.mouse_filter = MOUSE_FILTER_IGNORE
+		tag.add_child(coin)
 	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	price.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var font_size := 34
+	var font_size := 40
 	while FONT.get_string_size(price.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > price.size.x and font_size > 10:
 		font_size -= 1
 	price.add_theme_font_size_override("font_size", font_size)
 	tag.add_child(price)
 	if not owned and item.is_available:
-		item_previews[str(item.id)] = [preview, tag]
-		for target in [preview, tag]:
-			target.mouse_filter = Control.MOUSE_FILTER_PASS
-			target.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-			preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(target, func():
-				var stretch := get_viewport().get_stretch_transform().get_scale().abs()
-				return Vector2.ONE / maxf(1.0, maxf(stretch.x, stretch.y))
-			)
-
-func _add_item_shadow(preview: TextureRect) -> void:
-	var shadow := Control.new()
-	shadow.name = "ItemShadow"
-	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.show_behind_parent = true
-	preview.add_child(shadow)
-	shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color.TRANSPARENT
-	style.shadow_color = ITEM_SHADOW_COLOR
-	style.shadow_size = ITEM_SHADOW_SOFTNESS
-	style.shadow_offset = ITEM_SHADOW_OFFSET
-	style.set_corner_radius_all(10)
-	shadow.draw.connect(func():
-		if preview.texture == null or preview.size.x <= 0 or preview.size.y <= 0:
-			return
-		# Segue la carta effettiva (KEEP_ASPECT), non tutta la cella della griglia.
-		var texture_size := preview.texture.get_size()
-		var fitted := texture_size * minf(preview.size.x / texture_size.x, preview.size.y / texture_size.y)
-		shadow.draw_style_box(style, Rect2((preview.size - fitted) / 2.0, fitted))
-	)
-	preview.resized.connect(shadow.queue_redraw)
+		item_previews[str(item.id)] = [offer]
+		offer.mouse_filter = Control.MOUSE_FILTER_PASS
+		offer.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		preview.mouse_filter = Control.MOUSE_FILTER_PASS
+		preview.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(preview)

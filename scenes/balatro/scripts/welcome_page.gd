@@ -108,18 +108,23 @@ func _social_choices(provider: String) -> void:
 	if working or provider not in ["apple", "google"]:
 		return
 	working = true
-	# Reuse the settings login flow instead of maintaining a second OAuth UI.
-	var panel := preload("res://scenes/balatro/scripts/account_panel.gd").new()
-	add_child(panel)
-	panel.setup(menu, "signin_" + provider if account.user_id.is_empty() else provider)
-	panel.tree_exited.connect(func(): working = false, CONNECT_ONE_SHOT)
-	panel.action_completed.connect(func(action: String):
-		if action == "social":
-			working = false
-			guest = false
-			panel.queue_free()
-			_name_page()
-	)
+	for button in controls: button.disabled = true
+	notice.text = "Completa l'accesso nel browser."
+	var social := account.get_node("SocialAuth")
+	social.completed.connect(_social_completed, CONNECT_ONE_SHOT)
+	# First-access buttons mean sign in, not linking an existing guest profile.
+	# Reuse the existing PKCE/browser implementation without the account dialog.
+	social.start(provider,false)
+
+func _social_completed(result: Dictionary) -> void:
+	working = false
+	for button in controls:
+		if is_instance_valid(button): button.disabled = false
+	if result.get("ok",false):
+		guest = false
+		_name_page()
+	elif is_instance_valid(notice):
+		notice.text = str(result.get("message","Accesso non riuscito. Riprova."))
 
 func _email_choices() -> void:
 	_clear()

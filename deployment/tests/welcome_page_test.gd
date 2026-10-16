@@ -1,5 +1,16 @@
 extends SceneTree
 
+class Account extends Node:
+	var user_id := "test"
+
+class Social extends Node:
+	signal completed(result: Dictionary)
+	var provider := ""
+	var linking := true
+	func start(value: String, link: bool) -> void:
+		provider = value
+		linking = link
+
 class Host extends Control:
 	var tutorial_offered := false
 	func offer_tutorial() -> void: tutorial_offered = true
@@ -21,17 +32,27 @@ func _test() -> void:
 	var page = load("res://scenes/balatro/scripts/welcome_page.gd").new()
 	host.add_child(page)
 	page.menu = host
-	page.account = root.get_node("AccountSession")
+	var account := Account.new()
+	host.add_child(account)
+	var social := Social.new()
+	social.name = "SocialAuth"
+	account.add_child(social)
+	page.account = account
 	page.cloud = root.get_node("AccountProfile")
 	page.column = VBoxContainer.new()
 	page.add_child(page.column)
 	page._choices()
 	assert(page.controls.size() == 4) # Apple, Google, Email, Ospite.
 	page.controls[0].pressed.emit()
-	assert(page.controls[0].text == "CONTINUA")
+	assert(social.provider=="apple" and not social.linking and page.working)
+	assert(page.controls.size()==4 and page.controls[0].disabled)
+	social.completed.emit({"ok":false,"message":"Annullato"})
+	assert(not page.working and not page.controls[0].disabled)
 	page._choices()
 	page.controls[1].pressed.emit()
-	assert(page.controls[0].text == "CONTINUA")
+	assert(social.provider=="google" and not social.linking)
+	social.completed.emit({"ok":true})
+	assert(is_instance_valid(page.username))
 	page._email_choices()
 	assert(page.controls.size() == 3)
 	page._name_page()
@@ -43,5 +64,5 @@ func _test() -> void:
 	page._offer_tutorial()
 	assert(host.tutorial_offered)
 	host.queue_free()
-	print("PASS: welcome choices, social menus, email menu and username validation")
+	print("PASS: direct Apple/Google sign-in, cancellation, username step and email menu")
 	quit()

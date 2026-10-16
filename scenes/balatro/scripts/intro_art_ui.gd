@@ -10,15 +10,21 @@ func setup_intro(welcome: Control) -> void:
 	set_meta("cartoon_style_children_excluded", true)
 	font = welcome.FONT.duplicate() as FontFile
 	font.multichannel_signed_distance_field = true
-	var backdrop := ColorRect.new()
-	backdrop.color = Color("171038")
-	add_child(backdrop)
-	backdrop.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	backdrop.mouse_filter = MOUSE_FILTER_IGNORE
 	composition = Control.new()
 	add_child(composition)
 	composition.size = DESIGN
-	_image(composition, INTRO_ART + "introSfondo.png", Rect2(Vector2.ZERO, DESIGN))
+	var logo := _image(composition, "res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/titoloHome.png", Rect2(450, 10, 1148, 550))
+	logo.name = "WelcomeLogo"
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var separator := _label(composition,"OPPURE",Rect2(850,725,348,44),32)
+	separator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for x in [490,1210]:
+		var line := ColorRect.new()
+		composition.add_child(line)
+		line.position = Vector2(x,747)
+		line.size = Vector2(348,3)
+		line.color = Color("b7a4e8")
+		line.mouse_filter = MOUSE_FILTER_IGNORE
 	buttons.append(_button(composition, INTRO_ART + "introApple.png", Rect2(356, 611, 428, 99), welcome._social_choices.bind("apple")))
 	buttons.append(_button(composition, INTRO_ART + "introGoogle.png", Rect2(810, 611, 428, 99), welcome._social_choices.bind("google")))
 	buttons.append(_button(composition, INTRO_ART + "introEmail.png", Rect2(1264, 611, 428, 99), welcome._email_choices))

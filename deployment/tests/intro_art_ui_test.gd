@@ -15,6 +15,9 @@ func run() -> void:
 	var intro = preload("res://scenes/balatro/scripts/intro_art_ui.gd").new()
 	root.add_child(intro)
 	intro.setup_intro(host)
+	assert(intro.find_child("WelcomeLogo",true,false).stretch_mode==TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	for child in intro.get_children():
+		assert(not child is ColorRect,"No opaque rectangle over the app background")
 	for index in 4:
 		intro.buttons[index].pressed.emit()
 		assert(host.selected == ["apple", "google", "email", "guest"][index])

@@ -132,6 +132,9 @@ func run() -> void:
 	assert(surface.get_child_count()==10,"Coins fly into existing counter; no duplicate is created")
 	popup.queue_free()
 	assert(wheel.disc.size==Vector2(820,820))
+	assert(wheel.spin.position.y > wheel.disc.position.y + wheel.disc.size.y)
+	assert(is_equal_approx(wheel.spin.size.x/wheel.spin.size.y,656.0/232.0))
+	assert(wheel.spin.get_theme_stylebox("normal").texture.resource_path.ends_with("giraRuota.png"))
 	assert(wheel.spin_sound.stream!=null)
 	wheel.spin_duration = 0.01
 	for outcome in wheel.SECTORS:

@@ -1,7 +1,7 @@
 extends "res://scenes/balatro/scripts/multiplayer_entry_ui.gd"
 const WHEEL := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/ruotaUI/"
 const HOME := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/"
-const DESIGN := Vector2(1920,884)
+const DESIGN := Vector2(1920,1040)
 # Clockwise sectors from the pointer; graphics do NOT determine probabilities.
 const SECTORS := {"crown":[7],"coins_5000":[1],"coins_1000":[3,9],"coins_50":[5,11],"tomato":[4,10],"poop":[2,8],"tissues":[0,6]}
 var host: Control
@@ -27,7 +27,7 @@ func setup_wheel(owner_page: Control) -> void:
 	add_child(composition)
 	composition.size = DESIGN
 	composition.mouse_filter = MOUSE_FILTER_IGNORE
-	_image(composition,WHEEL+"retroRuota.png",Rect2(620,0,680,880))
+	_image(composition,WHEEL+"retroRuota.png",Rect2(610,-12,700,920))
 	disc = TextureRect.new()
 	composition.add_child(disc)
 	var crop := AtlasTexture.new()
@@ -35,14 +35,17 @@ func setup_wheel(owner_page: Control) -> void:
 	crop.region = Rect2(515,184,1533,1533)
 	disc.texture = crop
 	disc.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	disc.position = Vector2(550,45)
-	disc.size = Vector2(820,820)
+	disc.position = Vector2(525,60)
+	disc.size = Vector2(860,860)
 	disc.pivot_offset = disc.size/2
 	disc.mouse_filter = MOUSE_FILTER_IGNORE
 	_image(composition,WHEEL+"indicatoreRuota.png",Rect2(860,-4,200,183))
 	_image(composition,WHEEL+"premiSX.png",Rect2(100,270,345,364))
 	_image(composition,WHEEL+"premiDX.png",Rect2(1490,200,345,496))
-	spin = _button(composition,WHEEL+"prezzoRuota.png",Rect2(910,418,100,74),_request_spin)
+	spin = _button(composition,WHEEL+"giraRuota.png",Rect2(740,880,428,156),_request_spin,false)
+	spin.set_meta("touch_hover",true)
+	spin.set_meta("hover_when_disabled",true)
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(spin)
 	spin.tooltip_text = "Guarda un video per girare. Nessun limite giornaliero."
 	back_anchor = Control.new()
 	add_child(back_anchor)
@@ -82,6 +85,7 @@ func _request_spin() -> void:
 func _update() -> void:
 	var ads := get_node("/root/RewardedAds")
 	spin.disabled = spinning or ads.busy or (not ads.supported() and not ads.pending_for_account())
+	spin.set_meta("hover_when_disabled",not spinning and not ads.busy)
 	back.disabled = spinning or ads.busy
 	coins.text = str(int(get_node("/root/AccountProfile").profile.get("credits",0)))
 
@@ -134,4 +138,3 @@ func _layout(bounds: Rect2) -> void:
 	var factor := minf(bounds.size.x/DESIGN.x,bounds.size.y/DESIGN.y)
 	composition.scale = Vector2.ONE*factor
 	composition.position = bounds.get_center()-DESIGN*factor/2
-

@@ -44,7 +44,7 @@ func render(_rooms: Array = []) -> void:
 	var rewards_visible: bool = flow.solo or not flow.base_done()
 	if flow.solo:
 		if flow.won:
-			_image(composition,GAME+"crownVincente.png",Rect2(885,95,150,105))
+			_image(composition,GAME+"crownVincente.png",Rect2(885,95,150,105)).stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		var title := _label(composition,"HAI VINTO" if flow.won else "SEI STATO ELIMINATO",Rect2(160,235,1600,120),90)
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	elif flow.final_screen:
@@ -107,7 +107,7 @@ func _draw_podium() -> void:
 		portrait.position = Vector2(x-size/2,y)
 		portrait.size = Vector2(size,size)
 		if i==0:
-			_image(composition,GAME+"crownVincente.png",Rect2(x-75,135,150,105))
+			_image(composition,GAME+"crownVincente.png",Rect2(x-75,135,150,105)).stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		else:
 			var rank := _label(composition,"%d°" % (i+1),Rect2(x-45,y-65,90,50),30)
 			rank.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

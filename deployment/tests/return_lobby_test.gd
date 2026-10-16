@@ -1,6 +1,7 @@
 extends SceneTree
 
 class RewardsStub extends Node:
+	func enabled() -> bool: return false
 	func start_match(_room: Dictionary) -> void: pass
 	func observe(_room: Dictionary) -> void: pass
 
@@ -24,6 +25,7 @@ func session(label: String, peer: MultiplayerPeer) -> Session:
 	return node
 
 func _run() -> void:
+	create_timer(15).timeout.connect(func(): quit(1))
 	var transport := WebSocketMultiplayerPeer.new()
 	assert(transport.create_server(18923, "127.0.0.1") == OK)
 	var server := session("Server", transport)

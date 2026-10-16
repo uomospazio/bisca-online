@@ -11,6 +11,10 @@ static func present(network: Node, receipt: Dictionary) -> void:
 	var account: Node = network.get_node("/root/AccountSession")
 	var uid := str(receipt.get("user_id", ""))
 	var amount := int(receipt.get("amount", 0))
+	var host := network.get_tree().current_scene
+	if host != null and host.get("result_flow") != null and uid == account.user_id and not uid.is_empty():
+		host.result_flow.receive_receipt(receipt)
+		return
 	if uid != account.user_id or uid.is_empty() or amount not in [30, 50]:
 		return
 	network.reward_seen.rpc_id(1, str(receipt.get("match_id", "")))
@@ -162,47 +166,41 @@ func _wait_for_match_presentation() -> void:
 		await get_tree().process_frame
 
 func _animate_coins_to_balance(surface: Control, source: TextureRect, amount_label: Label, receipt: Dictionary) -> void:
-	var host := get_tree().current_scene
-	var original: Control = host.find_child("CoinsCounter", true, false) if host != null else null
-	if original == null:
-		return
-	# Copia solo l'aspetto del contatore HOME; il saldo resta quello del server.
-	var stage := Control.new()
-	surface.add_child(stage)
-	stage.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	# Gli offset sono relativi all'ancora centrale; position invece è assoluta
-	# nel genitore e spostava il contatore sopra lo schermo.
-	stage.offset_left = -960
-	stage.offset_top = -540
-	stage.offset_right = 960
-	stage.offset_bottom = 540
-	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var counter := original.duplicate(0) as Control
-	if counter.has_meta("safe_edge"):
-		counter.remove_meta("safe_edge")
-	stage.add_child(counter)
-	# La HOME nascosta può lasciare alpha/trasformazioni di uscita sulla copia.
-	# Ricostruisci la posizione di riposo e rendi il contatore indipendente.
-	var menu_style = preload("res://scenes/balatro/scripts/main_menu.gd")
-	counter.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	counter.size = menu_style.COINS_SIZE
-	counter.position = Vector2(1920 - menu_style.COINS_RIGHT_MARGIN - counter.size.x, menu_style.COINS_TOP_MARGIN)
-	counter.modulate = Color.WHITE
-	counter.self_modulate = Color.WHITE
-	counter.rotation = 0.0
-	counter.show()
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(counter, true)
+	var counter: Control
+	for candidate in get_tree().get_nodes_in_group("visible_coin_counter"):
+		if candidate.is_visible_in_tree():
+			counter = candidate
+			break
+	var existing := counter != null
+	if not existing:
+		counter = TextureRect.new()
+		counter.name = "CoinsCounter"
+		counter.texture = preload("res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/contatoreMonete.png")
+		counter.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		counter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		surface.add_child(counter)
+		var amount := _label("",40)
+		amount.name = "CoinsAmount"
+		amount.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		counter.add_child(amount)
+		# Use the Home layout helper, including mobile safe areas, for the
+		# temporary in-game counter. No dependency on hidden legacy nodes.
+		var layout := preload("res://scenes/balatro/scripts/reward_counter_layout.gd").new()
+		surface.add_child(layout)
+		layout.setup_counter(counter,amount)
+		layout._fit()
 	var label := counter.find_child("CoinsAmount", true, false) as Label
 	# La ricevuta contiene il saldo DOPO questo premio: 130 - 30 = 100.
 	# Il refresh del profilo può essere già arrivato oppure essere ancora in volo.
 	var balance := int(receipt.get("credits", 0))
 	var start := maxi(0, balance - int(receipt.amount))
 	label.text = str(start)
-	counter.pivot_offset = counter.size / 2.0
-	counter.scale = Vector2.ZERO
-	var pop := create_tween()
-	pop.tween_property(counter, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await pop.finished
+	if not existing:
+		counter.pivot_offset = counter.size / 2.0
+		counter.scale = Vector2.ZERO
+		var pop := create_tween()
+		pop.tween_property(counter, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		await pop.finished
 	await get_tree().create_timer(0.45).timeout
 	var destination := counter.get_global_transform_with_canvas() * (counter.size / 2.0)
 	var origin := source.get_global_transform_with_canvas() * (source.size / 2.0)
@@ -233,9 +231,10 @@ func _animate_coins_to_balance(surface: Control, source: TextureRect, amount_lab
 
 func _animate_counter_gain(counter: Control) -> void:
 	# Tre piccoli impulsi mentre il numero sale, poi torna alla scala originale.
+	var base := counter.scale
 	var bounce := create_tween().set_loops(3)
-	bounce.tween_property(counter, "scale", Vector2.ONE * 1.06, 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	bounce.tween_property(counter, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bounce.tween_property(counter, "scale", base * 1.06, 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	bounce.tween_property(counter, "scale", base, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _refresh_balance(uid: String) -> void:
 	balance_loading = true

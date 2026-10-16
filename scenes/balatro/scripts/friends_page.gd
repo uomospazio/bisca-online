@@ -30,6 +30,8 @@ var account_box: TextureRect
 var blocks_pop: Tween
 var search_timer: Timer
 var content_root: Control
+var page_font: FontFile
+var back_anchor: Control
 var back_button: Button
 var back_pop: Tween
 var back_pop_amount := 1.0
@@ -38,10 +40,8 @@ func _set_back_pop(amount: float) -> void:
 	back_pop_amount = amount
 	if not is_instance_valid(back_button):
 		return
-	var fitted := content_root.scale.x
 	back_button.pivot_offset = back_button.size / 2
-	back_button.scale = Vector2.ONE * fitted * amount
-	back_button.position = content_root.position + back_button.size * (fitted - 1.0) * 0.5
+	back_button.scale = Vector2.ONE * amount
 
 func _pop_back_button() -> void:
 	if back_pop and back_pop.is_valid():
@@ -112,11 +112,16 @@ func _layout_in_bounds(bounds: Rect2) -> void:
 		clampf(desired.x, bounds.position.x, bounds.end.x - rendered.x),
 		clampf(desired.y, bounds.position.y, bounds.end.y - rendered.y))
 	if is_instance_valid(back_button):
-		# Back and account artwork share an origin and scale, preserving the cutout.
+		# Same safe-area placement and scale as Singleplayer.
+		back_anchor.position = bounds.position
+		back_anchor.scale = Vector2.ONE*maxf(0.01,minf(bounds.size.x/1658.0,bounds.size.y/796.0))
 		_set_back_pop(back_pop_amount)
 
 func setup(host: Control) -> void:
 	menu = host
+	page_font = host.KIDS_FONT.duplicate() as FontFile
+	page_font.multichannel_signed_distance_field = true
+	page_font.msdf_size = 64
 	manager = get_node("/root/FriendsManager")
 	set_meta("cartoon_style_children_excluded", true)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -125,10 +130,13 @@ func setup(host: Control) -> void:
 	content_root.size = PAGE_SIZE
 	_apply_friends_transform()
 	_build_account_panel()
-	var back := action_button(self, "←", menu.show_home, "Indietro")
+	back_anchor = Control.new()
+	add_child(back_anchor)
+	back_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var back := action_button(back_anchor, "←", menu.show_home, "Indietro")
 	back_button = back
-	back.position = Vector2(40, 40)
-	back.size = Vector2(104, 104)
+	back.position = Vector2.ZERO
+	back.size = Vector2(108, 98)
 	get_viewport().size_changed.connect(_apply_friends_transform, CONNECT_DEFERRED)
 	_apply_friends_transform.call_deferred()
 	friends_box = Panel.new()
@@ -150,7 +158,7 @@ func setup(host: Control) -> void:
 	query.size = Vector2(855, 88)
 	query.placeholder_text = "Cerca un amico per nome o #codice"
 	query.max_length = 64
-	query.add_theme_font_override("font", menu.KIDS_FONT)
+	query.add_theme_font_override("font", page_font)
 	query.add_theme_font_size_override("font_size", 28)
 	query.add_theme_color_override("font_color", Color("faf6ff"))
 	query.add_theme_color_override("font_placeholder_color", Color("b6a0ed"))
@@ -324,7 +332,7 @@ func action_button(parent: Node, text: String, callback: Callable, hint := "", p
 	focus.set_corner_radius_all(36)
 	button.add_theme_stylebox_override("focus", focus)
 	button.pressed.connect(callback)
-	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button, (func(): return Vector2.ONE * content_root.scale.x) if text == "←" else Callable())
+	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	return button
 
 func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:

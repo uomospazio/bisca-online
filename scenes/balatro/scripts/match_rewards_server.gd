@@ -6,6 +6,7 @@ const Account = preload("res://scenes/balatro/scripts/account_session.gd")
 const REQUIRE_THREE_DISTINCT_ACCOUNTS := false
 signal credited(receipt: Dictionary)
 var pending: Dictionary = {}
+var completed_matches: Dictionary = {}
 var sending := false
 
 func _ready() -> void:
@@ -81,7 +82,7 @@ func resume_participant(room: Dictionary, slot: int) -> void:
 	suspended.erase(slot)
 
 func observe(room: Dictionary) -> void:
-	if not enabled() or not room.has("reward_users") or room.rules == null:
+	if room.rules == null:
 		return
 	# Capture all seats now, including disconnected players, before later rounds
 	# change the survivor count. Same-round eliminations share a place.
@@ -91,6 +92,9 @@ func observe(room: Dictionary) -> void:
 			room.season_places[player.id] = 1
 		elif not player.active and not room.season_places.has(player.id):
 			room.season_places[player.id] = maxi(2, room.rules.active_ids().size() + 1)
+	if not enabled() or not room.has("reward_users"): return
+	if room.rules.phase == "finished":
+		completed_matches[room.reward_match] = true
 	for slot in room.reward_users:
 		var uid: String = room.reward_users[slot]
 		if room.reward_sent.has(uid):
@@ -112,6 +116,11 @@ func _flush() -> void:
 	if sending or not enabled():
 		return
 	sending = true
+	for match_id in completed_matches.keys():
+		var done := await _http("/rest/v1/rpc/bisca_finish_reward_match", PackedStringArray([
+			"apikey: " + OS.get_environment("SUPABASE_SECRET_KEY"), "Content-Type: application/json"]),
+			HTTPClient.METHOD_POST, JSON.stringify({"p_match_id":match_id}))
+		if not done.is_empty(): completed_matches.erase(match_id)
 	for key in pending.keys():
 		var secret := OS.get_environment("SUPABASE_SECRET_KEY")
 		var data := await _http("/rest/v1/rpc/bisca_record_ranked_match", PackedStringArray([
@@ -119,8 +128,7 @@ func _flush() -> void:
 			"Content-Type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(pending[key]))
 		if not data.is_empty():
 			pending.erase(key)
-			if int(data.get("amount", 0)) > 0:
-				credited.emit(data)
+			credited.emit(data)
 	# Idempotent server-side settlement; retries after downtime pay only once.
 	await _http("/rest/v1/rpc/bisca_settle_seasons", PackedStringArray([
 		"apikey: " + OS.get_environment("SUPABASE_SECRET_KEY"), "Content-Type: application/json"]), HTTPClient.METHOD_POST, "{}")

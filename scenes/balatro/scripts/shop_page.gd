@@ -3,6 +3,7 @@ extends Control
 ## Six offers: two backs, two avatars, two throwables.
 const Style = preload("res://scenes/balatro/scripts/lexispell_style.gd")
 const FONT = preload("res://scenes/balatro/fonts/Comic Lemon.otf")
+var ui_font: FontFile
 const COIN_TEXTURE = preload("res://scenes/balatro/trick_asset/ui_bisca/coin.png")
 const ITEM_RECTS := [
 	Rect2(356,0,336,300), Rect2(712,0,336,300), Rect2(1068,0,336,300),
@@ -33,6 +34,9 @@ var pending_price := 0
 var pending_user := ""
 
 func setup(menu: Control) -> void:
+	ui_font = FONT.duplicate() as FontFile
+	ui_font.multichannel_signed_distance_field = true
+	ui_font.msdf_size = 64
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu_owner = menu
 	manager = get_node("/root/ShopManager")
@@ -222,7 +226,7 @@ func _label(text: String, font_size := 22) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_override("font", FONT)
+	label.add_theme_font_override("font", ui_font)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", Style.TEXT)
 	return label
@@ -316,6 +320,13 @@ func _build_offer(item: Dictionary, index: int) -> void:
 	while FONT.get_string_size(price.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > price.size.x and font_size > 10:
 		font_size -= 1
 	price.add_theme_font_size_override("font_size", font_size)
+	if not owned:
+		# Size the price to its glyphs: a centered oversized label adds a false gap.
+		var text_width := ceilf(ui_font.get_string_size(price.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x)
+		price.size.x = text_width
+		price.position.x = 42.0 # 36px coin + 6px gap.
+		tag.size.x = 42.0+text_width
+	tag.position.x = (offer.size.x-tag.size.x)/2.0
 	tag.add_child(price)
 	if not owned and item.is_available:
 		item_previews[str(item.id)] = [offer]

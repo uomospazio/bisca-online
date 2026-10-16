@@ -748,6 +748,8 @@ func _broadcast(room: Dictionary) -> void:
 		var state := {"code": room.code, "you": id, "rev": room.rev, "stage": room.stage, "capacity": room.capacity, "bots": room.bots, "people": []}
 		state["singleplayer"] = bool(room.get("singleplayer", false))
 		state["reward_match"] = str(room.get("reward_match", ""))
+		state["season_places"] = room.get("season_places",{}).duplicate()
+		state["reward_expected"] = rewards != null and rewards.enabled() and room.get("reward_users",{}).has(id)
 		state["private"] = bool(room.get("private", true))
 		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
 		state["bot_count"] = room.get("bot_count", 2)

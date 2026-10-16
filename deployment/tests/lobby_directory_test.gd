@@ -1,6 +1,7 @@
 extends SceneTree
 
 class RewardsStub extends Node:
+	func enabled() -> bool: return false
 	func verify(_jwt: String) -> String: return ""
 	func observe(_room: Dictionary) -> void: pass
 

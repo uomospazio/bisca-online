@@ -241,13 +241,13 @@ func _key(placement: String, context: String) -> String:
 	return str(_account.user_id) + ":" + placement + ":" + context
 
 func claimed(placement: String, context: String) -> bool:
-	return placement in ["solo", "multi"] and _completed.has(_key(placement, context))
+	return placement in ["solo", "multi", "multi_final"] and _completed.has(_key(placement, context))
 
 func pending_for_account() -> bool:
 	return not _pending.is_empty() and str(_pending.get("owner", "")) == str(_account.user_id)
 
 func request_reward(placement: String, context := "") -> void:
-	if busy or not placement in ["shop", "refresh", "solo", "multi", "wheel"]:
+	if busy or not placement in ["shop", "refresh", "solo", "multi", "multi_final", "wheel"]:
 		return
 	if not _account.is_authenticated():
 		_set_message("Connettiti a Internet per ricevere il premio.")
@@ -259,7 +259,7 @@ func request_reward(placement: String, context := "") -> void:
 	if not _pending.is_empty():
 		_set_message("Recupera prima il premio dell'account precedente.")
 		return
-	if claimed(placement, context) or (placement in ["solo", "multi"] and context.is_empty()):
+	if claimed(placement, context) or (placement in ["solo", "multi", "multi_final"] and context.is_empty()):
 		_set_message("Premio già ricevuto o partita non disponibile.")
 		return
 	if not supported():
@@ -358,7 +358,13 @@ func _claim() -> void:
 			get_node("/root/ShopManager").refresh()
 		# Solo una risposta positiva del backend avvia la presentazione; vale
 		# anche per il recupero di una transazione dopo una caduta di rete.
-		if int(result.get("amount", 0)) > 0:
+		var handled := false
+		for flow in get_tree().get_nodes_in_group("match_result_flow"):
+			if flow.accepts_ad(str(pending.owner),str(pending.p_placement),str(pending.p_context)):
+				await flow.present_ad_reward(result)
+				handled = true
+				break
+		if not handled and int(result.get("amount", 0)) > 0:
 			await _present_credit_reward(str(pending.owner), result)
 	if pending.p_placement == "wheel":
 		_finish(preload("res://scenes/balatro/scripts/fortune_wheel.gd").result_text(result))

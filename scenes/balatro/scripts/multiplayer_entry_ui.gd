@@ -186,9 +186,9 @@ func _layout(bounds: Rect2) -> void:
 	var factor := maxf(0.01, minf(bounds.size.x / COMPOSITION_SIZE.x, bounds.size.y / COMPOSITION_SIZE.y))
 	composition.scale = Vector2.ONE * factor
 	composition.position = bounds.get_center() - COMPOSITION_SIZE * factor * 0.5
-	if is_instance_valid(page.info):
-		var center_in_right := right.get_global_transform_with_canvas().affine_inverse() * (get_viewport_rect().size * 0.5)
-		page.info.position.x = center_in_right.x - page.info.size.x * 0.5
+	if is_instance_valid(page.info) and page.info.get_parent() == right:
+		# Center under the right-hand artwork, not the entire viewport.
+		page.info.position.x = (BLOCK_SIZE.x-page.info.size.x)*0.5
 	back.position = bounds.position
 	# Use the room's responsive size, independently of the wider entry artwork.
 	var screen_center := get_global_transform_with_canvas().affine_inverse() * (get_viewport_rect().size * 0.5)

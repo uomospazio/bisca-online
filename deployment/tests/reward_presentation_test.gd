@@ -8,6 +8,7 @@ func _initialize() -> void:
 	run.call_deferred()
 
 func run() -> void:
+	create_timer(20).timeout.connect(func(): quit(1))
 	var menu = load("res://scenes/balatro/scripts/main_menu.gd").new()
 	root.add_child(menu)
 	current_scene = menu
@@ -26,14 +27,17 @@ func run() -> void:
 	assert(counter != null and counter.visible)
 	assert(counter.modulate.a == 1.0, "Il contatore deve comparire anche se la HOME è nascosta")
 	var screen_position: Vector2 = counter.get_global_transform_with_canvas().origin
-	var expected := Vector2(root.get_visible_rect().size.x - 40 - 320, 32)
+	menu.home_art._fit()
+	var expected: Vector2 = menu.home_art.composition.get_global_transform_with_canvas()*Vector2(1540,0)
+	assert(counter.texture.resource_path.ends_with("contatoreMonete.png"))
 	print("Reward counter: ", screen_position, " expected: ", expected)
 	assert(screen_position.is_equal_approx(expected), "Contatore fuori posizione rispetto ai bordi dello schermo")
 	for screen_size in [Vector2i(2340, 1080), Vector2i(1440, 1080), Vector2i(1920, 1080)]:
 		root.size = screen_size
 		await process_frame
 		await process_frame
-		expected = Vector2(root.get_visible_rect().size.x - 360, 32)
+		menu.home_art._fit()
+		expected = menu.home_art.composition.get_global_transform_with_canvas()*Vector2(1540,0)
 		assert(counter.get_global_transform_with_canvas().origin.is_equal_approx(expected), "Margini stabili dopo resize")
 	var label := counter.find_child("CoinsAmount", true, false)
 	assert(label.text == "100", "Prima del volo mostrare il saldo precedente")

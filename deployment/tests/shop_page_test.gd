@@ -48,6 +48,8 @@ func run() -> void:
 	await create_timer(0.4).timeout
 	var page: Control = menu.shop_page
 	assert(page.grid.get_child_count()==6)
+	assert(page.ui_font.multichannel_signed_distance_field)
+	assert(page.art_ui.font==page.ui_font)
 	assert(page.fixed_controls.size()==6)
 	assert(page.art_ui.video.disabled and page.art_ui.reroll.disabled,"No real desktop ads")
 	for button in [page.art_ui.video,page.art_ui.reroll]:
@@ -65,6 +67,15 @@ func run() -> void:
 		await create_timer(0.3).timeout
 		assert(button.scale.is_equal_approx(Vector2.ONE))
 	page.art_ui.update_ads()
+	manager.daily_refresh_available = false
+	page.art_ui.update_ads()
+	assert(page.art_ui.reroll.disabled and page.art_ui.reroll.modulate.a<1.0)
+	page.art_ui.reroll.mouse_entered.emit()
+	await create_timer(0.3).timeout
+	assert(page.art_ui.reroll.scale.is_equal_approx(Vector2.ONE),"Used reroll stays off")
+	manager.daily_refresh_available = true
+	page.art_ui.update_ads()
+	assert(page.art_ui.reroll.modulate==Color.WHITE)
 	assert(page.art_ui.reward_caption.text=="+50")
 	assert(page.art_ui.countdown.text!="--:--:--")
 	for index in range(6):
@@ -95,11 +106,39 @@ func run() -> void:
 	assert(page.grid.get_child_count()==6)
 	page.open_wheel()
 	var wheel = page.fortune_wheel
+	assert(wheel.font==page.ui_font)
+	menu.home_art._fit()
+	menu.solitaria_ui._fit()
+	var home_corner: Vector2 = menu.home_art.composition.get_global_transform_with_canvas()*Vector2(1540,0)
+	for counter in [page.art_ui.counter,wheel.counter]:
+		assert(counter.get_global_transform_with_canvas().origin.is_equal_approx(home_corner))
+		assert(counter.size==Vector2(300,110))
+		assert(counter.get_global_transform_with_canvas().get_scale().is_equal_approx(menu.home_art.composition.get_global_transform_with_canvas().get_scale()))
+	for anchor in [page.art_ui.back_anchor,wheel.back_anchor]:
+		assert(anchor.get_global_transform_with_canvas().is_equal_approx(menu.solitaria_ui.back_anchor.get_global_transform_with_canvas()))
+	var popup := preload("res://scenes/balatro/scripts/match_reward_popup.gd").new()
+	root.add_child(popup)
+	var surface := Control.new()
+	popup.add_child(surface)
+	var source := TextureRect.new()
+	source.size = Vector2(100,100)
+	surface.add_child(source)
+	var amount := Label.new()
+	surface.add_child(amount)
+	var counter_scale: Vector2 = wheel.counter.scale
+	await popup._animate_coins_to_balance(surface,source,amount,{"amount":50,"credits":150})
+	assert(wheel.coins.text=="150" and wheel.counter.is_visible_in_tree())
+	assert(wheel.counter.scale.is_equal_approx(counter_scale))
+	assert(surface.get_child_count()==10,"Coins fly into existing counter; no duplicate is created")
+	popup.queue_free()
+	assert(wheel.disc.size==Vector2(820,820))
+	assert(wheel.spin_sound.stream!=null)
 	wheel.spin_duration = 0.01
 	for outcome in wheel.SECTORS:
 		await wheel.present_result({"outcome":outcome,"amount":50 if outcome=="coins_50" else 0})
 		var aligned := posmod(roundi(-wheel.disc.rotation_degrees/30.0),12)
 		assert(aligned in wheel.SECTORS[outcome],"Pointer must land on the server's outcome")
+		assert(not wheel.spin_sound.playing,"Spin clicks stop before reward sound")
 	var settings := root.get_node("GameSettings")
 	assert(settings.available_fronts()==[0,1])
 	manager._catalog["deck_back_13"] = {"id":"deck_back_13","item_type":"deck_back","asset_id":13,"is_available":false}

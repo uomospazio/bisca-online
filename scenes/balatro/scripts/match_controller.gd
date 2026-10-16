@@ -52,6 +52,7 @@ var local_name := "Giocatore"
 var game_ui: Control
 var menu: Control
 var overlay: Control
+var result_flow: CanvasLayer
 var loading_screen: CanvasLayer
 var pause_menu: CanvasLayer
 var damage_shade: ColorRect
@@ -165,6 +166,9 @@ func _ready() -> void:
 	$GameBackground.color = Color.BLACK if game_ui.visible else Color.WHITE
 	overlay = GameOverlay.new()
 	game_ui.get_parent().add_child(overlay)
+	result_flow = preload("res://scenes/balatro/scripts/match_result_flow.gd").new()
+	add_child(result_flow)
+	result_flow.setup(self)
 	overlay.replay_requested.connect(func():
 		if online:
 			busy = true
@@ -210,6 +214,10 @@ func _ready() -> void:
 			solo_connecting = false
 			solo_generation += 1
 		if state.stage == "lobby" and online:
+			# Drain the final snapshot before another player returning to the
+			# lobby clears the queue. Each result panel remains independently open.
+			while online_match.processing:
+				await get_tree().process_frame
 			online = false
 			online_match.queue.clear()
 			online_match.round_seen = -1
@@ -305,6 +313,10 @@ func _fit_full_screen_shade(shade: Control, screen_size: Vector2) -> void:
 	shade.size = screen_size
 
 func _show_menu() -> void:
+	if is_instance_valid(result_flow):
+		result_flow.active = false
+		result_flow.watching = false
+		result_flow.hide()
 	skip_solo_requested = false
 	if solo_connecting:
 		solo_connecting = false
@@ -844,11 +856,7 @@ func _refresh() -> void:
 	hand.allow_play = rules.phase == "play" and rules.hand_size > 1 and rules.current == 0 and not busy and pending_joker == null
 
 func _show_victory() -> void:
-	var winner_id: int = rules.winner
-	var avatar: Texture2D = scores.get_child(winner_id).profile_texture
-	overlay.show_victory(_name_of(winner_id), avatar, rules.players[winner_id], online and not online_match.state.get("singleplayer", false), not online or online_match.local_id == 0)
-	var solo_reward: bool = not online or bool(online_match.state.get("singleplayer", false))
-	overlay.setup_rewarded_offer("solo" if solo_reward else "multi", str(online_match.state.get("reward_match", "")) if online else solo_ad_match)
+	result_flow.show_final()
 
 func _play_turn_sound() -> void:
 	if rules.current != 0 or not rules.phase in ["prediction", "play"]:
@@ -1155,6 +1163,10 @@ func _drive() -> void:
 				# della perdita vite; _animate_round_damage attende poi 1 secondo.
 				_refresh()
 				await _animate_round_damage()
+				if not rules.players[0].active and rules.winner!=0:
+					busy = false
+					result_flow.show_solo_elimination()
+					return
 			if rules.phase == "round_complete":
 				rules.begin_round()
 				await _deal_round()

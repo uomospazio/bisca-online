@@ -48,6 +48,8 @@ var directory_panel: Control
 var lobby_private: CheckButton
 var directory_timer: Timer
 var rendered_directory: Variant = null
+var create_wait_generation := 0
+var waiting_for_created_lobby := false
 
 func setup(owner_menu: Control) -> void:
 	menu = owner_menu
@@ -158,13 +160,31 @@ func setup(owner_menu: Control) -> void:
 	info.add_theme_color_override("font_color", Color("f3effe"))
 	entry_ui.attach_form()
 	net.updated.connect(_update)
-	net.problem.connect(func(message): info.text = message)
+	net.problem.connect(_connection_problem)
 	get_node("/root/VoiceChat").changed.connect(_update_voice_buttons)
 
 func _create_public_lobby() -> void:
+	create_wait_generation += 1
+	var generation := create_wait_generation
+	waiting_for_created_lobby = true
+	info.text = "Connessione al server in corso..."
 	net.connect_room(net.endpoint, {"op": "create", "name": menu.chosen_name(), "directory_name": get_node("/root/AccountProfile").account_display_name(), "capacity": 8, "private": false})
+	await get_tree().create_timer(3.0).timeout
+	if generation == create_wait_generation and waiting_for_created_lobby and is_visible_in_tree() and not session_controls.visible:
+		info.text = "Potrebbe volerci un secondo...i server si stanno avviando"
+
+func _connection_problem(message: String) -> void:
+	# Browsing connects too, but the creation progress belongs to the Create button.
+	if message.begins_with("Connessione al server"):
+		return
+	waiting_for_created_lobby = false
+	create_wait_generation += 1
+	info.text = message
 
 func _join_directory(item: Dictionary) -> void:
+	waiting_for_created_lobby = false
+	create_wait_generation += 1
+	info.text = ""
 	if item.get("rejoin", false):
 		net.connect_room(net.endpoint, {"op": "rejoin", "code": net.room_code, "token": net.token})
 	elif item.get("private", true):
@@ -181,6 +201,8 @@ func _render_directory(entries: Array) -> void:
 	entry_ui.render(entries)
 
 func open() -> void:
+	waiting_for_created_lobby = false
+	create_wait_generation += 1
 	lobby_ui.stop_pop()
 	match_options.reset_multiplayer()
 	menu.show_network_entry_extras()
@@ -195,6 +217,8 @@ func open() -> void:
 	net.browse_lobbies()
 
 func _show_form(creating: bool) -> void:
+	waiting_for_created_lobby = false
+	create_wait_generation += 1
 	code.visible = not creating
 	match_options.visible = creating
 	create_button.visible = creating
@@ -239,6 +263,8 @@ func _pop_form_controls(items: Array[Control]) -> void:
 		).set_delay(delay + menu.HOME_INTRO_DURATION)
 
 func _back() -> void:
+	waiting_for_created_lobby = false
+	create_wait_generation += 1
 	profile_picker.close()
 	lobby_ui.stop_pop()
 	if session_controls.visible:
@@ -256,6 +282,8 @@ func _back() -> void:
 func _update(state: Dictionary) -> void:
 	if state.get("singleplayer", false):
 		return
+	waiting_for_created_lobby = false
+	create_wait_generation += 1
 	directory_panel.hide()
 	if state.stage != "lobby":
 		invite_box.hide()

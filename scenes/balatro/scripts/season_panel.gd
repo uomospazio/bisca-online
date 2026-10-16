@@ -91,6 +91,9 @@ func reset() -> void:
 	refreshed.emit(snapshot)
 
 func apply_snapshot(value: Dictionary) -> void:
+	if not snapshot.is_empty() and snapshot == value:
+		_tick()
+		return
 	var previous_scroll := scroll.scroll_vertical
 	reset()
 	snapshot = value

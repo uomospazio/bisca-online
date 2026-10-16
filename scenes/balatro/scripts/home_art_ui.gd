@@ -2,6 +2,7 @@ extends "res://scenes/balatro/scripts/multiplayer_entry_ui.gd"
 
 const ART_HOME := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/"
 const DESIGN := Vector2(1840, 840)
+const COUNTER_RECT := Rect2(1540,0,300,110)
 const TITLE_RECT := Rect2(-40, -10, 1054, 562)
 const SINGLEPLAYER_RECT := Rect2(216, 455, 559, 143)
 const MULTIPLAYER_RECT := Rect2(216, 610, 559, 143)
@@ -28,7 +29,7 @@ func setup_home(host: Control) -> void:
 	host.home_character.reparent(composition, false)
 	host.home_character.position = host.HOME_CHARACTER_POSITION
 	host.home_character.size = host.HOME_CHARACTER_SIZE
-	var counter := _image(composition, ART_HOME + "contatoreMonete.png", Rect2(1540, 0, 300, 110))
+	var counter := _image(composition, ART_HOME + "contatoreMonete.png", COUNTER_RECT)
 	amount = _label(counter, host.coins_label.text, Rect2(112, 18, 180, 72), 40)
 	amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var custom := _button(composition, ART_HOME + "buttonPersonalizzazione.png", Rect2(1720, 130, 116, 116), host._show_personalization)

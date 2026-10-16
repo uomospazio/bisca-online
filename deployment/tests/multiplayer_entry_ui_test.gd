@@ -12,6 +12,7 @@ class SessionStub extends Node:
 func _initialize() -> void: _run.call_deferred()
 
 func _run() -> void:
+	create_timer(20).timeout.connect(func(): quit(1))
 	var menu = load("res://scenes/balatro/scripts/main_menu.gd").new()
 	root.add_child(menu)
 	await process_frame
@@ -25,6 +26,8 @@ func _run() -> void:
 	menu.network_page = lobby
 	menu._show_network()
 	assert(session.browsed == 1)
+	lobby._connection_problem("Connessione al server in corso...")
+	assert(lobby.info.text.is_empty(),"Browsing must not show creation progress")
 	assert(not menu.home_character.visible and not menu.second_character.visible)
 	assert(not menu.title.visible and not menu.friends_subtitle.visible)
 	assert(lobby.entry_ui.header.scale.length() < 0.001)
@@ -51,6 +54,13 @@ func _run() -> void:
 	assert(lobby.entry.visible and not lobby.controls.visible)
 	lobby.entry_buttons[0].pressed.emit()
 	assert(session.commands[-1].op == "create" and not session.commands[-1].private)
+	assert(lobby.info.text=="Connessione al server in corso...")
+	await create_timer(3.1).timeout
+	assert(lobby.info.text=="Potrebbe volerci un secondo...i server si stanno avviando")
+	lobby._create_public_lobby()
+	lobby._connection_problem("Impossibile connettersi al server")
+	await create_timer(3.1).timeout
+	assert(lobby.info.text=="Impossibile connettersi al server","Timer must not overwrite an error")
 	var ui = lobby.entry_ui
 	assert(ui.header.size == Vector2(1000, 145))
 	assert(lobby.directory_panel.size == Vector2(1000, 616))
@@ -60,6 +70,7 @@ func _run() -> void:
 		assert(is_equal_approx(character.size.x / character.size.y, texture_size.x / texture_size.y))
 	for bounds in [Rect2(40, 40, 1840, 1000), Rect2(120, 50, 2292, 1050), Rect2(40, 40, 1200, 640)]:
 		ui._layout(bounds)
+		assert(is_equal_approx(lobby.info.position.x+lobby.info.size.x/2,ui.BLOCK_SIZE.x/2))
 		var center: Vector2 = ui.composition.position + ui.COMPOSITION_SIZE * ui.composition.scale / 2
 		assert(center.is_equal_approx(bounds.get_center()))
 		assert(ui.right.get_parent() == ui.characters.get_parent())

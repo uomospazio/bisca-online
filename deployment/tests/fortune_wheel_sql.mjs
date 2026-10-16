@@ -32,9 +32,9 @@ await assert.rejects(db.exec("update bisca_profiles set deck_front=3"),/GOLD_DEC
 await assert.rejects(db.exec("update bisca_items set is_available=true where id='deck_back_13'"),/bisca_gold_wheel_exclusive/);
 await db.exec(`insert into bisca_ad_testers values('${uid}')`);
 let total=0,serial=1;
-for(const [outcome,amount] of [['crown',0],['coins_5000',5000],['coins_1000',1000],['coins_50',50],['tomato',0],['poop',0],['tissues',0],['crown',0]]){
+for(const [outcome,amount] of [['crown',0],['coins_5000',5000],['coins_1000',1000],['coins_50',50],['tomato',0],['poop',0],['tissues',0],['crown',5000]]){
  // Deterministic DB-only injection, not exposed to any client or deployed.
- await db.exec(`create or replace function public.bisca_wheel_outcome(integer) returns text language sql immutable as $$select '${outcome}'::text$$`);
+ await db.exec(`create or replace function public.bisca_wheel_outcome(p_roll integer) returns text language sql immutable as $$select '${outcome}'::text$$`);
  const result=await rpc('bisca_claim_test_ad',[id(serial),'wheel','']); total+=amount;
  assert.equal(result.outcome,outcome);assert.equal(result.amount,amount);assert.equal(result.credits,total);
  assert.equal(result.duplicate,serial===8);

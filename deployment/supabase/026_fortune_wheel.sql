@@ -74,7 +74,7 @@ begin
   reward:=case choice when 'coins_5000' then 5000 when 'coins_1000' then 1000 when 'coins_50' then 50 else 0 end;
   if choice='crown' then
    select exists(select 1 from public.bisca_inventory where user_id=u and item_id='deck_back_13') into owned;
-   -- A duplicate remains the same owned cosmetic; no unrequested coin conversion.
+   if owned then reward:=5000; end if;
    insert into public.bisca_inventory(user_id,item_id,item_type) values(u,'deck_back_13','deck_back')
     on conflict(user_id,item_id) do nothing;
   end if;

@@ -35,7 +35,7 @@ func get_daily_items() -> Array:
 	var result: Array = []
 	for id in _daily_ids:
 		var item := get_item(str(id))
-		if not item.is_empty() and item.is_available:
+		if not item.is_empty() and item.is_available and str(id) != "deck_back_13":
 			result.append(item)
 	var ordered: Array = []
 	for index in range(2):

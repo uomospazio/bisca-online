@@ -36,12 +36,16 @@ func setup_shop(owner_page: Control) -> void:
 	back = _button(composition,UI+"pngUI/InLobbyUI/tastoIndietro.png",Rect2(40,45,104,96),host.menu_owner._leave_shop)
 	var support := _button(composition,UI+"coffee.png",Rect2(130,570,200,190),host.menu_owner._show_support_creator)
 	support.tooltip_text = "Supporta il creatore"
-	video = _button(composition,SHOP+"guadagnaMonete.png",Rect2(140,260,180,180),func(): _request("shop"))
+	video = _button(composition,SHOP+"guadagnaMonete.png",Rect2(140,260,180,180),func(): _request("shop"),false)
 	video.tooltip_text = "Guarda un annuncio: +50 monete"
 	reward_caption = _label(composition,"+50",Rect2(145,442,115,48),34)
 	reward_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_image(composition,UI+"coin.png",Rect2(270,448,36,36))
-	reroll = _button(composition,SHOP+"rerollShop.png",Rect2(1580,260,185,180),func(): _request("refresh"))
+	reroll = _button(composition,SHOP+"rerollShop.png",Rect2(1580,260,185,180),func(): _request("refresh"),false)
+	for button in [video,reroll]:
+		button.set_meta("hover_when_disabled",true)
+		button.set_meta("touch_hover",true)
+		preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	reroll.tooltip_text = "Cambia le sei offerte con un annuncio"
 	wheel = _button(composition,SHOP+"ruotaFortuna.png",Rect2(1570,552,210,210),host.open_wheel)
 	wheel.tooltip_text = "Ruota della fortuna"

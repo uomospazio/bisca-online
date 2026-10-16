@@ -7,6 +7,9 @@ class FakeAccount extends Node:
 class Probe extends "res://scenes/balatro/scripts/rewarded_ads.gd":
 	var calls := 0
 	var animations: Array = []
+	var wheel_animations: Array = []
+	func _present_wheel_reward(result: Dictionary) -> void:
+		wheel_animations.append(result)
 	func _present_credit_reward(owner: String, result: Dictionary) -> void:
 		animations.append({"owner": owner, "amount": result.amount})
 	var reply := {"ok": false, "message": "Rete assente"}
@@ -48,6 +51,17 @@ func run() -> void:
 		ads.reply = {"ok": true, "credits": 180, "amount": 0 if placement == "refresh" else 50}
 		await ads._claim()
 	assert(ads.animations.size() == 3, "Shop and multiplayer animate; refresh without coins does not")
+	for outcome in ["tomato","coins_50","crown"]:
+		ads._pending = {"owner":"tester","p_claim":"wheel-test","p_placement":"wheel","p_context":""}
+		ads.reply = {"ok":false,"message":"offline"}
+		var before: int = ads.wheel_animations.size()
+		await ads._claim()
+		assert(ads.wheel_animations.size()==before and ads.pending_for_account())
+		ads.reply = {"ok":true,"outcome":outcome,"duplicate":outcome=="crown","credits":5180,"amount":0 if outcome=="tomato" else (5000 if outcome=="crown" else 50)}
+		await ads._claim()
+		assert(ads.wheel_animations.size()==before+1 and ads._pending.is_empty())
+		assert(not ads.claimed("wheel",""),"Wheel never has a daily/match limit")
+	assert(ads.animations.size()==5,"Only coin outcomes, including duplicate gold, animate coins")
 	assert(ads.claimed("solo", "match"))
 	assert(not ads.claimed("solo", "next-match"))
 	assert(not ads.claimed("shop", ""))

@@ -79,7 +79,7 @@ func _update() -> void:
 
 static func result_text(receipt: Dictionary) -> String:
 	if receipt.get("outcome","") == "crown":
-		return "MAZZO ORO GIA' POSSEDUTO" if receipt.get("duplicate",false) else "HAI VINTO IL MAZZO ORO!"
+		return "MAZZO ORO GIA' POSSEDUTO: +5000 MONETE!" if receipt.get("duplicate",false) else "HAI VINTO IL MAZZO ORO!"
 	if int(receipt.get("amount",0)) > 0: return "+%d MONETE!" % int(receipt.amount)
 	return "NESSUN PREMIO. RITENTA LA FORTUNA!"
 

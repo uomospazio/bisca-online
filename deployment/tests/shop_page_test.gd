@@ -50,6 +50,21 @@ func run() -> void:
 	assert(page.grid.get_child_count()==6)
 	assert(page.fixed_controls.size()==6)
 	assert(page.art_ui.video.disabled and page.art_ui.reroll.disabled,"No real desktop ads")
+	for button in [page.art_ui.video,page.art_ui.reroll]:
+		button.mouse_entered.emit()
+		await create_timer(0.25).timeout
+		assert(button.scale.x>1.0,"Ad artwork animates even where ads are unavailable")
+		button.mouse_exited.emit()
+		await create_timer(0.3).timeout
+		assert(button.scale.is_equal_approx(Vector2.ONE))
+		button.disabled = false
+		button.button_down.emit()
+		await create_timer(0.25).timeout
+		assert(button.scale.x>1.0,"Touch press uses the same tween")
+		button.button_up.emit()
+		await create_timer(0.3).timeout
+		assert(button.scale.is_equal_approx(Vector2.ONE))
+	page.art_ui.update_ads()
 	assert(page.art_ui.reward_caption.text=="+50")
 	assert(page.art_ui.countdown.text!="--:--:--")
 	for index in range(6):
@@ -78,8 +93,31 @@ func run() -> void:
 	assert(not page.visible)
 	menu._show_shop()
 	assert(page.grid.get_child_count()==6)
+	page.open_wheel()
+	var wheel = page.fortune_wheel
+	wheel.spin_duration = 0.01
+	for outcome in wheel.SECTORS:
+		await wheel.present_result({"outcome":outcome,"amount":50 if outcome=="coins_50" else 0})
+		var aligned := posmod(roundi(-wheel.disc.rotation_degrees/30.0),12)
+		assert(aligned in wheel.SECTORS[outcome],"Pointer must land on the server's outcome")
+	var settings := root.get_node("GameSettings")
+	assert(settings.available_fronts()==[0,1])
+	manager._catalog["deck_back_13"] = {"id":"deck_back_13","item_type":"deck_back","asset_id":13,"is_available":false}
+	manager._inventory["deck_back_13"] = {"item_id":"deck_back_13"}
+	assert(settings.available_fronts()==[0,1,3])
+	var frames: Array = []
+	for suit in range(4):
+		for number in range(1,11):
+			var texture: Texture2D = settings.front_texture(suit,number,3)
+			assert(texture!=null and "mazzoOro" in texture.resource_path)
+			assert(not frames.has(texture.resource_path))
+			frames.append(texture.resource_path)
+	assert(settings.front_texture(3,1,3).resource_path.ends_with("Frame 119.png"),"Golden ace of coins is the joker")
+	manager._inventory.erase("deck_back_13")
+	assert(settings.available_fronts()==[0,1])
+	assert(not "mazzoOro" in settings.front_texture(3,1,3).resource_path)
 	menu.queue_free()
 	account.queue_free()
 	await process_frame
-	print("PASS: six categorized offers, purchase hit areas, owned state, ad artwork, countdown, wheel placeholder, navigation")
+	print("PASS: shop hover/items/navigation, wheel sector alignment, 40 gold fronts and ownership gating")
 	quit()

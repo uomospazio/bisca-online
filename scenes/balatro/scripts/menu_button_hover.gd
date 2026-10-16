@@ -6,7 +6,7 @@ static func attach(button: Control, rest_scale := Callable()) -> void:
 	var state := {"tween": null, "active": false}
 	var animate := func(active: bool):
 		var base: Vector2 = rest_scale.call() if rest_scale.is_valid() else Vector2.ONE
-		if active and ((button is BaseButton and button.disabled) or not button.is_visible_in_tree()): return
+		if active and ((button is BaseButton and button.disabled and not button.get_meta("hover_when_disabled",false)) or not button.is_visible_in_tree()): return
 		if active and not state.active and not button.scale.is_equal_approx(base): return
 		if not active and not state.active: return
 		state.active = active
@@ -22,6 +22,9 @@ static func attach(button: Control, rest_scale := Callable()) -> void:
 	button.mouse_exited.connect(animate.bind(false))
 	button.focus_entered.connect(animate.bind(true))
 	button.focus_exited.connect(animate.bind(false))
+	if button is BaseButton and button.get_meta("touch_hover",false):
+		button.button_down.connect(animate.bind(true))
+		button.button_up.connect(animate.bind(false))
 	button.visibility_changed.connect(func():
 		if not button.is_visible_in_tree() and state.active:
 			if state.tween and state.tween.is_valid(): state.tween.kill()

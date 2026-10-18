@@ -24,16 +24,29 @@ static func base64url(bytes: PackedByteArray) -> String:
 	return Marshalls.raw_to_base64(bytes).replace("+", "-").replace("/", "_").replace("=", "")
 
 static func callback_params(url: String) -> Dictionary:
-	if not url.begins_with(REDIRECT + "?") or url.contains("#") or url.length() > 8192:
+	if not url.begins_with(REDIRECT + "?") or url.length() > 8192:
 		return {}
 	var result := {}
-	for pair in url.get_slice("?", 1).split("&"):
+	var query := url.get_slice("#",0).substr(REDIRECT.length()+1)
+	for pair in query.split("&"):
 		if not pair.contains("="):
 			return {}
 		var key := pair.get_slice("=", 0).uri_decode()
 		if result.has(key):
 			return {}
 		result[key] = pair.substr(pair.find("=") + 1).uri_decode()
+	# Supabase may append its marker/error metadata in the fragment. Never
+	# accept a token or authentication code from there: login remains PKCE.
+	var fragment := url.get_slice("#",1) if url.contains("#") else ""
+	var seen := {}
+	for pair in fragment.split("&",false):
+		var key := pair.get_slice("=",0).uri_decode()
+		if key not in ["sb","error","error_code","error_description"] or seen.has(key): return {}
+		seen[key] = true
+		var value := pair.substr(pair.find("=")+1).uri_decode() if pair.contains("=") else ""
+		if key=="sb": continue
+		if result.has(key) and result[key]!=value: return {}
+		result[key] = value
 	return result
 
 func start(provider: String, link_current: bool) -> void:
@@ -86,10 +99,16 @@ func _process(_delta: float) -> void:
 		_finish({"ok": false, "message": "Accesso annullato o browser non disponibile."})
 		return
 	var params := callback_params(value)
+	if params.is_empty() or not params.has("flow"):
+		_finish({"ok":false,"message":"Ritorno dal browser non valido. Riprova l'accesso; verifica il redirect configurato su Supabase."})
+		return
 	if params.get("flow", "") != flow:
 		return # Ignore unsolicited/stale callbacks.
 	if params.has("error") or str(params.get("code", "")).is_empty():
-		_finish({"ok": false, "message": "Accesso non completato. Verifica la configurazione del provider su Supabase."})
+		var reason := str(params.get("error_code",params.get("error","codice mancante")))
+		# Only a short error identifier, never the callback URL, code or tokens.
+		if RegEx.create_from_string("^[a-zA-Z0-9_]{1,80}$").search(reason)==null: reason="errore provider"
+		_finish({"ok": false, "message": "Accesso non completato (%s). Riprova o verifica il provider su Supabase." % reason})
 		return
 	_exchange(str(params.code))
 

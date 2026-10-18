@@ -34,11 +34,16 @@ class FakeBridge extends RefCounted:
 func _initialize() -> void: call_deferred("_test")
 
 func _test() -> void:
+	create_timer(10).timeout.connect(func(): quit(1))
 	# RFC 7636 known challenge vector.
 	assert(Auth.base64url("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk".sha256_buffer()) == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
 	assert(Auth.callback_params("https://evil.invalid/?code=x").is_empty())
 	assert(Auth.callback_params(Auth.REDIRECT + "?flow=a&flow=b").is_empty())
 	assert(Auth.callback_params(Auth.REDIRECT + "?flow=a#access_token=x").is_empty())
+	assert(Auth.callback_params(Auth.REDIRECT + "?flow=a&code=x#sb=").code=="x")
+	assert(Auth.callback_params(Auth.REDIRECT + "?flow=a&code=x#").code=="x")
+	assert(Auth.callback_params(Auth.REDIRECT + "?flow=a#code=x").is_empty())
+	assert(Auth.callback_params(Auth.REDIRECT + "?flow=a#error=access_denied&sb=").error=="access_denied")
 	var account := FakeAccount.new()
 	root.add_child(account)
 	var auth := Auth.new()
@@ -51,7 +56,7 @@ func _test() -> void:
 	bridge.callback = Auth.REDIRECT + "?flow=stale&code=x"
 	auth._process(0)
 	assert(not account.accepted and auth.pending)
-	bridge.callback = Auth.REDIRECT + "?flow=" + auth.flow + "&code=test-code"
+	bridge.callback = Auth.REDIRECT + "?flow=" + auth.flow + "&code=test-code#sb="
 	auth._process(0)
 	assert(account.accepted and account.switched and not auth.pending)
 	assert(account.last_body.auth_code == "test-code")
@@ -70,6 +75,13 @@ func _test() -> void:
 	bridge.callback = Auth.REDIRECT + "?flow=" + auth.flow + "&code=expired"
 	auth._process(0)
 	assert(not account.accepted and not auth.pending)
+	var results: Array = []
+	auth.completed.connect(func(result): results.append(result))
+	await auth.start("google",false)
+	bridge.callback = Auth.REDIRECT + "?flow=" + auth.flow + "&error=access_denied#error=access_denied&sb="
+	auth._process(0)
+	assert(not auth.pending and not results.back().ok)
+	assert(results.back().message.contains("access_denied"))
 	account.response = {"ok": true, "data": {}}
 	await auth.start("google", false)
 	account.user_id = "another-account"

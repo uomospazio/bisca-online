@@ -1,9 +1,9 @@
 extends Node
-## SOLO ANNUNCI DI TEST. Premi autorizzati dal server solo per tester espliciti.
-## Non sostituire gli ID con annunci reali senza consenso UMP e verifica SSV.
+## Annunci reali, consenso UMP e premi verificati tramite AdMob SSV.
+## Per i test registrare i dispositivi in AdMob, senza cambiare gli ID.
 signal changed
-const ANDROID_UNIT := "ca-app-pub-3940256099942544/5224354917"
-const IOS_UNIT := "ca-app-pub-3940256099942544/1712485313"
+const ANDROID_PRODUCTION_UNIT := "ca-app-pub-4798197645196973/7155046146"
+const IOS_PRODUCTION_UNIT := "ca-app-pub-4798197645196973/7977173220"
 const SAVE := "user://rewarded_ads_test.cfg"
 
 # Ignorate sempre nelle build release. Usare SOLO l'ID stampato da <UMP SDK>.
@@ -78,6 +78,10 @@ func _ready() -> void:
 	if config.load(SAVE) == OK:
 		_pending = config.get_value("ads", "pending", {})
 		_completed = config.get_value("ads", "completed", {})
+		# I vecchi premi di test non sono prove SSV e non possono essere convertiti.
+		if not _pending.is_empty() and not _pending.get("ssv", false):
+			_pending.clear()
+			_save()
 	_account.changed.connect(func(): changed.emit())
 	_ump_log("ready | os=" + OS.get_name() + " | rewarded_supported=" + str(supported()) + " | privacy_supported=" + str(privacy_supported()))
 	if supported():
@@ -276,14 +280,25 @@ func request_reward(placement: String, context := "") -> void:
 	var owner := str(_account.user_id)
 	_earned = false
 	_set_message("Verifica premio...")
-	var check: Dictionary = await _rpc("bisca_ad_test_eligible", {"p_placement": placement, "p_context": context})
+	var check: Dictionary = await _rpc("bisca_begin_ad", {"p_placement": placement, "p_context": context, "p_platform": OS.get_name()})
 	if not check.get("ok", false) or owner != str(_account.user_id):
 		_finish(str(check.get("message", "Account cambiato.")))
 		return
-	_set_message("Caricamento video di test...")
+	_pending = {"owner": owner, "p_claim": str(check.session_id), "p_placement": placement, "p_context": context, "ssv": true, "earned": false}
+	if check.get("recover", false):
+		_pending.p_placement = str(check.placement)
+		_pending.p_context = str(check.context)
+		_pending.earned = true
+	_save()
+	if check.get("recover", false):
+		await _claim()
+		return
+	_set_message("Caricamento video...")
 	var callback := RewardedAdLoadCallback.new()
 	callback.on_ad_failed_to_load = func(_error: LoadAdError):
-		if serial == _serial: _finish("Video non disponibile. Riprova tra poco.")
+		if serial == _serial:
+			_clear_unearned()
+			_finish("Video non disponibile. Riprova tra poco.")
 	callback.on_ad_loaded = func(ad: RewardedAd):
 		if serial != _serial or owner != str(_account.user_id):
 			ad.destroy()
@@ -292,29 +307,40 @@ func request_reward(placement: String, context := "") -> void:
 		_ad = ad
 		var full := FullScreenContentCallback.new()
 		full.on_ad_failed_to_show_full_screen_content = func(_error: AdError):
-			if serial == _serial: _finish("Impossibile aprire il video. Nessun premio consumato.")
+			if serial == _serial:
+				_clear_unearned()
+				_finish("Impossibile aprire il video. Nessun premio consumato.")
 		full.on_ad_dismissed_full_screen_content = func():
 			# Le callback native sono differite: attendi anche il segnale premio.
 			await get_tree().create_timer(0.5).timeout
 			if serial != _serial: return
-			if _earned:
-				await _claim()
-			else:
-				_finish("Video interrotto: nessuna ricompensa.")
+			await _claim()
 		ad.full_screen_content_callback = full
 		var listener := OnUserEarnedRewardListener.new()
 		listener.on_user_earned_reward = func(_reward: RewardedItem):
 			_record_earned(serial, owner, placement, context)
+		var verification := ServerSideVerificationOptions.new()
+		verification.user_id = owner
+		verification.custom_data = str(_pending.p_claim)
+		ad.set_server_side_verification_options(verification)
 		ad.show(listener)
-	RewardedAdLoader.new().load(ANDROID_UNIT if OS.get_name() == "Android" else IOS_UNIT, AdRequest.new(), callback)
+	RewardedAdLoader.new().load(ANDROID_PRODUCTION_UNIT if OS.get_name() == "Android" else IOS_PRODUCTION_UNIT, AdRequest.new(), callback)
 	await get_tree().create_timer(45.0).timeout
 	if serial == _serial and _ad == null:
+		_clear_unearned()
 		_finish("Caricamento scaduto. Riprova.")
+
+func _clear_unearned() -> void:
+	if not _pending.get("earned", false):
+		_pending.clear()
+		_save()
 
 func _record_earned(serial: int, owner: String, placement: String, context: String) -> void:
 	if serial != _serial or _earned: return
+	if not _pending.get("ssv", false) or str(_pending.get("owner", "")) != owner: return
+	if str(_pending.p_placement) != placement or str(_pending.p_context) != context: return
 	_earned = true
-	_pending = {"owner": owner, "p_claim": new_id(), "p_placement": placement, "p_context": context}
+	_pending.earned = true
 	_save()
 
 func _claim() -> void:
@@ -323,9 +349,24 @@ func _claim() -> void:
 		return
 	_set_message("Registrazione premio...")
 	var pending := _pending.duplicate()
-	var payload := pending.duplicate()
-	payload.erase("owner")
-	var result: Dictionary = await _rpc("bisca_claim_test_ad", payload)
+	var result: Dictionary
+	if pending.get("ssv", false):
+		for attempt in range(6):
+			if str(_account.user_id) != str(pending.owner):
+				_finish("Premio conservato: torna all'account che ha visto il video.")
+				return
+			result = await _rpc("bisca_claim_ad", {"p_session": str(pending.p_claim)})
+			if result.get("code", "") != "SSV_PENDING" or not pending.get("earned", false): break
+			if attempt < 5: await get_tree().create_timer(2.0).timeout
+		if result.get("code", "") == "SSV_PENDING" and not pending.get("earned", false):
+			_clear_unearned()
+			_finish("Video interrotto o verifica in attesa. Riprova tra poco.")
+			return
+	else:
+		_pending.clear()
+		_save()
+		_finish("Premio non disponibile. Riprova tra poco.")
+		return
 	if not result.get("ok", false):
 		if str(result.get("code", "")) in ["DAILY_REFRESH_USED", "ALREADY_CLAIMED"]:
 			# Un altro dispositivo può avere già ottenuto lo stesso bonus.
@@ -399,7 +440,7 @@ func _rpc(endpoint: String, payload: Dictionary) -> Dictionary:
 	if response[1] == 200 and data is Dictionary: return data
 	var code := str(data.get("message", "")) if data is Dictionary else ""
 	var messages := {"TESTER_REQUIRED": "Account non ancora abilitato ai premi di test.", "DAILY_REFRESH_USED": "Refresh già usato oggi (reset a mezzanotte UTC).", "MATCH_NOT_RECORDED": "Risultato partita non ancora sincronizzato. Riprova tra poco.", "ALREADY_CLAIMED": "Premio già ricevuto per questa partita."}
-	return {"ok": false, "code": code, "message": messages.get(code, "Premio non disponibile: verifica la migrazione 016 sul server.")}
+	return {"ok": false, "code": code, "message": messages.get(code, "Premio non disponibile. Riprova tra poco.")}
 
 func _finish(text: String) -> void:
 	_serial += 1

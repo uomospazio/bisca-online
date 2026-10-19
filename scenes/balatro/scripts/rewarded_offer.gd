@@ -67,7 +67,7 @@ func _update() -> void:
 	button_content.modulate.a = 0.5 if button.disabled else 1.0
 	status.text = ads.message
 	if status.text.is_empty():
-		status.text = "Annuncio facoltativo · test" if ads.supported() else "Disponibile su Android e iOS"
+		status.text = "Annuncio facoltativo" if ads.supported() else "Disponibile su Android e iOS"
 		if placement == "solo" and not used:
 			status.text += "\n+50 punti se la stagione e' attiva"
 	if placement == "refresh" and used and not pending and not ads.busy:

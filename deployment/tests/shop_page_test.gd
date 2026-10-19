@@ -76,7 +76,7 @@ func run() -> void:
 	manager.daily_refresh_available = true
 	page.art_ui.update_ads()
 	assert(page.art_ui.reroll.modulate==Color.WHITE)
-	assert(page.art_ui.reward_caption.text=="+50")
+	assert(page.art_ui.reward_caption.text=="+20")
 	assert(page.art_ui.countdown.text!="--:--:--")
 	for index in range(6):
 		var offer: Control = page.grid.get_child(index)

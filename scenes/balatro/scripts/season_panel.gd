@@ -23,7 +23,7 @@ func setup(friends: Control) -> void:
 	var info := Button.new()
 	add_child(info)
 	info.position = Vector2(50,190)
-	info.size = Vector2(44,44)
+	info.size = Vector2(72,72)
 	for state in ["normal","hover","pressed","disabled","focus"]:
 		var skin := StyleBoxTexture.new()
 		skin.texture = UiLocale.resource(UI + "infoClassifica.png")

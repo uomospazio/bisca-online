@@ -6,6 +6,8 @@ class FakeAccount extends Node:
 
 class Probe extends "res://scenes/balatro/scripts/rewarded_ads.gd":
 	var calls := 0
+	var last_endpoint := ""
+	var last_payload: Dictionary = {}
 	var animations: Array = []
 	var wheel_animations: Array = []
 	func _present_wheel_reward(result: Dictionary) -> void:
@@ -17,6 +19,8 @@ class Probe extends "res://scenes/balatro/scripts/rewarded_ads.gd":
 	func _save() -> void: pass
 	func _rpc(_endpoint: String, _payload: Dictionary) -> Dictionary:
 		calls += 1
+		last_endpoint = _endpoint
+		last_payload = _payload
 		return reply
 
 func _initialize() -> void:
@@ -31,11 +35,13 @@ func run() -> void:
 	ads._serial = 7
 	ads._record_earned(6, "tester", "solo", "match")
 	assert(ads._pending.is_empty(), "Stale native callback must be ignored")
+	ads._pending = {"owner":"tester", "p_claim":"server-session", "p_placement":"solo", "p_context":"match", "ssv":true, "earned":false}
 	ads._record_earned(7, "tester", "solo", "match")
 	var claim: String = ads._pending.p_claim
 	ads._record_earned(7, "tester", "solo", "match")
 	assert(ads._pending.p_claim == claim, "Duplicate callbacks must reuse the same claim")
 	await ads._claim()
+	assert(ads.last_endpoint == "bisca_claim_ad" and ads.last_payload == {"p_session":"server-session"})
 	assert(not ads.busy and ads.pending_for_account(), "Offline claim must remain recoverable")
 	assert(ads.animations.is_empty(), "No animation before server confirmation")
 	account.user_id = "another"
@@ -47,12 +53,12 @@ func run() -> void:
 	assert(ads._pending.is_empty())
 	assert(ads.animations.size() == 1 and ads.animations[0].amount == 30)
 	for placement in ["shop", "multi", "refresh"]:
-		ads._pending = {"owner": "tester", "p_claim": "test", "p_placement": placement, "p_context": "other"}
+		ads._pending = {"owner": "tester", "p_claim": "test", "p_placement": placement, "p_context": "other", "ssv":true, "earned":true}
 		ads.reply = {"ok": true, "credits": 180, "amount": 0 if placement == "refresh" else 50}
 		await ads._claim()
 	assert(ads.animations.size() == 3, "Shop and multiplayer animate; refresh without coins does not")
 	for outcome in ["tomato","coins_50","crown"]:
-		ads._pending = {"owner":"tester","p_claim":"wheel-test","p_placement":"wheel","p_context":""}
+		ads._pending = {"owner":"tester","p_claim":"wheel-test","p_placement":"wheel","p_context":"", "ssv":true, "earned":true}
 		ads.reply = {"ok":false,"message":"offline"}
 		var before: int = ads.wheel_animations.size()
 		await ads._claim()
@@ -65,6 +71,14 @@ func run() -> void:
 	assert(ads.claimed("solo", "match"))
 	assert(not ads.claimed("solo", "next-match"))
 	assert(not ads.claimed("shop", ""))
+	ads._pending = {"owner":"tester","p_claim":"interrupted","p_placement":"shop","p_context":"", "ssv":true, "earned":false}
+	ads.reply = {"ok":false,"code":"SSV_PENDING"}
+	await ads._claim()
+	assert(ads._pending.is_empty(), "Interrupted/unearned ad must not block future attempts")
+	ads._pending = {"owner":"tester","p_claim":"waiting","p_placement":"shop","p_context":"", "ssv":true, "earned":true}
+	var previous_animations: int = ads.animations.size()
+	await ads._claim()
+	assert(ads.pending_for_account() and ads.animations.size() == previous_animations, "Earned but unverified video must remain recoverable without granting coins")
 	var overlay := preload("res://scenes/balatro/scripts/game_overlay.gd").new()
 	root.add_child(overlay)
 	overlay.show_victory("Tester", null, {"rounds_played": 5})

@@ -52,7 +52,11 @@ static func resource(path: String) -> Resource:
 
 func _node_added(node: Node) -> void:
 	if node is Control or node is Sprite2D:
-		_refresh_node.call_deferred(node)
+		_refresh_instance.call_deferred(node.get_instance_id())
+
+func _refresh_instance(id: int) -> void:
+	if is_instance_id_valid(id):
+		_refresh_node(instance_from_id(id))
 
 func _refresh_tree(node: Node) -> void:
 	_refresh_node(node)

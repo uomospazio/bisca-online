@@ -48,10 +48,10 @@ func setup_shop(owner_page: Control) -> void:
 	var support := _button(composition,UI+"coffee.png",Rect2(130,570,200,190),host.menu_owner._show_support_creator)
 	support.tooltip_text = "Supporta il creatore"
 	video = _button(composition,SHOP+"guadagnaMonete.png",Rect2(140,260,180,180),func(): _request("shop"),false)
-	video.tooltip_text = "Guarda un annuncio: +50 monete"
-	var reward_width := ceilf(font.get_string_size("+50",HORIZONTAL_ALIGNMENT_LEFT,-1,34).x)
+	video.tooltip_text = "Guarda un annuncio: +20 monete"
+	var reward_width := ceilf(font.get_string_size("+20",HORIZONTAL_ALIGNMENT_LEFT,-1,34).x)
 	var reward_left := 230.0-(reward_width+6.0+36.0)/2.0
-	reward_caption = _label(composition,"+50",Rect2(reward_left,442,reward_width,48),34)
+	reward_caption = _label(composition,"+20",Rect2(reward_left,442,reward_width,48),34)
 	reward_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_image(composition,UI+"coin.png",Rect2(reward_left+reward_width+6.0,448,36,36))
 	reroll = _button(composition,SHOP+"rerollShop.png",Rect2(1580,260,185,180),func(): _request("refresh"),false)
@@ -92,7 +92,7 @@ func update_ads() -> void:
 	reroll.set_meta("hover_when_disabled",not reroll_used)
 	if reroll_used: reroll.mouse_exited.emit()
 	reroll.tooltip_text = "Refresh gia' usato oggi" if reroll_used else "Cambia le sei offerte con un annuncio"
-	video.tooltip_text = "Recupera premio in sospeso" if pending else "Guarda un annuncio: +50 monete"
+	video.tooltip_text = "Recupera premio in sospeso" if pending else "Guarda un annuncio: +20 monete"
 	host._update()
 
 func _tick() -> void:

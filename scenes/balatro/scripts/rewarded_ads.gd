@@ -439,7 +439,7 @@ func _rpc(endpoint: String, payload: Dictionary) -> Dictionary:
 	var data = JSON.parse_string(response[3].get_string_from_utf8())
 	if response[1] == 200 and data is Dictionary: return data
 	var code := str(data.get("message", "")) if data is Dictionary else ""
-	var messages := {"TESTER_REQUIRED": "Account non ancora abilitato ai premi di test.", "DAILY_REFRESH_USED": "Refresh già usato oggi (reset a mezzanotte UTC).", "MATCH_NOT_RECORDED": "Risultato partita non ancora sincronizzato. Riprova tra poco.", "ALREADY_CLAIMED": "Premio già ricevuto per questa partita."}
+	var messages := {"TESTER_REQUIRED": "Account non ancora abilitato ai premi di test.", "DAILY_REFRESH_USED": "Refresh già usato oggi (reset alle 19:00 ora di Roma).", "MATCH_NOT_RECORDED": "Risultato partita non ancora sincronizzato. Riprova tra poco.", "ALREADY_CLAIMED": "Premio già ricevuto per questa partita."}
 	return {"ok": false, "code": code, "message": messages.get(code, "Premio non disponibile. Riprova tra poco.")}
 
 func _finish(text: String) -> void:

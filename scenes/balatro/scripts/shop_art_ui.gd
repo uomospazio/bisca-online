@@ -10,6 +10,8 @@ var video: Button
 var reroll: Button
 var wheel: Button
 var reward_caption: Label
+var slots_background: TextureRect
+var slots_captions: TextureRect
 var last_daily_attempt := -30000
 var entrance := preload("res://scenes/balatro/scripts/page_pop.gd").new()
 
@@ -27,7 +29,12 @@ func setup_shop(owner_page: Control) -> void:
 	composition.size = DESIGN
 	composition.mouse_filter = MOUSE_FILTER_IGNORE
 	host.content = composition
-	_image(composition,SHOP+"slotShop.png",Rect2(80,200,1760,636))
+	slots_background = _image(composition,SHOP+"slotShop.png",Rect2(80,200,1760,636))
+	slots_background.set_meta("locale_texture_locked",true)
+	slots_captions = _image(composition,SHOP+"slotShop.png",Rect2(80,750,1760,86))
+	slots_captions.set_meta("locale_texture_locked",true)
+	_sync_shop_background()
+	get_node("/root/GameSettings").changed.connect(_sync_shop_background)
 	host.grid = Control.new()
 	composition.add_child(host.grid)
 	host.grid.position = Vector2(80,200)
@@ -79,6 +86,27 @@ func setup_shop(owner_page: Control) -> void:
 
 func _request(placement: String) -> void:
 	get_node("/root/RewardedAds").request_reward(placement,"")
+
+func _sync_shop_background() -> void:
+	# The English sheet includes baked-in icons; the Italian one has clean glows.
+	# Use the clean upper area and only the English caption strip (below icons).
+	# Interactive icons remain separate so hover/pop/disabled states still work.
+	var english: bool = get_node("/root/GameSettings").values.get("language","it") == "en"
+	var original: Texture2D = load(SHOP+"slotShop.png")
+	slots_captions.visible = english
+	if not english:
+		slots_background.texture = original
+		slots_background.size = Vector2(1760,636)
+		return
+	var clean := AtlasTexture.new()
+	clean.atlas = original
+	clean.region = Rect2(0,0,3520,1100)
+	slots_background.texture = clean
+	slots_background.size = Vector2(1760,550)
+	var captions := AtlasTexture.new()
+	captions.atlas = load(SHOP+"slotShop_en.png")
+	captions.region = Rect2(0,1100,3520,172)
+	slots_captions.texture = captions
 
 func update_ads() -> void:
 	var ads := get_node("/root/RewardedAds")

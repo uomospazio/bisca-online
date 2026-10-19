@@ -37,6 +37,21 @@ assert.equal((await rpc('bisca_begin_ad',['wheel','','iOS'])).recover,true);
 let r=await rpc('bisca_claim_ad',[s]);assert.equal(r.amount,50);assert.equal(r.credits,50);
 assert.deepEqual(await rpc('bisca_claim_ad',[s]),r);
 await db.exec(await readFile(new URL('../supabase/029_shop_ad_twenty.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/030_shop_rome_reset.sql',import.meta.url),'utf8'));
+for(const [at,day,next] of [
+ ['2026-01-10T17:59:59Z','2026-01-09','2026-01-10T18:00:00Z'],
+ ['2026-01-10T18:00:00Z','2026-01-10','2026-01-11T18:00:00Z'],
+ ['2026-07-10T16:59:59Z','2026-07-09','2026-07-10T17:00:00Z'],
+ ['2026-07-10T17:00:00Z','2026-07-10','2026-07-11T17:00:00Z'],
+ ['2026-03-28T18:00:00Z','2026-03-28','2026-03-29T17:00:00Z'],
+ ['2026-10-24T17:00:00Z','2026-10-24','2026-10-25T18:00:00Z']
+]) {
+ const row=(await db.query('select bisca_shop_day($1)::text as day, extract(epoch from bisca_shop_next_reset($1)) as seconds',[at])).rows[0];
+ assert.equal(row.day,day);assert.equal(Number(row.seconds),Date.parse(next)/1000);
+}
+const offers=await rpc('bisca_daily_shop');
+const expectedSeconds=Number((await db.query('select ceil(extract(epoch from bisca_shop_next_reset(statement_timestamp())-statement_timestamp())) seconds')).rows[0].seconds);
+assert.ok(Math.abs(offers.refresh_after-expectedSeconds)<=1,'Countdown matches Rome reset');
 assert.deepEqual(await rpc('bisca_claim_ad',[s]),r,'Already granted 50-coin receipts stay unchanged');
 const newShop=await begin('shop');await verify(newShop);
 r=await rpc('bisca_claim_ad',[newShop]);assert.equal(r.amount,20);assert.equal(r.credits,70);
@@ -45,6 +60,7 @@ const solo=await begin('solo','offline-match');await verify(solo);
 r=await rpc('bisca_claim_ad',[solo]);assert.equal(r.amount,30);assert.equal(r.season_points,50);
 await assert.rejects(begin('solo','offline-match'),/ALREADY_CLAIMED/);
 const refresh=await begin('refresh');await verify(refresh);assert.equal((await rpc('bisca_claim_ad',[refresh])).amount,0);
+assert.equal((await db.query('select day=bisca_shop_day(statement_timestamp()) correct from bisca_personal_offers')).rows[0].correct,true);
 await assert.rejects(begin('refresh'),/DAILY_REFRESH_USED/);
 await assert.rejects(begin('multi','fake-match'),/MATCH_NOT_RECORDED/);
 await assert.rejects(begin('multi_final','fake-match'),/MATCH_NOT_RECORDED/);

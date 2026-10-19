@@ -75,6 +75,7 @@ func _localized(texture: Texture2D) -> Texture2D:
 
 func _refresh_node(node: Node) -> void:
 	if not is_instance_valid(node): return
+	if node.get_meta("locale_texture_locked", false): return
 	if node is TextureRect or node is Sprite2D:
 		node.texture = _localized(node.texture)
 	if node is TextureButton:

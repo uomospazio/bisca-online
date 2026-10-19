@@ -1,5 +1,14 @@
 # Shop giornaliero — nuova UI
 
+## Aggiornamenti produzione
+
+La migrazione 030 imposta la rotazione alle **19:00 Europe/Rome**, inclusi ora
+solare e legale. Il reroll personale si azzera allo stesso confine; il countdown
+arriva dal server e supporta giorni di 23/25 ore. Nessun cron necessario: le
+offerte della nuova fascia vengono generate alla prima lettura e condivise.
+La migrazione 029 imposta il video shop a **20 monete**; dalla 028 i premi
+richiedono la conferma SSV di Google. I dettagli sotto descrivono la versione 025.
+
 Applicare `025_shop_six_offers.sql` dopo le migrazioni fino alla 024, prima di distribuire il nuovo client. Non e' stata applicata automaticamente su Supabase.
 
 - Sei offerte: due dorsi, due avatar, due oggetti lanciabili. Ogni colonna contiene una categoria.

@@ -88,7 +88,8 @@ func refresh_daily() -> void:
 				daily_refresh_available = bool(data.get("refresh_available", false))
 				_daily_ids = unique
 				daily_error = ""
-				var seconds := clampi(int(data.refresh_after), 1, 86400)
+				# The Rome shop day lasts 25 hours when daylight saving time ends.
+				var seconds := clampi(int(data.refresh_after), 1, 90000)
 				_daily_until = Time.get_ticks_msec() + seconds * 1000
 				get_tree().create_timer(seconds).timeout.connect(refresh_daily)
 	changed.emit()

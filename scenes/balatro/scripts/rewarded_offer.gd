@@ -71,4 +71,4 @@ func _update() -> void:
 		if placement == "solo" and not used:
 			status.text += "\n+50 punti se la stagione e' attiva"
 	if placement == "refresh" and used and not pending and not ads.busy:
-		status.text = "Un refresh al giorno · reset 00:00 UTC"
+		status.text = "Un refresh al giorno · reset 19:00 ora di Roma"

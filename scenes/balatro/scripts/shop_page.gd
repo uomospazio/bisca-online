@@ -293,7 +293,7 @@ func _build_offer(item: Dictionary, index: int) -> void:
 	elif item.item_type == "avatar" and item.asset_id >= 1 and item.asset_id <= preload("res://scenes/balatro/scripts/avatar_catalog.gd").TEXTURES.size():
 		preview.texture = preload("res://scenes/balatro/scripts/avatar_catalog.gd").TEXTURES[item.asset_id - 1]
 	elif item.item_type == "throwable" and preload("res://scenes/balatro/scripts/throw_catalog.gd").enabled(item.asset_id):
-		preview.texture = load("res://scenes/balatro/resources/" + preload("res://scenes/balatro/scripts/throw_catalog.gd").FILES[item.asset_id])
+		preview.texture = UiLocale.resource("res://scenes/balatro/resources/" + preload("res://scenes/balatro/scripts/throw_catalog.gd").FILES[item.asset_id])
 	offer.add_child(preview)
 	if preview.texture == null:
 		var caption := _label(str(item.name), 22)

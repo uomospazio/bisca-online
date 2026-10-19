@@ -71,7 +71,7 @@ func setup(owner_page: Control) -> void:
 	page.code_label.resized.connect(func(): page.code_label.pivot_offset = page.code_label.size / 2)
 	page.copy_icon = TextureRect.new()
 	row.add_child(page.copy_icon)
-	page.copy_icon.texture = load(ICONS + "copy.svg")
+	page.copy_icon.texture = UiLocale.resource(ICONS + "copy.svg")
 	page.copy_icon.custom_minimum_size = Vector2(72, 72)
 	page.copy_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	page.copy_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -95,7 +95,7 @@ func setup(owner_page: Control) -> void:
 func _art(parent: Node, filename: String, rect: Rect2) -> TextureRect:
 	var view := TextureRect.new()
 	parent.add_child(view)
-	view.texture = load(ART + filename)
+	view.texture = UiLocale.resource(ART + filename)
 	view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	view.position = rect.position
 	view.size = rect.size
@@ -124,7 +124,7 @@ func skin_button(button: Button, filename: String) -> void:
 	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		var style := StyleBoxTexture.new()
-		style.texture = load(ART + filename)
+		style.texture = UiLocale.resource(ART + filename)
 		style.modulate_color = Color(0.65, 0.65, 0.65) if state == "disabled" else (Color(1.12, 1.12, 1.12) if state == "hover" else Color.WHITE)
 		if state in ["pressed", "hover_pressed"]:
 			style.modulate_color = Color(0.8, 0.8, 0.8)
@@ -143,7 +143,7 @@ func _button(parent: Node, filename: String, rect: Rect2, action: Callable) -> B
 
 func skin_slot(row: PanelContainer, empty: bool) -> void:
 	var style := StyleBoxTexture.new()
-	style.texture = load(ART + ("emptySlot.png" if empty else "slotLobby.png"))
+	style.texture = UiLocale.resource(ART + ("emptySlot.png" if empty else "slotLobby.png"))
 	style.content_margin_left = 20
 	style.content_margin_right = 20
 	style.content_margin_top = 12
@@ -197,7 +197,7 @@ func _copy_code() -> void:
 		copy_tween.kill()
 	copy_tween = create_tween()
 	copy_tween.tween_property(page.code_label, "scale", Vector2.ZERO, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	copy_tween.tween_callback(func(): page.copy_icon.texture = load(ICONS + "copy-success.svg"))
+	copy_tween.tween_callback(func(): page.copy_icon.texture = UiLocale.resource(ICONS + "copy-success.svg"))
 	copy_tween.tween_property(page.code_label, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _fit() -> void:

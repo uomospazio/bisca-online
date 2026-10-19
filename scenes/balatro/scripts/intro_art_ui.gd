@@ -4,6 +4,7 @@ const INTRO_ART := "res://scenes/balatro/trick_asset/ui_bisca/pngUI/IntroUI/"
 const DESIGN := Vector2(2048, 943)
 var notice: Label
 var buttons: Array[Button] = []
+var language_selector: OptionButton
 
 func setup_intro(welcome: Control) -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -13,6 +14,19 @@ func setup_intro(welcome: Control) -> void:
 	composition = Control.new()
 	add_child(composition)
 	composition.size = DESIGN
+	language_selector = OptionButton.new()
+	language_selector.name = "LanguageSelector"
+	composition.add_child(language_selector)
+	language_selector.position = Vector2(40, 30)
+	language_selector.size = Vector2(270, 74)
+	language_selector.add_item("Italiano", 0)
+	language_selector.add_item("English", 1)
+	language_selector.add_theme_font_override("font", font)
+	language_selector.add_theme_font_size_override("font_size", 32)
+	preload("res://scenes/balatro/scripts/generic_ui_skin.gd").apply(language_selector, true)
+	language_selector.item_selected.connect(func(index: int): get_node("/root/GameSettings").set_value("language", "en" if index == 1 else "it"))
+	get_node("/root/GameSettings").changed.connect(_refresh_language_selector)
+	_refresh_language_selector()
 	var logo := _image(composition, "res://scenes/balatro/trick_asset/ui_bisca/pngUI/homeUI/titoloHome.png", Rect2(450, 10, 1148, 550))
 	logo.name = "WelcomeLogo"
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -40,3 +54,6 @@ func _layout(bounds: Rect2) -> void:
 	var factor := minf(bounds.size.x / DESIGN.x, bounds.size.y / DESIGN.y)
 	composition.scale = Vector2.ONE * factor
 	composition.position = bounds.get_center() - DESIGN * factor / 2
+
+func _refresh_language_selector() -> void:
+	language_selector.select(1 if get_node("/root/GameSettings").values.language == "en" else 0)

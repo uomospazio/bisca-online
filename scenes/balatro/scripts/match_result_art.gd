@@ -31,7 +31,7 @@ func render(_rooms: Array = []) -> void:
 	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	bg.mouse_filter = MOUSE_FILTER_IGNORE
 	if flow.final_screen and (not flow.solo or flow.won):
-		bg.texture = load(HOME+"sfondoViola.png")
+		bg.texture = UiLocale.resource(HOME+"sfondoViola.png")
 	else:
 		var shade := ColorRect.new()
 		add_child(shade)
@@ -112,6 +112,7 @@ func _draw_podium() -> void:
 			var rank := _label(composition,"%d°" % (i+1),Rect2(x-45,y-65,90,50),30)
 			rank.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var name_label := _label(composition,str(entry.get("name","")),Rect2(x-190,445,380,60),40 if i==0 else 29)
+		name_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		name_label.clip_text = true

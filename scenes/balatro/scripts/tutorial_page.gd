@@ -60,7 +60,7 @@ func _layout(bounds: Rect2) -> void:
 	composition.position = bounds.get_center() - SIZE * factor / 2
 
 func _render() -> void:
-	slide.texture = load(TUTORIAL_ART + "tutorial%d.png" % (step + 1))
+	slide.texture = UiLocale.resource(TUTORIAL_ART + "tutorial%d.png" % (step + 1))
 	var compact := step in COMPACT_STEPS
 	var rect := Rect2(92, 26, 774, 388)
 	if step == 3:
@@ -71,7 +71,7 @@ func _render() -> void:
 		rect = Rect2(241, 283, 505, 134.25)
 	slide.position = rect.position
 	slide.size = rect.size
-	portrait.texture = load(PORTRAITS[PORTRAIT_ORDER[step]])
+	portrait.texture = UiLocale.resource(PORTRAITS[PORTRAIT_ORDER[step]])
 	portrait.position = Vector2(112 if compact else -8, 220)
 	portrait.size = Vector2(204, 306)
 	next_button.position = Vector2(696, 369) if compact else Vector2(798, 354)

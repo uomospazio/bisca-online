@@ -32,7 +32,7 @@ func setup_wheel(owner_page: Control) -> void:
 	disc = TextureRect.new()
 	composition.add_child(disc)
 	var crop := AtlasTexture.new()
-	crop.atlas = load(WHEEL+"ruotaGirevole.png")
+	crop.atlas = UiLocale.resource(WHEEL+"ruotaGirevole.png")
 	crop.region = Rect2(515,184,1533,1533)
 	disc.texture = crop
 	disc.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

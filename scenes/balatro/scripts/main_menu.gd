@@ -265,7 +265,7 @@ func _ready() -> void:
 		var mascot := TextureRect.new()
 		home_character = mascot
 		mascot.name = "HomeCharacter"
-		mascot.texture = load(HOME_CHARACTER_PATH) as Texture2D
+		mascot.texture = UiLocale.resource(HOME_CHARACTER_PATH) as Texture2D
 		mascot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		mascot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		mascot.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -275,7 +275,7 @@ func _ready() -> void:
 		mascot.size = HOME_CHARACTER_SIZE
 	shop_character = TextureRect.new()
 	shop_character.name = "ShopCharacter"
-	shop_character.texture = load(SHOP_CHARACTER_PATH) as Texture2D
+	shop_character.texture = UiLocale.resource(SHOP_CHARACTER_PATH) as Texture2D
 	shop_character.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shop_character.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	shop_character.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -973,7 +973,7 @@ func _show_menu_title(with_friends: bool = false) -> void:
 	friends_subtitle.modulate.a = 1.0
 	friends_subtitle.scale = Vector2.ONE
 	if is_instance_valid(home_character):
-		home_character.texture = load(HOME_CHARACTER_PATH) as Texture2D
+		home_character.texture = UiLocale.resource(HOME_CHARACTER_PATH) as Texture2D
 		home_character.show()
 		home_character.position = HOME_CHARACTER_POSITION
 		home_character.modulate.a = 1.0
@@ -1189,7 +1189,7 @@ func _round_icon_button(parent: Node, filename: String, tooltip: String, callbac
 	var path := "res://scenes/balatro/trick_asset/ui_bisca/" + filename
 	if ResourceLoader.exists(path):
 		var icon := TextureRect.new()
-		icon.texture = load(path) as Texture2D
+		icon.texture = UiLocale.resource(path) as Texture2D
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -1229,7 +1229,7 @@ func _add_button_icon(button: Button, path: String) -> void:
 	center.add_child(content)
 
 	var icon := TextureRect.new()
-	icon.texture = load(path) as Texture2D
+	icon.texture = UiLocale.resource(path) as Texture2D
 	icon.custom_minimum_size = Vector2.ONE * PLAY_ICON_SIZE
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1294,7 +1294,7 @@ func _build_coin_counter(parent: Control) -> void:
 	if ResourceLoader.exists(COINS_ICON_PATH):
 		var coin_icon := TextureRect.new()
 		coin_icon.name = "CoinIcon"
-		coin_icon.texture = load(COINS_ICON_PATH) as Texture2D
+		coin_icon.texture = UiLocale.resource(COINS_ICON_PATH) as Texture2D
 		coin_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		coin_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		coin_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS

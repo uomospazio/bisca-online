@@ -63,6 +63,7 @@ func _set_wide_prediction_banner(enabled: bool) -> void:
 
 func _set_animated_title(value: String) -> void:
 	var target: MixedLabel = prediction_title if wide_prediction_banner else title
+	target.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
 	var large_prompt := value in ["QUANTE PRESE FAI?", "E' IL TUO TURNO!"]
 	target.add_theme_font_size_override("normal_font_size", 104 if large_prompt else 92)
 	if target == prediction_title:
@@ -272,6 +273,7 @@ func show_victory(player_name: String, avatar: Texture2D = null, stats: Dictiona
 	title.add_theme_constant_override("shadow_outline_size", 0)
 	title.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 	title.set_mixed_text(player_name.to_upper())
+	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	subtitle.set_mixed_text("HA VINTO LA PARTITA!")
 	if is_instance_valid(victory_details):
 		victory_details.get_parent().remove_child(victory_details)

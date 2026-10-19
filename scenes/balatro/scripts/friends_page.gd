@@ -147,7 +147,7 @@ func setup(host: Control) -> void:
 	friends_box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var background := TextureRect.new()
 	friends_box.add_child(background)
-	background.texture = load(UI + "boxAmici.png")
+	background.texture = UiLocale.resource(UI + "boxAmici.png")
 	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -215,7 +215,7 @@ func _build_account_panel() -> void:
 	var panel := TextureRect.new()
 	account_box = panel
 	content_root.add_child(panel)
-	panel.texture = load(UI + "slotAccount.png")
+	panel.texture = UiLocale.resource(UI + "slotAccount.png")
 	panel.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	# Restored upper cutout: top aligns with Back, bottom with the friends panel.
 	panel.size = Vector2(652, 800)
@@ -271,17 +271,22 @@ func _build_account_panel() -> void:
 		button.pressed.connect(_select_account_tab.bind(tab == 1))
 
 func _select_account_tab(season: bool) -> void:
-	account_box.texture = load(UI + ("slotStagione.png" if season else "slotAccount.png"))
+	account_box.texture = UiLocale.resource(UI + ("slotStagione.png" if season else "slotAccount.png"))
 	for child in account_contents:
 		child.visible = not season
 	season_panel.visible = season
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_instance_valid(account_name) and stat_values.size() == 4:
+		_refresh_account_panel.call_deferred()
 
 func _refresh_account_panel() -> void:
 	var profile: Dictionary = get_node("/root/AccountProfile").profile
 	var owner := str(get_node("/root/AccountSession").user_id)
 	if owner.is_empty() or str(profile.get("id", "")) != owner:
 		profile = {}
-	account_name.text = str(profile.get("username") if profile.get("username") != null else "Giocatore")
+	account_name.text = str(profile.get("username")) if profile.get("username") != null else UiLocale.text("Giocatore")
+	account_name.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	account_code.text = "#" + str(profile.get("public_id", "—"))
 	var config := ConfigFile.new()
 	var encoded := ""
@@ -307,7 +312,7 @@ func _refresh_account_panel() -> void:
 			value.add_text("%")
 			value.pop()
 		else:
-			value.add_text(values[i] if not profile.is_empty() else "—")
+			value.add_text(UiLocale.text(values[i]) if not profile.is_empty() else "—")
 		value.pop()
 
 func action_button(parent: Node, text: String, callback: Callable, hint := "", positive := false) -> Button:
@@ -322,7 +327,7 @@ func action_button(parent: Node, text: String, callback: Callable, hint := "", p
 	elif text == "+": asset = "pulsanteAggiungi.png"
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var skin := StyleBoxTexture.new()
-		skin.texture = load("res://scenes/balatro/trick_asset/ui_bisca/pngUI/InLobbyUI/tastoIndietro.png" if text == "←" else UI + asset)
+		skin.texture = UiLocale.resource("res://scenes/balatro/trick_asset/ui_bisca/pngUI/InLobbyUI/tastoIndietro.png" if text == "←" else UI + asset)
 		skin.modulate_color = Color(1.15, 1.15, 1.15) if state == "hover" else (Color(0.8, 0.8, 0.8) if state == "pressed" else Color.WHITE)
 		button.add_theme_stylebox_override(state, skin)
 	var focus := StyleBoxFlat.new()
@@ -339,7 +344,7 @@ func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:
 	var tile := PanelContainer.new()
 	tile.custom_minimum_size.y = 110
 	var skin := StyleBoxTexture.new()
-	skin.texture = load(UI + "slotAmici.png")
+	skin.texture = UiLocale.resource(UI + "slotAmici.png")
 	# The row uses the same aspect ratio as the supplied artwork.
 	skin.content_margin_left = 28
 	skin.content_margin_right = 38
@@ -351,7 +356,7 @@ func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:
 	line.add_theme_constant_override("separation", 20)
 	tile.add_child(line)
 	var dot := TextureRect.new()
-	dot.texture = load(UI + ("amicoOn.png" if row.get("online", false) else "amicoOff.png"))
+	dot.texture = UiLocale.resource(UI + ("amicoOn.png" if row.get("online", false) else "amicoOff.png"))
 	dot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	dot.custom_minimum_size = Vector2(34, 34)
 	dot.size_flags_vertical = SIZE_SHRINK_CENTER
@@ -387,6 +392,7 @@ func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:
 	line.add_child(identity_rows)
 	# One rich line keeps the code adjacent to the name, not right-aligned.
 	var name_line := RichTextLabel.new()
+	name_line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	identity_rows.add_child(name_line)
 	name_line.custom_minimum_size.y = 36
 	name_line.fit_content = false
@@ -394,7 +400,7 @@ func contact_tile(row: Dictionary, parent: VBoxContainer) -> HBoxContainer:
 	name_line.add_theme_font_override("normal_font", menu.KIDS_FONT)
 	name_line.add_theme_font_size_override("normal_font_size", 28)
 	name_line.push_color(Color("faf6ff"))
-	name_line.add_text(name_text if not name_text.is_empty() else "Giocatore")
+	name_line.add_text(name_text if not name_text.is_empty() else UiLocale.text("Giocatore"))
 	name_line.pop()
 	name_line.push_color(Color("bda0ee"))
 	name_line.add_text("  #" + str(row.get("public_id", "")))

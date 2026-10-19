@@ -36,6 +36,7 @@ driver/enable_input=true
 [autoload]
 
 GameSettings="*res://scenes/balatro/scripts/game_settings.gd"
+Localization="*res://scenes/balatro/scripts/ui_locale.gd"
 NetworkSession="*res://scenes/balatro/scripts/network_session.gd"
 VoiceChat="*res://scenes/balatro/scripts/voice_chat.gd"
 AccountSession="*res://scenes/balatro/scripts/account_session.gd"

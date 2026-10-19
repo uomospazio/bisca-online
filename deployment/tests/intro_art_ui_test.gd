@@ -10,11 +10,18 @@ class WelcomeStub extends Control:
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
+	var settings := root.get_node("GameSettings")
+	var original_language: String = settings.values.language
+	if "--english" in OS.get_cmdline_user_args():
+		settings.values.language = "en"
+		settings.changed.emit()
 	var host := WelcomeStub.new()
 	root.add_child(host)
 	var intro = preload("res://scenes/balatro/scripts/intro_art_ui.gd").new()
 	root.add_child(intro)
 	intro.setup_intro(host)
+	assert(intro.language_selector.position == Vector2(40, 30))
+	assert(intro.language_selector.selected == (1 if settings.values.language == "en" else 0))
 	assert(intro.find_child("WelcomeLogo",true,false).stretch_mode==TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
 	for child in intro.get_children():
 		assert(not child is ColorRect,"No opaque rectangle over the app background")
@@ -30,4 +37,6 @@ func run() -> void:
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("/tmp/bisca-intro-art.png")
 	print("PASS: intro provider buttons, guest and responsive layout")
+	settings.values.language = original_language
+	settings.changed.emit()
 	quit()

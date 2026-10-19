@@ -322,7 +322,7 @@ func _update(state: Dictionary) -> void:
 	code_label.text = str(state.code)
 	code_button.set_meta("room_code", state.code)
 	players_label.text = "%d/8" % min(8, state.people.size())
-	copy_icon.texture = load("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
+	copy_icon.texture = UiLocale.resource("res://scenes/balatro/trick_asset/ui_bisca/%s.svg" % ("copy-success" if copied_code == str(state.code) else "copy"))
 	# Le opzioni stanza cambiano spesso senza modificare gli slot. In quel caso
 	# conserviamo nodi, focus e tween invece di ricreare otto card.
 	# Voice status changes do not change the row layout. Preserve the button
@@ -374,6 +374,7 @@ func _update(state: Dictionary) -> void:
 		var name_button := Button.new()
 		row.set_meta("name_view", name_button)
 		name_button.text = str(p.name) + ("  · OFFLINE" if not p.connected else "")
+		name_button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		name_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -397,7 +398,7 @@ func _update(state: Dictionary) -> void:
 		name_button.clip_text = true
 		if index == int(state.you):
 			var self_badge := TextureRect.new()
-			self_badge.texture = load(lobby_ui.ART + "tu.png")
+			self_badge.texture = UiLocale.resource(lobby_ui.ART + "tu.png")
 			self_badge.custom_minimum_size = Vector2(41, 41)
 			self_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			self_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

@@ -26,7 +26,7 @@ func setup(friends: Control) -> void:
 	info.size = Vector2(44,44)
 	for state in ["normal","hover","pressed","disabled","focus"]:
 		var skin := StyleBoxTexture.new()
-		skin.texture = load(UI + "infoClassifica.png")
+		skin.texture = UiLocale.resource(UI + "infoClassifica.png")
 		info.add_theme_stylebox_override(state,skin)
 	info.pressed.connect(_info)
 	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(info)
@@ -160,6 +160,7 @@ func _make_row(entry: Dictionary,is_self: bool,parent: Node) -> Panel:
 	var username = entry.get("username")
 	var name_text := str(username) if username != null and not str(username).is_empty() else "#"+str(entry.get("public_id",""))
 	var name_label := _label(name_text,Rect2(125,17,230,42),23,row)
+	name_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if is_self:
 		name_label.add_theme_color_override("font_color",Color("FFE66A"))
@@ -179,7 +180,7 @@ func _image(parent: Node,path: String,rect: Rect2) -> void:
 	var image := TextureRect.new()
 	parent.add_child(image)
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	image.texture = load(path)
+	image.texture = UiLocale.resource(path)
 	image.position = rect.position
 	image.size = rect.size
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

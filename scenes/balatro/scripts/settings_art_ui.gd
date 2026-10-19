@@ -119,7 +119,7 @@ func _skin(button: Button, path: String) -> void:
 		preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(button)
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var style := StyleBoxTexture.new()
-		style.texture = load(path)
+		style.texture = UiLocale.resource(path)
 		style.modulate_color = Color(0.65, 0.65, 0.65) if button.disabled else Color.WHITE
 		if state == "pressed": style.modulate_color = Color(0.8, 0.8, 0.8)
 		button.add_theme_stylebox_override(state, style)
@@ -177,7 +177,7 @@ func sync() -> void:
 	privacy.tooltip_text = owner_page.privacy_status.text
 	var english: bool = owner_page.settings.values.language == "en"
 	_skin(language_button, SETTINGS_ART + ("english.png" if english else "italiano.png"))
-	language_open.texture = load(SETTINGS_ART + ("englishOpen.png" if english else "italianoOpen.png"))
+	language_open.texture = UiLocale.resource(SETTINGS_ART + ("englishOpen.png" if english else "italianoOpen.png"))
 
 func open() -> void:
 	if not owner_page.is_visible_in_tree(): return

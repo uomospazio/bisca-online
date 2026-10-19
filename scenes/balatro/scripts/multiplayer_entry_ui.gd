@@ -100,7 +100,7 @@ func _image(parent: Node, path: String, rect: Rect2) -> TextureRect:
 	var image := TextureRect.new()
 	parent.add_child(image)
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	image.texture = load(path)
+	image.texture = UiLocale.resource(path)
 	image.position = rect.position
 	image.size = rect.size
 	image.texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -127,7 +127,7 @@ func _button(parent: Node, path: String, rect: Rect2, action: Callable, hover_en
 	button.size = rect.size
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var style := StyleBoxTexture.new()
-		style.texture = load(path)
+		style.texture = UiLocale.resource(path)
 		style.modulate_color = Color(0.8, 0.8, 0.8) if state == "pressed" else Color.WHITE
 		button.add_theme_stylebox_override(state, style)
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())

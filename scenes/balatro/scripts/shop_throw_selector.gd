@@ -59,7 +59,7 @@ func refresh() -> void:
 	for index in buttons.size():
 		var id: int = int(selection[index])
 		var enabled := id >= 0 and id < Catalog.FILES.size() and Catalog.enabled(id)
-		buttons[index].icon = load("res://scenes/balatro/resources/" + Catalog.FILES[id]) if enabled else null
+		buttons[index].icon = UiLocale.resource("res://scenes/balatro/resources/" + Catalog.FILES[id]) if enabled else null
 		buttons[index].text = "" if enabled or artwork_skin else "+"
 		buttons[index].tooltip_text = "Cambia oggetto (o lascia vuoto)"
 

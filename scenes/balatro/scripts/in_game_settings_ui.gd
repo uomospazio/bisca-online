@@ -107,7 +107,7 @@ func _slider(parent: Node, rect: Rect2) -> HSlider:
 func _toggle_state(button: Button, active: bool) -> void:
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		var skin := StyleBoxTexture.new()
-		skin.texture = load(ART_ROOM + ("toggleOn.png" if active else "toggleOff.png"))
+		skin.texture = UiLocale.resource(ART_ROOM + ("toggleOn.png" if active else "toggleOff.png"))
 		skin.modulate_color = Color(0.5, 0.5, 0.5) if button.disabled else Color.WHITE
 		button.add_theme_stylebox_override(state, skin)
 
@@ -153,6 +153,7 @@ func _render_participants() -> void:
 			var id: String = person.id
 			_participant_slot(Rect2(58, y, 820, 76), false)
 			var label := _label(participant_rows, person.name, Rect2(86, y, 300, 76), 27)
+			label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 			label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			label.clip_text = true
 			var slider := _slider(participant_rows, Rect2(410, y + 13, 305, 50))

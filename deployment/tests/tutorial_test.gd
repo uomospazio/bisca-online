@@ -7,6 +7,10 @@ func _initialize() -> void:
 	run.call_deferred()
 
 func run() -> void:
+	var settings := root.get_node("GameSettings")
+	var original_language: String = settings.values.language
+	settings.values.language = "it"
+	settings.changed.emit()
 	root.size = Vector2i(1800, 900)
 	var page := Tutorial.new()
 	root.add_child(page)
@@ -20,7 +24,13 @@ func run() -> void:
 		assert(page.slide.texture != null)
 		assert(page.slide.texture.resource_path.ends_with("tutorial%d.png" % (index + 1)))
 		assert(page.portrait.texture.resource_path == Tutorial.PORTRAITS[Tutorial.PORTRAIT_ORDER[index]])
-		assert(page.find_children("*", "Button", true, false).size() == 1, "Only the next arrow, no skip")
+		assert(page.find_children("*", "Button", true, false).size() == 2, "Next and Q&A, no skip")
+		settings.values.language = "en"
+		settings.changed.emit()
+		assert(page.slide.texture.resource_path.ends_with("tutorial%d_en.png" % (index + 1)))
+		settings.values.language = "it"
+		settings.changed.emit()
+		assert(page.slide.texture.resource_path.ends_with("tutorial%d.png" % (index + 1)))
 		assert(page.next_button.visible)
 		var ratio := page.slide.size.x / page.slide.size.y
 		var texture_ratio := page.slide.texture.get_width() / float(page.slide.texture.get_height())
@@ -61,6 +71,8 @@ func run() -> void:
 	config.load(path)
 	assert(config.get_value("tutorial", "completed", false))
 	print("PASS: ten numbered slides, portraits, proportional artwork, no skip, completion and onboarding persistence")
+	settings.values.language = original_language
+	settings.changed.emit()
 	quit()
 
 func snapshot(label: String) -> void:

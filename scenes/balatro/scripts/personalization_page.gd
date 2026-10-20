@@ -44,7 +44,7 @@ func setup(menu: Control) -> void:
 	throw_selector.artwork_skin = true
 	throw_selector.setup(menu)
 	throw_selector.apply_personalization_skin(UiLocale.resource(PERSONAL_ART + "buttonOggetto.png"))
-	back_button = _button(self, UI + "pngUI/InLobbyUI/tastoIndietro.png", Rect2(40, 40, 108, 98), menu.show_home)
+	back_button = _button(self, UI + "pngUI/InLobbyUI/tastoIndietro.png", Rect2(40, 40, 108, 98), menu._leave_personalization)
 	back_button.tooltip_text = "Indietro"
 	get_node("/root/ShopManager").changed.connect(throw_selector.refresh)
 	get_viewport().size_changed.connect(_fit)

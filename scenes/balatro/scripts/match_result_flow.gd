@@ -238,7 +238,7 @@ func _complete() -> void:
 		return
 	if go_home:
 		finished[_key()] = true
-		host._show_menu()
+		host._show_singleplayer_menu()
 	elif go_lobby:
 		finished[_key()] = true
 		var net := get_node("/root/NetworkSession")

@@ -286,6 +286,12 @@ func _update(state: Dictionary) -> void:
 	create_wait_generation += 1
 	directory_panel.hide()
 	if state.stage != "lobby":
+		if not menu.personalization_lobby_code.is_empty():
+			menu.personalization_lobby_code = ""
+			# The host may start while this player is editing their appearance.
+			# Hide customization before the match, so it cannot cover the lobby later.
+			if menu.active_page == menu.personalization_page:
+				menu._switch_page(self)
 		invite_box.hide()
 		profile_picker.close()
 		hide()

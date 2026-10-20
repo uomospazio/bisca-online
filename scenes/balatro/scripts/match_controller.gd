@@ -265,7 +265,17 @@ func _ready() -> void:
 	if get_tree().has_meta("bisca_restart"):
 		var restart: Dictionary = get_tree().get_meta("bisca_restart")
 		get_tree().remove_meta("bisca_restart")
-		_menu_start.call_deferred(restart.name, restart.count)
+		_restart_saved_match.call_deferred(restart)
+
+func _restart_saved_match(restart: Dictionary) -> void:
+	local_name = str(restart.name)
+	var options: Dictionary = restart.get("options", menu.match_options.values())
+	menu.match_options.lives.value = int(options.get("lives", 3))
+	menu.match_options.rounds.value = int(options.get("starting_cards", 5))
+	menu.match_options.bot_count.value = int(restart.count) - 1
+	rules.configure(options)
+	rules.force_local_joker = bool(restart.get("joker", false))
+	_start_solo_offline(int(restart.count))
 
 func _style_new_button(node: Node) -> void:
 	if node is Button and node is not CheckButton and node is not CheckBox:
@@ -359,6 +369,10 @@ func _menu_start(display_name: String, count: int) -> void:
 	# Singleplayer is always local: do not wait for authentication or the
 	# multiplayer server. Local matches never earn cloud rewards.
 	_start_solo_offline(count)
+
+func _show_singleplayer_menu() -> void:
+	_show_menu()
+	menu.show_setup()
 
 var solo_connecting := false
 var solo_ready_sent := false

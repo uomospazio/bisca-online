@@ -8,6 +8,7 @@ var page
 var scalable_font: FontFile
 var content: Control
 var back_anchor: Control
+var customization_anchor: Control
 var blocks: Array[Control] = []
 var steppers: Array[Dictionary] = []
 var private_toggle: Button
@@ -88,7 +89,14 @@ func setup(owner_page: Control) -> void:
 	back_anchor.mouse_filter = MOUSE_FILTER_IGNORE
 	var back := _button(back_anchor, "tastoIndietro.png", Rect2(0, 0, 108, 98), page._back)
 	back.tooltip_text = "Indietro"
-	blocks = [settings, players, page.start_button, back]
+	customization_anchor = Control.new()
+	add_child(customization_anchor)
+	customization_anchor.mouse_filter = MOUSE_FILTER_IGNORE
+	var customize := _button(customization_anchor, "../homeUI/buttonPersonalizzazione.png",
+		Rect2(0, 0, 108, 108), page.menu._show_lobby_personalization)
+	customize.name = "LobbyPersonalization"
+	customize.tooltip_text = "Personalizzazione"
+	blocks = [settings, players, page.start_button, back, customize]
 	get_viewport().size_changed.connect(_fit)
 	_fit.call_deferred()
 
@@ -234,6 +242,8 @@ func _layout_in_bounds(bounds: Rect2, screen_center: Vector2) -> void:
 	content.scale = Vector2.ONE * factor
 	content.position = center - CONTENT_RECT.get_center() * factor
 	back_anchor.position = bounds.position
+	customization_anchor.position = Vector2(bounds.end.x - 108 * factor, bounds.position.y)
+	customization_anchor.scale = Vector2.ONE * factor
 	back_anchor.scale = Vector2.ONE * factor
 
 func stop_pop() -> void:

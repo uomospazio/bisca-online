@@ -24,7 +24,8 @@ config/tags=PackedStringArray("commercial_games")
 run/main_scene="res://scenes/balatro/balatro.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/bg_color=Color(0.09019608, 0.07450981, 0.14117648, 1)
-boot_splash/image="uid://dnqnk4yvqig7e"
+boot_splash/stretch_mode=4
+boot_splash/image="res://scenes/balatro/trick_asset/ui_bisca/boot_splash.png"
 config/icon="uid://cjkt2olulqgac"
 
 [audio]

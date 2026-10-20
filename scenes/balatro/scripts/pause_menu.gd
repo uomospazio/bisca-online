@@ -98,7 +98,13 @@ func _leave(restart: bool) -> void:
 	if host.online:
 		host.get_node("/root/NetworkSession").leave()
 	if restart:
-		get_tree().set_meta("bisca_restart", {"name": host.local_name, "count": host.player_count, "joker": host.rules.force_local_joker})
+		get_tree().set_meta("bisca_restart", {
+			"name": host.local_name, "count": host.player_count,
+			"joker": host.rules.force_local_joker,
+			"options": {"lives": host.rules.initial_lives,
+				"starting_cards": host.rules.starting_cards,
+				"bot_count": host.player_count - 1},
+		})
 	# A fresh scene cancels the old deal/bot/animation coroutines safely.
 	get_tree().reload_current_scene()
 

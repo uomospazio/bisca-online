@@ -142,6 +142,7 @@ var home_support_button: TextureButton
 var home_art: Control
 var shop_return_page: Control
 var personalization_page: Control
+var personalization_lobby_code := ""
 var shop_character: TextureRect
 var customization_character_ready := false
 var deck_selector: Control
@@ -187,7 +188,11 @@ func _switch_page(next: Control, backwards := false) -> void:
 			_place_deck_selector_profile()
 		profile_panel.visible = next == network_page and network_page.session_controls.visible
 		deck_selector.reset_preview()
-	if network_entry or next == home_page or next == setup_page or next == shop_page or next == personalization_page or next == friends_page or next == settings_page:
+	# Lobby fits against its global transform. Sliding it while pop() calculates
+	# that fit stores an off-screen offset until the next viewport resize.
+	# Customization -> lobby uses the same stationary page swap + pop as entry.
+	var customization_to_lobby := previous == personalization_page and next == network_page
+	if customization_to_lobby or network_entry or next == home_page or next == setup_page or next == shop_page or next == personalization_page or next == friends_page or next == settings_page:
 		# L'ingresso Multiplayer usa solo il pop dei pulsanti, senza traslare la pagina.
 		if has_meta("page_transition_cleanup"):
 			get_meta("page_transition_cleanup").call()
@@ -926,6 +931,8 @@ func _show_friends() -> void:
 	friends_page.open()
 
 func _show_personalization() -> void:
+	if active_page == home_page:
+		personalization_lobby_code = ""
 	title.hide()
 	friends_subtitle.hide()
 	if not is_instance_valid(personalization_page):
@@ -934,6 +941,29 @@ func _show_personalization() -> void:
 		personalization_page.setup(self)
 	_switch_page(personalization_page)
 	personalization_page.open()
+
+func _show_lobby_personalization() -> void:
+	var net := get_node("/root/NetworkSession")
+	if net.room_code.is_empty() or net.latest.get("stage", "") != "lobby":
+		return
+	personalization_lobby_code = net.room_code
+	_show_personalization()
+
+func _leave_personalization() -> void:
+	var net := get_node("/root/NetworkSession")
+	profile_picker.close()
+	if not personalization_lobby_code.is_empty() and net.room_code == personalization_lobby_code and net.latest.get("stage", "") == "lobby" and is_instance_valid(network_page):
+		# Navigation only: never leave/rejoin NetworkSession or VoiceChat.
+		_switch_page(network_page, true)
+		profile_panel.hide() # Lobby uses its player cards, not the old floating profile.
+		_send_profile_name()
+		net.send({"op": "profile", "avatar": profile_avatar})
+		network_page._update(net.latest)
+		network_page.refresh_own_card()
+		network_page.lobby_ui.pop()
+	else:
+		show_home()
+	personalization_lobby_code = ""
 
 func _show_shop() -> void:
 	shop_return_page = active_page

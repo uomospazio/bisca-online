@@ -4,7 +4,9 @@ class Host extends Control:
 	var online := false
 	var overlay := Control.new()
 	var home_visits := 0
+	var solo_visits := 0
 	func _show_menu() -> void: home_visits += 1
+	func _show_singleplayer_menu() -> void: solo_visits += 1
 
 class Flow extends "res://scenes/balatro/scripts/match_result_flow.gd":
 	var flights: Array = []
@@ -76,11 +78,11 @@ func run() -> void:
 	await shot(flow,"solo-win")
 	var before: int = flow.flights.size()
 	await flow.skip()
-	assert(flow.flights.size()==before and host.home_visits==1,"Solo skip awards nothing")
+	assert(flow.flights.size()==before and host.solo_visits==1 and host.home_visits==0,"Solo returns to setup")
 	flow.match_id = "test-solo-redeem"
 	flow._open()
 	await flow.present_ad_reward({"amount":30,"season_points":50,"credits":310})
-	assert(flow.flights.back().amount==30 and host.home_visits==2)
+	assert(flow.flights.back().amount==30 and host.solo_visits==2 and host.home_visits==0)
 	flow.match_id = "test-final-during-ad"
 	flow.solo = false
 	flow.final_screen = false

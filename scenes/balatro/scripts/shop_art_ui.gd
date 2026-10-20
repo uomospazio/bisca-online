@@ -73,6 +73,32 @@ func setup_shop(owner_page: Control) -> void:
 	host.status = _label(composition,"",Rect2(380,842,1160,40),18)
 	host.status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	host.status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if OS.is_debug_build():
+		var diagnostic := Button.new()
+		diagnostic.name = "DebugAdInspector"
+		composition.add_child(diagnostic)
+		diagnostic.position = Vector2(340, 55)
+		diagnostic.size = Vector2(370, 65)
+		diagnostic.text = "Diagnostica pubblicita'"
+		diagnostic.add_theme_font_override("font", font)
+		diagnostic.add_theme_font_size_override("font_size", 24)
+		var diagnostic_status := _label(composition, "", Rect2(300,122,420,75),18)
+		diagnostic_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var ads := get_node("/root/RewardedAds")
+		diagnostic.pressed.connect(ads.open_debug_ad_inspector)
+		var demo := Button.new()
+		demo.name = "DebugDemoAd"
+		composition.add_child(demo)
+		demo.position = Vector2(1200, 55)
+		demo.size = Vector2(370, 65)
+		demo.text = "Test video Google"
+		demo.add_theme_font_override("font", font)
+		demo.add_theme_font_size_override("font_size", 24)
+		demo.pressed.connect(ads.show_debug_demo_ad)
+		ads.inspector_status.connect(func(text: String):
+			if is_instance_valid(diagnostic_status):
+				diagnostic_status.text = text
+		)
 	get_node("/root/RewardedAds").changed.connect(update_ads)
 	get_node("/root/ShopManager").changed.connect(update_ads)
 	var timer := Timer.new()

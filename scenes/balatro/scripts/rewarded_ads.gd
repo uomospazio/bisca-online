@@ -2,6 +2,94 @@ extends Node
 ## Annunci reali, consenso UMP e premi verificati tramite AdMob SSV.
 ## Per i test registrare i dispositivi in AdMob, senza cambiare gli ID.
 signal changed
+signal inspector_status(text: String)
+var _inspector_open := false
+var _demo_busy := false
+var _demo_serial := 0
+var _demo_ad: RewardedAd
+
+# Diagnostica isolata: nessuna sessione Supabase, SSV o ricompensa di gioco.
+func show_debug_demo_ad() -> void:
+	if not OS.is_debug_build():
+		return
+	if busy or _demo_busy or _inspector_open:
+		_inspector_report("Attendi la fine della diagnostica o del video corrente.")
+		return
+	if not supported() or not _initialized or not consent_ready:
+		_inspector_report("Test disponibile su Android/iOS dopo il consenso e l'avvio di AdMob.")
+		return
+	_demo_busy = true
+	_demo_serial += 1
+	var serial := _demo_serial
+	_inspector_report("Caricamento video demo Google (senza premi)...")
+	var callback := RewardedAdLoadCallback.new()
+	callback.on_ad_failed_to_load = func(error: LoadAdError):
+		if serial == _demo_serial:
+			_finish_demo("Demo: errore caricamento: " + str(error))
+	callback.on_ad_loaded = func(ad: RewardedAd):
+		if serial != _demo_serial:
+			ad.destroy()
+			return
+		_demo_ad = ad
+		var full := FullScreenContentCallback.new()
+		full.on_ad_failed_to_show_full_screen_content = func(error: AdError):
+			if serial == _demo_serial:
+				_finish_demo("Demo: errore visualizzazione: " + str(error))
+		full.on_ad_dismissed_full_screen_content = func():
+			if serial == _demo_serial:
+				_finish_demo("Video demo chiuso. Nessun premio assegnato.")
+		ad.full_screen_content_callback = full
+		var listener := OnUserEarnedRewardListener.new()
+		listener.on_user_earned_reward = func(_reward: RewardedItem):
+			if serial == _demo_serial:
+				_inspector_report("Video demo completato: callback ricevuto, nessun premio di gioco.")
+		_inspector_report("Video demo caricato. Apertura...")
+		ad.show(listener)
+	var unit := "ca-app-pub-3940256099942544/1712485313"
+	if OS.get_name() == "Android":
+		unit = "ca-app-pub-3940256099942544/5224354917"
+	RewardedAdLoader.new().load(unit, AdRequest.new(), callback)
+	await get_tree().create_timer(45.0).timeout
+	if serial == _demo_serial and _demo_ad == null:
+		_finish_demo("Caricamento demo scaduto. Riprova.")
+
+func _finish_demo(text: String) -> void:
+	_demo_serial += 1
+	_demo_busy = false
+	if _demo_ad != null:
+		_demo_ad.destroy()
+		_demo_ad = null
+	_inspector_report(text)
+
+func _inspector_report(text: String) -> void:
+	print("[BISCA Ad Inspector] ", text)
+	inspector_status.emit(text)
+
+func open_debug_ad_inspector() -> void:
+	if not OS.is_debug_build():
+		return
+	if _inspector_open:
+		return
+	if not supported():
+		_inspector_report("Disponibile solo su Android e iOS con plugin AdMob.")
+		return
+	if not _initialized:
+		_inspector_report("AdMob non inizializzato: completa prima il consenso privacy.")
+		return
+	if busy or _demo_busy:
+		_inspector_report("Attendi la fine della richiesta pubblicitaria e riprova.")
+		return
+	_inspector_open = true
+	_inspector_report("Apertura Ad Inspector...")
+	var listener := AdInspectorClosedListener.new()
+	listener.on_ad_inspector_closed = func(error: Dictionary):
+		_inspector_open = false
+		if error.is_empty():
+			_inspector_report("Ad Inspector chiuso.")
+		else:
+			_inspector_report("Errore %s | %s | %s" % [str(error.get("code", "?")), str(error.get("domain", "")), str(error.get("message", error))])
+	MobileAds.open_ad_inspector(listener)
+
 const ANDROID_PRODUCTION_UNIT := "ca-app-pub-4798197645196973/7155046146"
 const IOS_PRODUCTION_UNIT := "ca-app-pub-4798197645196973/7977173220"
 const SAVE := "user://rewarded_ads_test.cfg"
@@ -91,6 +179,10 @@ func supported() -> bool:
 	return OS.get_name() in ["Android", "iOS"] and Engine.has_singleton("PoingGodotAdMobRewardedAd")
 
 func _exit_tree() -> void:
+	_demo_serial += 1
+	if _demo_ad != null:
+		_demo_ad.destroy()
+		_demo_ad = null
 	# UMP owns static references to callbacks into this script. Dispose them
 	# before GDScriptLanguage::finish(), including when a request is pending.
 	if _consent_info != null:
@@ -251,7 +343,7 @@ func pending_for_account() -> bool:
 	return not _pending.is_empty() and str(_pending.get("owner", "")) == str(_account.user_id)
 
 func request_reward(placement: String, context := "") -> void:
-	if busy or not placement in ["shop", "refresh", "solo", "multi", "multi_final", "wheel"]:
+	if busy or _demo_busy or _inspector_open or not placement in ["shop", "refresh", "solo", "multi", "multi_final", "wheel"]:
 		return
 	if not _account.is_authenticated():
 		_set_message("Connettiti a Internet per ricevere il premio.")

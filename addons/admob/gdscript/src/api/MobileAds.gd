@@ -95,13 +95,12 @@ static func disable_sdk_crash_reporting() -> void:
 
 static func open_ad_inspector(ad_inspector_closed_listener: AdInspectorClosedListener = null) -> void:
 	if _plugin:
-		_plugin.open_ad_inspector()
-
 		if ad_inspector_closed_listener:
 			_current_on_ad_inspector_closed_listener = ad_inspector_closed_listener
 			safe_connect(
 				_plugin, "on_ad_inspector_closed", _on_ad_inspector_closed, CONNECT_ONE_SHOT
 			)
+		_plugin.open_ad_inspector()
 
 
 static func get_version() -> String:

@@ -19,6 +19,13 @@ func _initialize() -> void:
 				card.set_meta("seat_id", controller._visual_seat_for_player(player))
 				assert(table.landing_position(card) == table.size / 2 + table.LANDINGS[expected] - card.size / 2)
 				assert(table.landing_rotation(card) == table.READABLE_ANGLES[expected])
+	table.seat_center = func(_seat: int): return Vector2(200, 300)
+	card.set_meta("seat_id", 1)
+	var before: Vector2 = table.landing_position(card)
+	table.seat_center = func(_seat: int): return Vector2(300, 300)
+	assert(table.landing_position(card).is_equal_approx(before + Vector2(72, 0)))
+	card.set_meta("seat_id", 0)
+	assert(table.landing_position(card) == table.size / 2 + table.LANDINGS[0] - card.size / 2)
 	card.free()
 	table.free()
 	controller.online = true

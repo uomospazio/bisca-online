@@ -138,7 +138,10 @@ func _apply(value: Dictionary) -> void:
 			else:
 				card = host.CardScene.instantiate()
 				host.add_child(card)
-				card.global_position = host._badge_card_origin(host.scores.get_child(entry.player), card) - card.size / 2.0
+				card.scale = Vector2.ONE * 0.5
+				card.set_meta("seat_id", host._visual_seat_for_player(entry.player))
+				card.rotation = host.table.landing_rotation(card)
+				card.global_position = host._badge_card_origin(host.scores.get_child(entry.player), card) - (card.size * card.scale * 0.5).rotated(card.rotation)
 			if entry.card >= 0:
 				card.set_card_data(host.catalog[entry.card])
 			else:

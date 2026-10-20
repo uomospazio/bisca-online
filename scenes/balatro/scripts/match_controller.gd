@@ -75,17 +75,18 @@ const BOT_NAMES := ["", "Luca", "Sofia", "Marco", "Giulia", "Leo", "Emma", "Nico
 # The turn order follows the visual order of the seats around the table.
 const CLOCKWISE_SEATS := [0, 1, 2, 3, 4, 5, 6, 7]
 const LOCAL_PROFILE_SCALE := 1.65
-var seat_edge_controls: Dictionary = {}
-# Player 0 is local; the other seats run from left to right around the table.
+# Posti in senso orario, partendo dal giocatore locale in basso a sinistra.
+# I nomi cambiano a ogni partita: i commenti identificano il posto, non il bot.
+# Vector2(x, y): aumentando x vai a destra, aumentando y vai in basso.
 const SEAT_POSITIONS := [
-	Vector2(-40, 705),
-	Vector2(20, 345),
-	Vector2(145, 55),
-	Vector2(480, 10),
-	Vector2(850, 10),
-	Vector2(1220, 10),
-	Vector2(1550, 55),
-	Vector2(1710, 345),
+	Vector2(-70, 705), # Giocatore locale (indice 0): in basso a sinistra.
+	Vector2(-70, 345), # Posizione 1: lato sinistro.
+	Vector2(115, 60), # Posizione 2: curva in alto a sinistra.
+	Vector2(480, 10), # Posizione 3: in alto, a sinistra del centro.
+	Vector2(850, -10), # Posizione 4: in alto al centro.
+	Vector2(1220, 10), # Posizione 5: in alto, a destra del centro.
+	Vector2(1590, 60), # Posizione 6: curva in alto a destra.
+	Vector2(1780, 345), # Posizione 7: lato destro.
 ]
 
 @onready var hand = $Parallax/Hand/HBoxContainer
@@ -108,6 +109,7 @@ func _ready() -> void:
 	for data in Deck.new().cards:
 		catalog[data.strength - 1] = data
 	_build_ui()
+	table.seat_center = _seat_center_in_table
 	loading_screen = preload("res://scenes/balatro/scripts/loading_transition.gd").new()
 	add_child(loading_screen)
 	hand.play_requested.connect(func(card): _request_play.call_deferred(card))
@@ -139,7 +141,6 @@ func _ready() -> void:
 	preload("res://scenes/balatro/scripts/menu_button_hover.gd").attach(pause_button)
 	pause_button.z_index = 200
 	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(pause_button)
-	seat_edge_controls[1] = pause_button
 	var voice = get_node("/root/VoiceChat")
 	var menu_background := ShaderMaterial.new()
 	menu_background.shader = preload("res://scenes/balatro/shaders/menu_suits.gdshader")
@@ -299,6 +300,14 @@ func _fit_screen() -> void:
 			if child is Control:
 				child.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 				child.size = size
+	# The seats were designed for the full, wide table artwork. Fit the
+	# gameplay composition with it on tablets, rather than clipping the sides.
+	var table_size: Vector2 = $TableBackground.texture.get_size()
+	var gameplay_scale := minf(1.0, screen_size.x / (1080.0 * table_size.x / table_size.y))
+	for content in [$Parallax, game_ui, overlay]:
+		if is_instance_valid(content):
+			content.pivot_offset = size * 0.5
+			content.scale = Vector2.ONE * gameplay_scale
 	# Dimming belongs to the whole screen, not to the fixed table layout.
 	if is_instance_valid(damage_shade):
 		_fit_full_screen_shade(damage_shade, screen_size)
@@ -310,7 +319,7 @@ func _fit_full_screen_shade(shade: Control, screen_size: Vector2) -> void:
 	# Convert the screen origin through the parent, avoiding offset accumulation.
 	var parent := shade.get_parent() as CanvasItem
 	shade.position = parent.get_global_transform_with_canvas().affine_inverse() * Vector2.ZERO
-	shade.size = screen_size
+	shade.size = screen_size / parent.get_global_transform_with_canvas().get_scale()
 
 func _show_menu() -> void:
 	if is_instance_valid(result_flow):
@@ -782,11 +791,6 @@ func _refresh() -> void:
 		if not prediction_focus or p.id == 0:
 			var seat := _visual_seat_for_player(p.id)
 			badge.position = SEAT_POSITIONS[seat]
-			if seat_edge_controls.has(seat):
-				var edge: Control = seat_edge_controls[seat]
-				var point := Vector2.ZERO if seat == 1 else Vector2(edge.size.x, 0)
-				var target: Vector2 = scores.get_global_transform_with_canvas().affine_inverse() * (edge.get_global_transform_with_canvas() * point)
-				badge.position.x = target.x - (160.0 * 1.35 if seat == 7 else 0.0)
 		if not prediction_focus:
 			badge.modulate.a = 1.0
 		var badge_scale := LOCAL_PROFILE_SCALE if p.id == 0 else 1.35
@@ -1041,16 +1045,24 @@ func _badge_card_origin(badge: Control, card: Control) -> Vector2:
 	var screen_center := badge.get_global_transform_with_canvas() * Vector2(80, 128)
 	return card.get_canvas_transform().affine_inverse() * screen_center
 
+func _seat_center_in_table(seat: int) -> Vector2:
+	for id in range(scores.get_child_count()):
+		if _visual_seat_for_player(id) == seat:
+			var badge: Control = scores.get_child(id)
+			var center := badge.get_global_transform_with_canvas() * Vector2(80, 128)
+			return table.get_global_transform_with_canvas().affine_inverse() * center
+	return table.size / 2.0 + table.LANDINGS[seat]
+
 func _show_bot_card(id: int) -> void:
 	var entry: Dictionary = rules.trick.back()
 	var card = CardScene.instantiate()
 	add_child(card)
 	card.set_card_data(catalog[entry.card])
 	var badge = scores.get_child(id)
-	card.global_position = _badge_card_origin(badge, card) - card.size / 2.0
 	card.set_meta("seat_id", _visual_seat_for_player(id))
 	card.rotation = table.landing_rotation(card)
 	card.scale = Vector2.ONE * 0.5
+	card.global_position = _badge_card_origin(badge, card) - (card.size * card.scale * 0.5).rotated(card.rotation)
 	table.play_card(card)
 	table_visuals[id] = card
 	_refresh_winning_card()
@@ -1067,6 +1079,10 @@ func _refresh_winning_card() -> void:
 			best = entry
 	table.set_winning_card(table_visuals.get(best.player))
 
+static func _card_center_offset(card: Control, target_scale: Vector2, angle: float) -> Vector2:
+	# Control rotates/scales around pivot_offset, not its top-left corner.
+	return card.pivot_offset + ((card.size * 0.5 - card.pivot_offset) * target_scale).rotated(angle)
+
 func _animate_trick_capture() -> void:
 	var winner_id: int = rules.last_winner
 	if winner_id < 0 or table_visuals.is_empty():
@@ -1074,7 +1090,7 @@ func _animate_trick_capture() -> void:
 	var winner_card: Control = table_visuals.get(winner_id)
 	if not is_instance_valid(winner_card):
 		return
-	var winner_center := winner_card.global_position + winner_card.size / 2.0
+	var winner_center: Vector2 = winner_card.get_transform() * (winner_card.size * 0.5)
 	var ordered_cards: Array[Control] = []
 	for entry in rules.trick:
 		var card: Control = table_visuals.get(entry.player)
@@ -1086,7 +1102,9 @@ func _animate_trick_capture() -> void:
 	for index in range(ordered_cards.size()):
 		var card := ordered_cards[index]
 		card.z_index = 20 + index
-		grouping.tween_property(card, "global_position", winner_center - card.size / 2.0 + Vector2(0, 11 + index * 4), 0.42)
+		var angle := winner_card.rotation + (index - 1) * 0.035
+		var half_size := _card_center_offset(card, Vector2.ONE * 0.70, angle)
+		grouping.tween_property(card, "position", winner_center - half_size + Vector2(0, 11 + index * 4), 0.42)
 		grouping.tween_property(card, "rotation", winner_card.rotation + (index - 1) * 0.035, 0.42)
 		grouping.tween_property(card, "scale", Vector2.ONE * 0.70, 0.42)
 	winner_card.z_index = 60
@@ -1094,14 +1112,14 @@ func _animate_trick_capture() -> void:
 	# Then the complete stack flies to the winner's player badge.
 	GameAudio.play(self, GameAudio.SWIPE, -12.0)
 	var badge = scores.get_child(winner_id)
-	var destination := _badge_card_origin(badge, winner_card)
+	var destination: Vector2 = table.get_global_transform_with_canvas().affine_inverse() * (badge.get_global_transform_with_canvas() * Vector2(80, 128))
 	var capture := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	for index in range(ordered_cards.size()):
 		var card := ordered_cards[index]
-		capture.tween_property(card, "global_position", destination - card.size / 2.0 + Vector2(0, index * 2), 0.48)
+		capture.tween_property(card, "position", destination - _card_center_offset(card, Vector2.ONE * 0.18, winner_card.rotation), 0.48)
 		capture.tween_property(card, "scale", Vector2.ONE * 0.18, 0.48)
 		capture.tween_property(card, "rotation", winner_card.rotation, 0.48)
-	capture.tween_property(winner_card, "global_position", destination - winner_card.size / 2.0, 0.48)
+	capture.tween_property(winner_card, "position", destination - _card_center_offset(winner_card, Vector2.ONE * 0.18, winner_card.rotation), 0.48)
 	capture.tween_property(winner_card, "scale", Vector2.ONE * 0.18, 0.48)
 	await capture.finished
 	for card in table_visuals.values():

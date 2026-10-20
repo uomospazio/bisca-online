@@ -25,10 +25,12 @@ static func attach(control: Control, right: bool = false) -> void:
 			if physical.has_area():
 				var ratio := viewport_size / Vector2(window.size)
 				safe = Rect2((physical.position - Vector2(window.position)) * ratio, physical.size * ratio)
-		var origin := (viewport_size - Vector2(1920, 1080)) * 0.5
-		var delta := Vector2(safe.end.x - viewport_size.x + origin.x if right else safe.position.x - origin.x, safe.position.y - origin.y)
+		var parent := control.get_parent() as CanvasItem
+		var transform := parent.get_global_transform_with_canvas()
+		var local_safe := transform.affine_inverse() * safe
+		var delta := Vector2(local_safe.end.x - 1920.0 if right else local_safe.position.x, local_safe.position.y)
 		if control.get_meta("safe_bottom", false):
-			delta.y = safe.end.y - viewport_size.y + origin.y
+			delta.y = local_safe.end.y - 1080.0
 		var previous: Vector2 = control.get_meta("safe_edge")
 		control.position += delta - previous
 		control.set_meta("safe_edge", delta)

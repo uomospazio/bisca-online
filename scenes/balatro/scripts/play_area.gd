@@ -11,6 +11,19 @@ var highlighted: bool = false
 var layout_tween: Tween
 var throws: Array[Tween] = []
 var winning_card: Control
+var seat_center: Callable
+# Correzioni delle carte rispetto agli avatar, in coordinate del tavolo.
+# X negativa = sinistra; Y positiva = basso. Non spostano i giocatori.
+const CARD_OFFSETS := [
+	Vector2.ZERO, # Giocatore locale: invariato.
+	Vector2(-50, 45), # Posizione 1: lato sinistro.
+	Vector2(-30, 45), # Posizione 2: curva in alto a sinistra.
+	Vector2(-60, 0), # Posizione 3: in alto a sinistra del centro.
+	Vector2(0, -10), # Posizione 4: invariata.
+	Vector2(60, 0), # Posizione 5: in alto a destra del centro.
+	Vector2(30, 45), # Posizione 6: curva in alto a destra.
+	Vector2(70, 45), # Posizione 7: lato destro.
+]
 const LANDINGS := [
 	Vector2(0, 150), # local: centered horizontally, closer to the hand
 	Vector2(-680, 30), # left side
@@ -43,10 +56,13 @@ func set_winning_card(card: Control) -> void:
 
 func landing_position(card: Control) -> Vector2:
 	var seat: int = card.get_meta("seat_id", 0)
-	if seat == 0:
-		var screen_center := get_viewport_rect().size / 2.0 + LANDINGS[0]
-		var local_center := get_global_transform_with_canvas().affine_inverse() * screen_center
-		return local_center - card.size / 2.0
+	if seat != 0 and seat_center.is_valid():
+		# Follow the actual avatar, inset toward the felt so the card does not
+		# cover its owner. Coordinates remain in table space on tablets too.
+		var owner_center: Vector2 = seat_center.call(seat)
+		var offset := (owner_center - size / 2.0) * 0.72
+		offset.y = clampf(offset.y, -160.0, 30.0)
+		return size / 2.0 + offset + CARD_OFFSETS[seat] - card.size / 2.0
 	return size / 2.0 + LANDINGS[seat] - card.size / 2.0
 
 func landing_rotation(card: Control) -> float:

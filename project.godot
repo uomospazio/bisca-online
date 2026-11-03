@@ -46,6 +46,7 @@ ShopManager="*res://scenes/balatro/scripts/shop_manager.gd"
 FriendsManager="*res://scenes/balatro/scripts/friends_manager.gd"
 PushNotifications="*res://scenes/balatro/scripts/push_notifications.gd"
 RewardedAds="*res://scenes/balatro/scripts/rewarded_ads.gd"
+PlayerSafety="*res://scenes/balatro/scripts/player_safety.gd"
 
 [bisca]
 

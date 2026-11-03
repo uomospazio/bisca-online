@@ -392,6 +392,15 @@ func _update(state: Dictionary) -> void:
 		name_padding.content_margin_top = 6
 		name_button.add_theme_stylebox_override("normal", name_padding)
 		line.add_child(name_button)
+		if index != int(state.you) and not p.bot:
+			var open_player: Callable = get_node("/root/PlayerSafety").open_slot.bind(index)
+			name_button.mouse_filter = Control.MOUSE_FILTER_STOP
+			name_button.pressed.connect(open_player)
+			var hit := Button.new()
+			avatar.add_child(hit)
+			hit.flat = true
+			hit.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			hit.pressed.connect(open_player)
 		var ready_dot := Label.new()
 		ready_dot.text = "●"
 		ready_dot.tooltip_text = "Pronto" if bool(p.get("ready", false)) else "Non pronto"

@@ -463,6 +463,11 @@ func request(command: Dictionary) -> void:
 		verifying_peers.erase(peer)
 		if not _peer_connected(peer) or members.has(peer):
 			return
+		# On the production backend guests have anonymous Supabase accounts too.
+		# Do not allow an unverifiable participant to bypass moderation.
+		if rewards.enabled() and account_id.is_empty():
+			_reject(peer, "Identità online non disponibile. Riprova.")
+			return
 		var code := str(command.get("code", "")).strip_edges().to_upper()
 		if op == "create":
 			if rooms.size() >= 100:
@@ -504,6 +509,9 @@ func request(command: Dictionary) -> void:
 			if slot < 0:
 				slot = _rejoin_slot(room, str(command.get("token", "")))
 			if slot < 0:
+				_reject(peer, "Posto non disponibile per il rientro")
+				return
+			if rewards.enabled() and str(room.people[slot].get("account_id", "")) != account_id:
 				_reject(peer, "Posto non disponibile per il rientro")
 				return
 			# Mobile networks can leave the old socket apparently connected.
@@ -754,7 +762,7 @@ func _broadcast(room: Dictionary) -> void:
 		state["options"] = room.get("options", {"lives": 3, "starting_cards": 5}).duplicate()
 		state["bot_count"] = room.get("bot_count", 2)
 		for p in room.people:
-			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id, "voice_active": bool(p.get("voice_active", false)), "ready": bool(p.get("ready", false))})
+			state.people.append({"name": p.name, "connected": p.peer > 0, "bot": p.bot, "voice_id": p.voice_id, "account_id": str(p.get("account_id", "")), "voice_active": bool(p.get("voice_active", false)), "ready": bool(p.get("ready", false))})
 		if room.rules != null:
 			state.merge(room.rules.view_for(id))
 			state["completed_tricks"] = room.rules.completed_tricks

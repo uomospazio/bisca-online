@@ -799,6 +799,16 @@ func _refresh() -> void:
 		else:
 			badge = PlayerBadge.new()
 			scores.add_child(badge)
+			if online and p.id != 0:
+				var slot: int = (p.id + online_match.local_id) % player_count
+				var roster: Array = online_match.state.get("people", [])
+				if slot < roster.size() and not roster[slot].get("bot", true):
+					var hit := Button.new()
+					badge.add_child(hit)
+					hit.flat = true
+					hit.position = Vector2(16, 64)
+					hit.size = Vector2(128, 128)
+					hit.pressed.connect(get_node("/root/PlayerSafety").open_slot.bind(slot))
 		# During the prediction reveal, the sequence owns the opponents'
 		# positions. A refresh must not move a visible/revealing badge back to
 		# its seat for one frame.

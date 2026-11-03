@@ -104,7 +104,8 @@ func _on_network_updated(state: Dictionary) -> void:
 		var person: Dictionary = people[slot]
 		person["slot"] = slot
 		person["id"] = str(person.get("voice_id", ""))
-		if not person.id.is_empty():
+		var safety := get_node_or_null("/root/PlayerSafety")
+		if not person.id.is_empty() and (slot == my_slot or safety == null or safety.allow_voice(str(person.get("account_id", "")))):
 			roster.append(person)
 	if my_slot >= 0 and my_slot < people.size():
 		_call("update", [room, people[my_slot].id, roster])

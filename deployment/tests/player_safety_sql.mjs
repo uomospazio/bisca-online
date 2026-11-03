@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+const {PGlite}=await import(pathToFileURL(process.argv[2]).href);
+const db=new PGlite(), a='11111111-1111-1111-1111-111111111111', b='22222222-2222-2222-2222-222222222222';
+await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql as $$select current_setting('test.uid')::uuid$$;
+create table bisca_profiles(id uuid primary key,username text,public_id text);
+insert into auth.users values ('${a}'),('${b}'); insert into bisca_profiles(id) select id from auth.users;`);
+for(const f of ['006_friends.sql','009_lobby_invites.sql','031_player_safety.sql'])
+ await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+const asUser=async id=>db.exec(`set role authenticated; set test.uid='${id}'`);
+await asUser(a);
+await db.query("select bisca_report_player($1,'voice','Test','ABC123')",[b]);
+await assert.rejects(db.query('select * from bisca_player_reports'),/permission denied/);
+await assert.rejects(db.query("select bisca_report_player($1,'voice','Self','ABC123')",[a]),/INVALID_TARGET/);
+await db.query("select bisca_friend_action($1,'request')",[b]);
+await asUser(b);
+await db.query("select bisca_friend_action($1,'accept')",[a]);
+await db.query("select bisca_invite_friend($1,'ABC123')",[a]);
+await asUser(a);
+await db.query('select bisca_block_player($1)',[b]);
+assert.deepEqual((await db.query('select * from bisca_list_blocks()')).rows,[{id:b}]);
+await asUser(b);
+await assert.rejects(db.query("select bisca_friend_action($1,'request')",[a]),/CONTACT_UNAVAILABLE/);
+await assert.rejects(db.query("select bisca_invite_friend($1,'ABC123')",[a]),/FRIENDS_ONLY|CONTACT_UNAVAILABLE/);
+await db.exec('reset role');
+for(const table of ['bisca_lobby_invites','bisca_friendships'])
+ assert.equal((await db.query('select * from '+table)).rows.length,0);
+assert.equal((await db.query('select category from bisca_player_reports')).rows[0].category,'voice');
+await db.close();
+console.log('PASS: private report, no self report, persistent block, cleanup, no new invites or requests');

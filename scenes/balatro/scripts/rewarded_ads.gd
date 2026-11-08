@@ -48,7 +48,7 @@ func show_debug_demo_ad() -> void:
 	var unit := "ca-app-pub-3940256099942544/1712485313"
 	if OS.get_name() == "Android":
 		unit = "ca-app-pub-3940256099942544/5224354917"
-	RewardedAdLoader.new().load(unit, AdRequest.new(), callback)
+	RewardedAdLoader.new().load(unit, _ad_request(), callback)
 	await get_tree().create_timer(45.0).timeout
 	if serial == _demo_serial and _demo_ad == null:
 		_finish_demo("Caricamento demo scaduto. Riprova.")
@@ -224,6 +224,18 @@ func show_privacy_options() -> void:
 		changed.emit()
 	)
 
+func _tracking_permission(request: bool) -> String:
+	var bridge := Engine.get_singleton("BiscaVoice") if Engine.has_singleton("BiscaVoice") else null
+	if bridge == null or not bridge.has_method("tracking_permission"):
+		return "unavailable"
+	return str(bridge.call("tracking_permission", request))
+
+func _ad_request() -> AdRequest:
+	var ad := AdRequest.new()
+	if OS.has_feature("ios") and _tracking_permission(false) != "authorized":
+		ad.extras["npa"] = "1"
+	return ad
+
 func _start_consent_flow() -> void:
 	_ump_log("_start_consent_flow()")
 	if _consent_started:
@@ -233,6 +245,15 @@ func _start_consent_flow() -> void:
 		_ump_log("privacy_supported=false; skip")
 		return
 	_consent_started = true
+	if OS.has_feature("ios"):
+		var permission := _tracking_permission(true)
+		while permission == "pending":
+			await get_tree().create_timer(0.5).timeout
+			permission = _tracking_permission(true)
+		if permission == "unavailable":
+			_ump_log("ATT bridge unavailable; ads blocked")
+			_consent_started = false
+			return
 	_consent_info = UserMessagingPlatform.consent_information
 	consent_ready = false
 	privacy_message = ""
@@ -326,6 +347,8 @@ func _can_request_ads_from_consent() -> bool:
 func _finish_consent_state() -> void:
 	_ump_dump_state("_finish_consent_state")
 	consent_ready = _can_request_ads_from_consent()
+	if OS.has_feature("ios"):
+		consent_ready = consent_ready and _tracking_permission(false) in ["authorized", "denied"]
 	if not consent_ready:
 		_consent_started = false
 	_ump_log("consent_ready=" + str(consent_ready) + " | mobile_ads_initialized=" + str(_initialized))
@@ -416,7 +439,7 @@ func request_reward(placement: String, context := "") -> void:
 		verification.custom_data = str(_pending.p_claim)
 		ad.set_server_side_verification_options(verification)
 		ad.show(listener)
-	RewardedAdLoader.new().load(ANDROID_PRODUCTION_UNIT if OS.get_name() == "Android" else IOS_PRODUCTION_UNIT, AdRequest.new(), callback)
+	RewardedAdLoader.new().load(ANDROID_PRODUCTION_UNIT if OS.get_name() == "Android" else IOS_PRODUCTION_UNIT, _ad_request(), callback)
 	await get_tree().create_timer(45.0).timeout
 	if serial == _serial and _ad == null:
 		_clear_unearned()

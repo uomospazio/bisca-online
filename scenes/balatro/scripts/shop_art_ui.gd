@@ -52,8 +52,6 @@ func setup_shop(owner_page: Control) -> void:
 	add_child(back_anchor)
 	back_anchor.mouse_filter = MOUSE_FILTER_IGNORE
 	back = _button(back_anchor,UI+"pngUI/InLobbyUI/tastoIndietro.png",Rect2(0,0,108,98),host.menu_owner._leave_shop)
-	var support := _button(composition,UI+"coffee.png",Rect2(130,570,200,190),host.menu_owner._show_support_creator)
-	support.tooltip_text = "Supporta il creatore"
 	video = _button(composition,SHOP+"guadagnaMonete.png",Rect2(140,260,180,180),func(): _request("shop"),false)
 	video.tooltip_text = "Guarda un annuncio: +20 monete"
 	var reward_width := ceilf(font.get_string_size("+20",HORIZONTAL_ALIGNMENT_LEFT,-1,34).x)
@@ -69,7 +67,18 @@ func setup_shop(owner_page: Control) -> void:
 	reroll.tooltip_text = "Cambia le sei offerte con un annuncio"
 	wheel = _button(composition,SHOP+"ruotaFortuna.png",Rect2(1570,552,210,210),host.open_wheel)
 	wheel.tooltip_text = "Ruota della fortuna"
-	host.fixed_controls.assign([back,counter,support,video,reroll,wheel])
+	host.fixed_controls.assign([back,counter,video,reroll,wheel])
+	if OS.has_feature("ios"):
+		# The localized sheets also draw the coffee glow and caption.
+		for sheet in [slots_background, slots_captions]:
+			var mask := ShaderMaterial.new()
+			mask.shader = preload("res://scenes/balatro/scripts/shop_ios_sheet.gdshader")
+			mask.set_shader_parameter("sheet_top", sheet.position.y)
+			sheet.material = mask
+	else:
+		var support := _button(composition,UI+"coffee.png",Rect2(130,570,200,190),host.menu_owner._show_support_creator)
+		support.tooltip_text = "Supporta il creatore"
+		host.fixed_controls.append(support)
 	host.status = _label(composition,"",Rect2(380,842,1160,40),18)
 	host.status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	host.status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -401,44 +401,45 @@ func _ready() -> void:
 	market_button.focus_exited.connect(hover.bind(false))
 
 
-	# SUPPORTA IL CREATORE: coffee.png, in alto a sinistra nella HOME.
-	# E' volutamente separato dallo Shop e non assegna monete/contenuti in-game.
-	var support_button := TextureButton.new()
-	home_support_button = support_button
-	support_button.name = "SupportCreator"
-	home_page.add_child(support_button)
-	support_button.texture_normal = preload("res://scenes/balatro/trick_asset/ui_bisca/coffee.png")
-	support_button.ignore_texture_size = true
-	support_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-	# Stessa dimensione grafica di tastoShop.png.
-	# Angolo alto-sinistra: stesso sistema SafeEdges degli altri controlli
-	# fissati a sinistra. IMPORTANTE: niente secondo argomento "true":
-	# true viene usato per il bordo DESTRO; senza true il controllo segue il bordo SINISTRO.
-	support_button.size = SUPPORT_BUTTON_SIZE
-	support_button.position = SUPPORT_BUTTON_POSITION
-	support_button.pivot_offset = support_button.size / 2.0
-	preload("res://scenes/balatro/scripts/safe_edges.gd").attach(support_button)
-	support_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	support_button.tooltip_text = "Supporta il creatore"
-	support_button.pressed.connect(_show_support_creator)
-	preload("res://scenes/balatro/scripts/button_audio.gd").attach(support_button)
+	if not OS.has_feature("ios"):
+		# SUPPORTA IL CREATORE: coffee.png, in alto a sinistra nella HOME.
+		# E' volutamente separato dallo Shop e non assegna monete/contenuti in-game.
+		var support_button := TextureButton.new()
+		home_support_button = support_button
+		support_button.name = "SupportCreator"
+		home_page.add_child(support_button)
+		support_button.texture_normal = preload("res://scenes/balatro/trick_asset/ui_bisca/coffee.png")
+		support_button.ignore_texture_size = true
+		support_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		# Stessa dimensione grafica di tastoShop.png.
+		# Angolo alto-sinistra: stesso sistema SafeEdges degli altri controlli
+		# fissati a sinistra. IMPORTANTE: niente secondo argomento "true":
+		# true viene usato per il bordo DESTRO; senza true il controllo segue il bordo SINISTRO.
+		support_button.size = SUPPORT_BUTTON_SIZE
+		support_button.position = SUPPORT_BUTTON_POSITION
+		support_button.pivot_offset = support_button.size / 2.0
+		preload("res://scenes/balatro/scripts/safe_edges.gd").attach(support_button)
+		support_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		support_button.tooltip_text = "Supporta il creatore"
+		support_button.pressed.connect(_show_support_creator)
+		preload("res://scenes/balatro/scripts/button_audio.gd").attach(support_button)
 
-	# Stesso hover/pop del pulsante tastoShop.png.
-	var support_hover_state := {"tween": null}
-	var support_hover := func(active: bool):
-		if support_hover_state.tween and support_hover_state.tween.is_valid():
-			support_hover_state.tween.kill()
-		var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-		support_hover_state.tween = tween
-		var ratio := clampf(128.0 / support_button.size.x, 0.5, 1.0)
-		tween.tween_property(support_button, "scale", Vector2.ONE * (1.0 + 0.2 * ratio if active else 1.0), 0.2 if active else 0.25)
-		tween.parallel().tween_property(support_button, "rotation_degrees", 5.0 * ratio * [-1.0, 1.0].pick_random() if active else 0.0, 0.1)
-		if active:
-			tween.tween_property(support_button, "rotation_degrees", 0.0, 0.1)
-	support_button.mouse_entered.connect(support_hover.bind(true))
-	support_button.mouse_exited.connect(support_hover.bind(false))
-	support_button.focus_entered.connect(support_hover.bind(true))
-	support_button.focus_exited.connect(support_hover.bind(false))
+		# Stesso hover/pop del pulsante tastoShop.png.
+		var support_hover_state := {"tween": null}
+		var support_hover := func(active: bool):
+			if support_hover_state.tween and support_hover_state.tween.is_valid():
+				support_hover_state.tween.kill()
+			var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+			support_hover_state.tween = tween
+			var ratio := clampf(128.0 / support_button.size.x, 0.5, 1.0)
+			tween.tween_property(support_button, "scale", Vector2.ONE * (1.0 + 0.2 * ratio if active else 1.0), 0.2 if active else 0.25)
+			tween.parallel().tween_property(support_button, "rotation_degrees", 5.0 * ratio * [-1.0, 1.0].pick_random() if active else 0.0, 0.1)
+			if active:
+				tween.tween_property(support_button, "rotation_degrees", 0.0, 0.1)
+		support_button.mouse_entered.connect(support_hover.bind(true))
+		support_button.mouse_exited.connect(support_hover.bind(false))
+		support_button.focus_entered.connect(support_hover.bind(true))
+		support_button.focus_exited.connect(support_hover.bind(false))
 
 	# I pulsanti mantengono l'animazione d'ingresso e hover esistente.
 	# Control separati: nessun Container forza le loro dimensioni.
@@ -690,7 +691,9 @@ func animate_buttons_like_home(buttons: Array[Button]) -> void:
 func _animate_home_extras() -> void:
 	# Foto, nome e selettore mazzo entrano con lo stesso effetto pop,
 	# dopo i pulsanti (con leggero ritardo fra loro).
-	var home_extras: Array[Control] = [deck_selector, home_market_button, home_support_button]
+	var home_extras: Array[Control] = [deck_selector, home_market_button]
+	if is_instance_valid(home_support_button):
+		home_extras.append(home_support_button)
 	for index in home_extras.size():
 		var control: Control = home_extras[index]
 		if control.get_parent() != home_persistent_ui and control != home_market_button and control != home_support_button:
@@ -834,6 +837,8 @@ func _set_home_profile(avatar: String, persist := true) -> void:
 		get_node("/root/NetworkSession").send({"op": "profile", "avatar": profile_avatar})
 
 func _show_support_creator() -> void:
+	if OS.has_feature("ios"):
+		return
 	var dialog := preload("res://scenes/balatro/scripts/menu_dialog.gd").new()
 	add_child(dialog)
 	dialog.title = "SUPPORTA IL CREATORE"

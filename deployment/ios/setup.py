@@ -38,6 +38,14 @@ def inject_plugin_hooks(contents):
     return "void bisca_voice_initialize();\nvoid bisca_voice_deinitialize();\n" + contents
 
 
+def configure_app_plist(info):
+    plist = plistlib.loads(info.read_bytes())
+    plist["NSMicrophoneUsageDescription"] = "Bisca usa il microfono per parlare con gli amici nella lobby."
+    plist["NSUserTrackingUsageDescription"] = "Con il tuo permesso, BISCA usa l’identificativo pubblicitario e le interazioni per personalizzare gli annunci e misurarne i risultati tra app e siti."
+    plist["GADDelayAppMeasurementInit"] = True
+    info.write_bytes(plistlib.dumps(plist))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("project", type=Path, help="Exported .xcodeproj")
@@ -139,9 +147,7 @@ def main():
             append(settings, "GCC_PREPROCESSOR_DEFINITIONS", define)
         settings["SWIFT_VERSION"] = "5.0"
         info = project.parent / settings["INFOPLIST_FILE"]
-        plist = plistlib.loads(info.read_bytes())
-        plist["NSMicrophoneUsageDescription"] = "Bisca usa il microfono per parlare con gli amici nella lobby."
-        info.write_bytes(plistlib.dumps(plist))
+        configure_app_plist(info)
 
     dummy = project.parent / target["name"] / "dummy.cpp"
     contents = dummy.read_text()

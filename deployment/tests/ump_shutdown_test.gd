@@ -29,6 +29,13 @@ class NativeConsent extends RefCounted:
 		if scenario != "pending_privacy": on_privacy_options_form_dismissed_listener.emit({})
 
 class AdsProbe extends "res://scenes/balatro/scripts/rewarded_ads.gd":
+	var native_probe: NativeConsent
+	var tracking_requests := 0
+	func _request_tracking_permission_after_consent() -> void:
+		assert(consent_ready, "ATT requested before consent was ready")
+		if native_probe.scenario == "form":
+			assert(native_probe.completed_form, "ATT requested before GDPR dismissal")
+		tracking_requests += 1
 	func supported() -> bool: return false
 	func privacy_supported() -> bool: return true
 
@@ -47,13 +54,17 @@ func run() -> void:
 	UserMessagingPlatform._plugin = native
 	ConsentForm._plugin = native
 	var ads := AdsProbe.new()
+	ads.native_probe = native
 	root.add_child(ads)
 	ads._start_consent_flow()
 	for frame in range(5): await process_frame
 	assert(ads.consent_ready == (native.scenario in ["obtained", "update_error", "form", "privacy", "pending_privacy"]))
+	var expected_tracking_requests := 1 if native.scenario in ["obtained", "form", "privacy", "pending_privacy"] else 0
+	assert(ads.tracking_requests == expected_tracking_requests, "Unexpected ATT request count")
 	if native.scenario in ["privacy", "pending_privacy"]:
 		ads.show_privacy_options()
 		await process_frame
+		assert(ads.tracking_requests == expected_tracking_requests, "Privacy options repeated ATT")
 	if native.scenario == "obtained":
 		assert(UserMessagingPlatform.consent_information._on_consent_info_updated_success_callback == null)
 		assert(UserMessagingPlatform.consent_information._on_consent_info_updated_failure_callback == null)

@@ -112,6 +112,7 @@ var _earned := false
 var consent_ready := false
 var privacy_message := ""
 var _consent_started := false
+var _tracking_prompt_attempted := false
 var _consent_info: ConsentInformation
 
 func _ump_log(text: String) -> void:
@@ -230,6 +231,33 @@ func _tracking_permission(request: bool) -> String:
 		return "unavailable"
 	return str(bridge.call("tracking_permission", request))
 
+func _request_tracking_permission_after_consent() -> void:
+	# ATT e' separato da UMP: OBTAINED non equivale a consenso al tracking.
+	# Non chiedere ATT dopo un rifiuto delle finalita' TCF rilevanti.
+	if not OS.has_feature("ios") or _tracking_prompt_attempted:
+		return
+	if not consent_ready or _consent_info == null:
+		return
+	if _tracking_permission(false) != "pending":
+		return
+
+	# Fuori dalle regioni in cui UMP richiede il consenso GDPR,
+	# non usare l'assenza della stringa TCF come rifiuto.
+	if not _consent_is_not_required():
+		if not _consent_is_obtained():
+			return
+		var bridge = Engine.get_singleton("BiscaVoice") if Engine.has_singleton("BiscaVoice") else null
+		if bridge == null or not bridge.has_method("gdpr_allows_tracking"):
+			_ump_log("ATT non richiesto: controllo GDPR nativo non disponibile.")
+			return
+		if not bool(bridge.call("gdpr_allows_tracking")):
+			_ump_log("ATT non richiesto: finalita' di tracking non consentite nel GDPR.")
+			return
+
+	_tracking_prompt_attempted = true
+	_ump_log("Consenso GDPR compatibile con ATT: richiesta autorizzazione iOS.")
+	_tracking_permission(true)
+
 func _ad_request() -> AdRequest:
 	var ad := AdRequest.new()
 	if OS.has_feature("ios") and _tracking_permission(false) != "authorized":
@@ -245,15 +273,6 @@ func _start_consent_flow() -> void:
 		_ump_log("privacy_supported=false; skip")
 		return
 	_consent_started = true
-	if OS.has_feature("ios"):
-		var permission := _tracking_permission(true)
-		while permission == "pending":
-			await get_tree().create_timer(0.5).timeout
-			permission = _tracking_permission(true)
-		if permission == "unavailable":
-			_ump_log("ATT bridge unavailable; ads blocked")
-			_consent_started = false
-			return
 	_consent_info = UserMessagingPlatform.consent_information
 	consent_ready = false
 	privacy_message = ""
@@ -314,6 +333,8 @@ func _handle_consent_info_updated() -> void:
 					else:
 						privacy_message = ""
 					_finish_consent_state()
+					if error == null and consent_ready:
+						_request_tracking_permission_after_consent()
 					changed.emit()
 				),
 			func(error: FormError):
@@ -337,6 +358,8 @@ func _handle_consent_info_updated() -> void:
 
 	privacy_message = ""
 	_finish_consent_state()
+	if consent_ready:
+		_request_tracking_permission_after_consent()
 	changed.emit()
 
 func _can_request_ads_from_consent() -> bool:
@@ -347,8 +370,6 @@ func _can_request_ads_from_consent() -> bool:
 func _finish_consent_state() -> void:
 	_ump_dump_state("_finish_consent_state")
 	consent_ready = _can_request_ads_from_consent()
-	if OS.has_feature("ios"):
-		consent_ready = consent_ready and _tracking_permission(false) in ["authorized", "denied"]
 	if not consent_ready:
 		_consent_started = false
 	_ump_log("consent_ready=" + str(consent_ready) + " | mobile_ads_initialized=" + str(_initialized))

@@ -14,6 +14,7 @@ protected:
         ClassDB::bind_method(D_METHOD("invoke", "method", "args_json"), &BiscaVoice::invoke);
         ClassDB::bind_method(D_METHOD("drain"), &BiscaVoice::drain);
         ClassDB::bind_method(D_METHOD("tracking_permission", "request"), &BiscaVoice::tracking_permission);
+        ClassDB::bind_method(D_METHOD("gdpr_allows_tracking"), &BiscaVoice::gdpr_allows_tracking);
         ClassDB::bind_method(D_METHOD("open_photo"), &BiscaVoice::open_photo);
         ClassDB::bind_method(D_METHOD("open_camera"), &BiscaVoice::open_camera);
         ClassDB::bind_method(D_METHOD("drain_photo"), &BiscaVoice::drain_photo);
@@ -22,6 +23,22 @@ protected:
         ClassDB::bind_method(D_METHOD("cancel_auth"), &BiscaVoice::cancel_auth);
     }
 public:
+    // Conservative ATT gating for EEA users using the IAB TCF purpose consent string.
+    // UMP status OBTAINED means the choice was recorded, not that tracking was accepted.
+    // Purposes 1 (store/access information), 3 (create personalised advertising profiles)
+    // and 4 (use profiles to select personalised advertising) must all be consented to.
+    // This does not replace a complete CMP/vendor/legal-basis check for actual tracking.
+    bool gdpr_allows_tracking() {
+        NSString *purposes = [[NSUserDefaults standardUserDefaults]
+            stringForKey:@"IABTCF_PurposeConsents"];
+        if (![purposes isKindOfClass:[NSString class]] || purposes.length < 4) {
+            return false;
+        }
+        return [purposes characterAtIndex:0] == '1' &&
+               [purposes characterAtIndex:2] == '1' &&
+               [purposes characterAtIndex:3] == '1';
+    }
+
     String tracking_permission(bool request) {
         NSString *purpose = [NSBundle.mainBundle objectForInfoDictionaryKey:@"NSUserTrackingUsageDescription"];
         if (![purpose isKindOfClass:[NSString class]] || purpose.length == 0) {

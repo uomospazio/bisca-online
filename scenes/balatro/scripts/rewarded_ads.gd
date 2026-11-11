@@ -585,6 +585,7 @@ func _finish(text: String) -> void:
 	busy = false
 	_set_message(text)
 
+
 func _set_message(text: String) -> void:
 	message = text
 	changed.emit()
